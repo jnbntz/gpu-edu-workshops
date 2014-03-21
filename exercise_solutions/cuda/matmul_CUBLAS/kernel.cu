@@ -14,10 +14,16 @@
  *  limitations under the License.
  */
 
-#include "cuda_runtime.h"
-#include "cublas_v2.h"
+#define CUDA_CALL(F)  if( (F) != cudaSuccess ) \
+  {printf("Error %s at %s:%d\n", cudaGetErrorString(cudaGetLastError()), \
+   __FILE__,__LINE__); exit(-1);} 
+
+#define CUDA_CHECK()  if( (cudaPeekAtLastError()) != cudaSuccess ) \
+  {printf("Error %s at %s:%d\n", cudaGetErrorString(cudaGetLastError()), \
+   __FILE__,__LINE__-1); exit(-1);} 
 
 #include <stdio.h>
+#include "cublas_v2.h"
 
 #define INDX( row, col, ld ) ( ( (col) * (ld) ) + (row) )
 
@@ -91,23 +97,23 @@ int main( int argc, char *argv[] )
       h_b[i] = double( rand() ) / ( double(RAND_MAX) + 1.0 );
     }
 
-    cudaMalloc( (void **)&d_a, numbytes );
-    cudaMalloc( (void **)&d_b, numbytes );
-    cudaMalloc( (void **)&d_c, numbytes );
+    CUDA_CALL( cudaMalloc( (void **)&d_a, numbytes ) );
+    CUDA_CALL( cudaMalloc( (void **)&d_b, numbytes ) );
+    CUDA_CALL( cudaMalloc( (void **)&d_c, numbytes ) );
 
     cudaEvent_t start, stop;
-    cudaEventCreate( &start );
-    cudaEventCreate( &stop );
+    CUDA_CALL( cudaEventCreate( &start ) );
+    CUDA_CALL( cudaEventCreate( &stop ) );
 
 
-    cudaEventRecord( start, 0 );
+    CUDA_CALL( cudaEventRecord( start, 0 ) );
 
     host_dgemm( size, size, size, h_a, h_b, h_cdef );
 
-    cudaEventRecord( stop, 0 );
-    cudaEventSynchronize( stop );
+    CUDA_CALL( cudaEventRecord( stop, 0 ) );
+    CUDA_CALL( cudaEventSynchronize( stop ) );
     float elapsedTime;
-    cudaEventElapsedTime( &elapsedTime, start, stop );
+    CUDA_CALL( cudaEventElapsedTime( &elapsedTime, start, stop ) );
 
     fprintf(stdout, "Total time CPU is %f sec\n", elapsedTime / 1000.0f );
     fprintf(stdout, "Performance is %f GFlop/s\n", 
@@ -115,8 +121,8 @@ int main( int argc, char *argv[] )
       ( (double) elapsedTime / 1000.0 ) * 1.e-9 );
 
 
-    cudaMemcpy( d_a, h_a, numbytes, cudaMemcpyHostToDevice );
-    cudaMemcpy( d_b, h_b, numbytes, cudaMemcpyHostToDevice );
+    CUDA_CALL( cudaMemcpy( d_a, h_a, numbytes, cudaMemcpyHostToDevice ) );
+    CUDA_CALL( cudaMemcpy( d_b, h_b, numbytes, cudaMemcpyHostToDevice ) );
 
     cublasHandle_t handle;
     cublasStatus_t stat = cublasCreate( &handle );
@@ -124,7 +130,7 @@ int main( int argc, char *argv[] )
     double alpha = 1.0;
     double beta  = 0.0;
 
-    cudaEventRecord( start, 0 );
+    CUDA_CALL( cudaEventRecord( start, 0 ) );
 
     cublasDgemm( handle, CUBLAS_OP_N, CUBLAS_OP_N,
                  size, size, size,
@@ -135,20 +141,21 @@ int main( int argc, char *argv[] )
                  d_c, size );
 
 
-    cudaEventRecord( stop, 0 );
-    cudaEventSynchronize( stop );
-    cudaEventElapsedTime( &elapsedTime, start, stop );
+    CUDA_CALL( cudaEventRecord( stop, 0 ) );
+    CUDA_CALL( cudaEventSynchronize( stop ) );
+    CUDA_CALL( cudaEventElapsedTime( &elapsedTime, start, stop ) );
 
-    fprintf(stdout, "Total time GPU CUBLAS is %f sec\n", elapsedTime / 1000.0f );
+    fprintf(stdout, "Total time GPU CUBLAS is %f sec\n", 
+            elapsedTime / 1000.0f );
     fprintf(stdout, "Performance is %f GFlop/s\n", 
       2.0 * (double) size * (double) size * (double) size / 
       ( (double) elapsedTime / 1000.0 ) * 1.e-9 );
                   
-    cudaMemcpy( h_c, d_c, numbytes, cudaMemcpyDeviceToHost );
+    CUDA_CALL( cudaMemcpy( h_c, d_c, numbytes, cudaMemcpyDeviceToHost ) );
 
     cublasDestroy( handle );
-    cudaEventDestroy( start );
-    cudaEventDestroy( stop );
+    CUDA_CALL( cudaEventDestroy( start ) );
+    CUDA_CALL( cudaEventDestroy( stop ) );
 
 	double temp = 0.0;
 
@@ -160,20 +167,15 @@ int main( int argc, char *argv[] )
 	printf("error is %f\n",temp);
 	if( temp > 10 ) printf("Error value is suspiciously high!\n");
 
-    cudaFree( d_a );
-    cudaFree( d_b );
-    cudaFree( d_c );
+    CUDA_CALL( cudaFree( d_a ) );
+    CUDA_CALL( cudaFree( d_b ) );
+    CUDA_CALL( cudaFree( d_c ) );
 
     free( h_a );
     free( h_b );
     free( h_c );
     free( h_cdef );
 
-    cudaError_t cudaStatus = cudaDeviceReset();
-    if (cudaStatus != cudaSuccess) {
-        fprintf(stderr, "cudaDeviceReset failed!");
-        return 1;
-    }
-
+    CUDA_CALL( cudaDeviceReset() );
     return 0;
 }

@@ -14,8 +14,18 @@
  *  limitations under the License.
  */
 
-#include "cuda_runtime.h"
-#include "device_launch_parameters.h"
+#ifdef DEBUG
+#define CUDA_CALL(F)  if( (F) != cudaSuccess ) \
+  {printf("Error %s at %s:%d\n", cudaGetErrorString(cudaGetLastError()), \
+   __FILE__,__LINE__); exit(-1);} 
+#define CUDA_CHECK()  if( (cudaPeekAtLastError()) != cudaSuccess ) \
+  {printf("Error %s at %s:%d\n", cudaGetErrorString(cudaGetLastError()), \
+   __FILE__,__LINE__-1); exit(-1);} 
+#else
+#define CUDA_CALL(F) (F)
+#define CUDA_CHECK() 
+#endif
+
 #include <stdio.h>
 
 __global__ void add(int *a, int *b, int *c)
@@ -33,9 +43,9 @@ int main()
 
 	/* allocate space for device copies of a, b, c */
 
-	cudaMalloc( (void **) &d_a, size );
-	cudaMalloc( (void **) &d_b, size );
-	cudaMalloc( (void **) &d_c, size );
+	CUDA_CALL( cudaMalloc( (void **) &d_a, size ) );
+	CUDA_CALL( cudaMalloc( (void **) &d_b, size ) );
+	CUDA_CALL( cudaMalloc( (void **) &d_c, size ) );
 
 	/* allocate space for host copies of a, b, c and setup input values */
 
@@ -51,16 +61,20 @@ int main()
 
 	/* copy inputs to device */
 
-	cudaMemcpy( d_a, a, size, cudaMemcpyHostToDevice );
-	cudaMemcpy( d_b, b, size, cudaMemcpyHostToDevice );
+	CUDA_CALL( cudaMemcpy( d_a, a, size, cudaMemcpyHostToDevice ) );
+	CUDA_CALL( cudaMemcpy( d_b, b, size, cudaMemcpyHostToDevice ) );
 
 	/* launch the kernel on the GPU */
 
 	add<<< N, 1 >>>( d_a, d_b, d_c );
+        CUDA_CHECK()
+#ifdef DEBUG
+        CUDA_CALL( cudaDeviceSynchronize() );
+#endif
 
 	/* copy result back to host */
 
-	cudaMemcpy( c, d_c, size, cudaMemcpyDeviceToHost );
+	CUDA_CALL( cudaMemcpy( c, d_c, size, cudaMemcpyDeviceToHost ) );
 
 	for( int i = 0; i < N; i++ )
 	{
@@ -72,9 +86,9 @@ int main()
 	free(a);
 	free(b);
 	free(c);
-	cudaFree( d_a );
-	cudaFree( d_b );
-	cudaFree( d_c );
+	CUDA_CALL( cudaFree( d_a ) );
+	CUDA_CALL( cudaFree( d_b ) );
+	CUDA_CALL( cudaFree( d_c ) );
 	
 	return 0;
 } /* end main */

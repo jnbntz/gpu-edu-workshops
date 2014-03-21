@@ -14,7 +14,6 @@
  *  limitations under the License.
  */
 
-#include "cuda_runtime.h"
 #include <stdio.h>
 
 /* macro to index a 1D memory array with 2D indices in column-major order */

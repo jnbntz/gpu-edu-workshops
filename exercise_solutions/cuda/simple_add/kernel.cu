@@ -14,23 +14,19 @@
  *  limitations under the License.
  */
 
-#include "cuda_runtime.h"
-#include "device_launch_parameters.h"
-#include <stdio.h>
+#ifdef DEBUG
+#define CUDA_CALL(F)  if( (F) != cudaSuccess ) \
+  {printf("Error %s at %s:%d\n", cudaGetErrorString(cudaGetLastError()), \
+   __FILE__,__LINE__); exit(-1);} 
+#define CUDA_CHECK()  if( (cudaPeekAtLastError()) != cudaSuccess ) \
+  {printf("Error %s at %s:%d\n", cudaGetErrorString(cudaGetLastError()), \
+   __FILE__,__LINE__-1); exit(-1);} 
+#else
+#define CUDA_CALL(F) (F)
+#define CUDA_CHECK() 
+#endif
 
-#define CUDACHECK( ans ) { gpuAssert( (ans), __FILE__, __LINE__); }
-inline void gpuAssert( cudaError_t code, char *file, int line, 
-  bool abort=true )
-{
-    fprintf( stderr, "GPUassert: %s %s %s\n", cudaGetErrorString(code), file, 
-      line );
-  if( code != cudaSuccess )
-  {
-    fprintf( stderr, "GPUassert: %s %s %s\n", cudaGetErrorString(code), file, 
-      line );
-    if( abort ) exit( code );
-  } /* end if */
-} /* end gpuAssert */
+#include <stdio.h>
 
 __global__ void add(int *a, int *b, int *c)
 {
@@ -45,9 +41,9 @@ int main()
 
 	/* allocate space for device copies of a, b, c */
 
-	CUDACHECK( cudaMalloc( (void **) &d_a, size ) );
-	CUDACHECK( cudaMalloc( (void **) &d_b, size ) );
-	CUDACHECK( cudaMalloc( (void **) &d_c, size ) );
+	CUDA_CALL( cudaMalloc( (void **) &d_a, size ) );
+	CUDA_CALL( cudaMalloc( (void **) &d_b, size ) );
+	CUDA_CALL( cudaMalloc( (void **) &d_c, size ) );
 
 	/* setup initial values */
 
@@ -57,27 +53,30 @@ int main()
 
 	/* copy inputs to device */
 
-	CUDACHECK( cudaMemcpy( d_a, &a, size, cudaMemcpyHostToDevice ) );
-	CUDACHECK( cudaMemcpy( d_b, &b, size, cudaMemcpyHostToDevice ) );
+	CUDA_CALL( cudaMemcpy( d_a, &a, size, cudaMemcpyHostToDevice ) );
+	CUDA_CALL( cudaMemcpy( d_b, &b, size, cudaMemcpyHostToDevice ) );
 
 	/* launch the kernel on the GPU */
 
 	add<<< 1, 1 >>>( d_a, d_b, d_c );
-        CUDACHECK( cudaPeekAtLastError() );
+        CUDA_CHECK()
+#ifdef DEBUG
+        CUDA_CALL( cudaDeviceSynchronize() );
+#endif
 
 	/* copy result back to host */
 
-	CUDACHECK( cudaMemcpy( &c, d_c, size, cudaMemcpyDeviceToHost ) );
+	CUDA_CALL( cudaMemcpy( &c, d_c, size, cudaMemcpyDeviceToHost ) );
 
 	printf("value of c after kernel is %d\n",c);
 
 	/* clean up */
 
-	CUDACHECK( cudaFree( d_a ) );
-	CUDACHECK( cudaFree( d_b ) );
-	CUDACHECK( cudaFree( d_c ) );
+	CUDA_CALL( cudaFree( d_a ) );
+	CUDA_CALL( cudaFree( d_b ) );
+	CUDA_CALL( cudaFree( d_c ) );
 
-        cudaDeviceReset();
+        CUDA_CALL( cudaDeviceReset() );
 	
 	return 0;
 } /* end main */

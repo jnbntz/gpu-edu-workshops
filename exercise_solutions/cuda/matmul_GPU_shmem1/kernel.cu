@@ -14,9 +14,19 @@
  *  limitations under the License.
  */
 
-#include "cuda_runtime.h"
-#include "cublas_v2.h"
+#ifdef DEBUG
+#define CUDA_CALL(F)  if( (F) != cudaSuccess ) \
+  {printf("Error %s at %s:%d\n", cudaGetErrorString(cudaGetLastError()), \
+   __FILE__,__LINE__); exit(-1);} 
+#define CUDA_CHECK()  if( (cudaPeekAtLastError()) != cudaSuccess ) \
+  {printf("Error %s at %s:%d\n", cudaGetErrorString(cudaGetLastError()), \
+   __FILE__,__LINE__-1); exit(-1);} 
+#else
+#define CUDA_CALL(F) (F)
+#define CUDA_CHECK() 
+#endif
 
+#include "cublas_v2.h"
 #include <stdio.h>
 
 /* macro for index calculations */
@@ -193,14 +203,14 @@ int main( int argc, char *argv[] )
 
 	/* allocate a, b, c in gpu memory */
 
-    cudaMalloc( (void **)&d_a, numbytes );
-    cudaMalloc( (void **)&d_b, numbytes );
-    cudaMalloc( (void **)&d_c, numbytes );
+    CUDA_CALL( cudaMalloc( (void **)&d_a, numbytes ) );
+    CUDA_CALL( cudaMalloc( (void **)&d_b, numbytes ) );
+    CUDA_CALL( cudaMalloc( (void **)&d_c, numbytes ) );
 	
 	/* copy a and b to device */
 
-	cudaMemcpy( d_a, h_a, numbytes, cudaMemcpyHostToDevice );
-    cudaMemcpy( d_b, h_b, numbytes, cudaMemcpyHostToDevice );
+    CUDA_CALL( cudaMemcpy( d_a, h_a, numbytes, cudaMemcpyHostToDevice ) );
+    CUDA_CALL( cudaMemcpy( d_b, h_b, numbytes, cudaMemcpyHostToDevice ) );
 
     cublasHandle_t handle;
     cublasStatus_t stat = cublasCreate( &handle );
@@ -211,9 +221,9 @@ int main( int argc, char *argv[] )
 	/* start timers */
 
     cudaEvent_t start, stop;
-    cudaEventCreate( &start );
-    cudaEventCreate( &stop );
-    cudaEventRecord( start, 0 );
+    CUDA_CALL( cudaEventCreate( &start ) );
+    CUDA_CALL( cudaEventCreate( &stop ) );
+    CUDA_CALL( cudaEventRecord( start, 0 ) );
 
 	/* call CUBLAS dgemm */
 
@@ -227,10 +237,10 @@ cublasDgemm( handle, CUBLAS_OP_N, CUBLAS_OP_N,
 
 	/* stop timers */
 
-    cudaEventRecord( stop, 0 );
-    cudaEventSynchronize( stop );
+    CUDA_CALL( cudaEventRecord( stop, 0 ) );
+    CUDA_CALL( cudaEventSynchronize( stop ) );
     float elapsedTime;
-    cudaEventElapsedTime( &elapsedTime, start, stop );
+    CUDA_CALL( cudaEventElapsedTime( &elapsedTime, start, stop ) );
 
 	/* print GPU CUBLAS timing information */
 
@@ -241,11 +251,11 @@ cublasDgemm( handle, CUBLAS_OP_N, CUBLAS_OP_N,
     
 	/* copy C from device to host for error checking */
 
-    cudaMemcpy( h_c, d_c, numbytes, cudaMemcpyDeviceToHost );
+    CUDA_CALL( cudaMemcpy( h_c, d_c, numbytes, cudaMemcpyDeviceToHost ) );
 
 	/* reset C on device to zero */
 
-	cudaMemset( d_c, 0, numbytes );
+	CUDA_CALL( cudaMemset( d_c, 0, numbytes ) );
 
 	/* setup grid and block sizes */
 
@@ -259,18 +269,22 @@ cublasDgemm( handle, CUBLAS_OP_N, CUBLAS_OP_N,
     
 /* start timers */
 
-	cudaEventRecord( start, 0 );
+	CUDA_CALL( cudaEventRecord( start, 0 ) );
 
 /* call the kernel */
 
 	GPU_shmem2<<< blocks, threads >>> ( size, d_a, d_b, d_c );
+	CUDA_CHECK()
+#ifdef DEBUG
+        CUDA_CALL( cudaDeviceSynchronize() );
+#endif
 
 	/* stop timers */
 
-    cudaEventRecord( stop, 0 );
-    cudaEventSynchronize( stop );
+    CUDA_CALL( cudaEventRecord( stop, 0 ) );
+    CUDA_CALL( cudaEventSynchronize( stop ) );
 	elapsedTime = 0.0f;
-    cudaEventElapsedTime( &elapsedTime, start, stop );
+    CUDA_CALL( cudaEventElapsedTime( &elapsedTime, start, stop ) );
 
 	/* print data for GPU naive */
 
@@ -281,11 +295,11 @@ cublasDgemm( handle, CUBLAS_OP_N, CUBLAS_OP_N,
                   
 	/* copy C back to host */
 	
-	cudaMemcpy( h_c1, d_c, numbytes, cudaMemcpyDeviceToHost );
+	CUDA_CALL( cudaMemcpy( h_c1, d_c, numbytes, cudaMemcpyDeviceToHost ) );
 
     cublasDestroy( handle );
-    cudaEventDestroy( start );
-    cudaEventDestroy( stop );
+    CUDA_CALL( cudaEventDestroy( start ) );
+    CUDA_CALL( cudaEventDestroy( stop ) );
 
 	/* check CUBLAS versus GPU NAIVE numerical results */
 
@@ -294,7 +308,6 @@ cublasDgemm( handle, CUBLAS_OP_N, CUBLAS_OP_N,
 	for( int i = 0; i < size * size; i++ )
 	{
 		temp += ( h_c[i] - h_c1[i] ) * ( h_c[i] - h_c1[i] );
-      //  printf("i %d h_c %f h_c1 %f\n",i,h_c[i],h_c1[i] );
 	} /* end for */
 
 	printf("error is %f\n",temp);
@@ -302,20 +315,16 @@ cublasDgemm( handle, CUBLAS_OP_N, CUBLAS_OP_N,
 
 	/* cleanup */
 
-    cudaFree( d_a );
-    cudaFree( d_b );
-	cudaFree( d_c );
+    CUDA_CALL( cudaFree( d_a ) );
+    CUDA_CALL( cudaFree( d_b ) );
+    CUDA_CALL( cudaFree( d_c ) );
 
     free( h_a );
     free( h_b );
     free( h_c );
     free( h_c1 );
 
-    cudaError_t cudaStatus = cudaDeviceReset();
-    if (cudaStatus != cudaSuccess) {
-        fprintf(stderr, "cudaDeviceReset failed!");
-        return 1;
-    }
+    CUDA_CALL( cudaDeviceReset() );
 
     return 0;
 }

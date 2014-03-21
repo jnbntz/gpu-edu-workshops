@@ -172,7 +172,7 @@ int main( int argc, char *argv[] )
 
 /* copy data from device to host */
 
-    cudaMemset( h_a, 0, numbytes );
+    cudaMemset( d_a, 0, numbytes );
     cudaMemcpy( h_a, d_c, numbytes, cudaMemcpyDeviceToHost );
 
 /* compare GPU to CPU for correctness */
@@ -195,7 +195,7 @@ int main( int argc, char *argv[] )
     free( h_a );
     free( h_c );
     cudaFree( d_a );
-    cudaFree( h_a );
+    cudaFree( d_c );
 
     cudaError_t cudaStatus = cudaDeviceReset();
     if (cudaStatus != cudaSuccess) {

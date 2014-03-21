@@ -14,10 +14,20 @@
  *  limitations under the License.
  */
 
-#include "cuda_runtime.h"
-#include "cublas_v2.h"
+#ifdef DEBUG
+#define CUDA_CALL(F)  if( (F) != cudaSuccess ) \
+  {printf("Error %s at %s:%d\n", cudaGetErrorString(cudaGetLastError()), \
+   __FILE__,__LINE__); exit(-1);} 
+#define CUDA_CHECK()  if( (cudaPeekAtLastError()) != cudaSuccess ) \
+  {printf("Error %s at %s:%d\n", cudaGetErrorString(cudaGetLastError()), \
+   __FILE__,__LINE__-1); exit(-1);} 
+#else
+#define CUDA_CALL(F) (F)
+#define CUDA_CHECK() 
+#endif
 
 #include <stdio.h>
+#include "cublas_v2.h"
 
 /* macro for index calculations */
 
@@ -84,7 +94,7 @@ int main( int argc, char *argv[] )
       return 911;
     }
 
-	h_c1 = (double *) malloc( numbytes );
+    h_c1 = (double *) malloc( numbytes );
     if( h_c1 == NULL )
     {
       fprintf(stderr,"Error in host malloc\n");
@@ -109,14 +119,14 @@ int main( int argc, char *argv[] )
 
 	/* allocate a, b, c in gpu memory */
 
-    cudaMalloc( (void **)&d_a, numbytes );
-    cudaMalloc( (void **)&d_b, numbytes );
-    cudaMalloc( (void **)&d_c, numbytes );
+    CUDA_CALL( cudaMalloc( (void **)&d_a, numbytes ) );
+    CUDA_CALL( cudaMalloc( (void **)&d_b, numbytes ) );
+    CUDA_CALL( cudaMalloc( (void **)&d_c, numbytes ) );
 	
 	/* copy a and b to device */
 
-    cudaMemcpy( d_a, h_a, numbytes, cudaMemcpyHostToDevice );
-    cudaMemcpy( d_b, h_b, numbytes, cudaMemcpyHostToDevice );
+    CUDA_CALL( cudaMemcpy( d_a, h_a, numbytes, cudaMemcpyHostToDevice ) );
+    CUDA_CALL( cudaMemcpy( d_b, h_b, numbytes, cudaMemcpyHostToDevice ) );
 
     cublasHandle_t handle;
     cublasCreate( &handle );
@@ -127,9 +137,9 @@ int main( int argc, char *argv[] )
 	/* start timers */
 
     cudaEvent_t start, stop;
-    cudaEventCreate( &start );
-    cudaEventCreate( &stop );
-    cudaEventRecord( start, 0 );
+    CUDA_CALL( cudaEventCreate( &start ) );
+    CUDA_CALL( cudaEventCreate( &stop ) );
+    CUDA_CALL( cudaEventRecord( start, 0 ) );
 
 	/* call CUBLAS dgemm */
 
@@ -143,10 +153,10 @@ int main( int argc, char *argv[] )
 
 	/* stop timers */
 
-    cudaEventRecord( stop, 0 );
-    cudaEventSynchronize( stop );
+    CUDA_CALL( cudaEventRecord( stop, 0 ) );
+    CUDA_CALL( cudaEventSynchronize( stop ) );
     float elapsedTime;
-    cudaEventElapsedTime( &elapsedTime, start, stop );
+    CUDA_CALL( cudaEventElapsedTime( &elapsedTime, start, stop ) );
 
 	/* print GPU CUBLAS timing information */
 
@@ -157,7 +167,7 @@ int main( int argc, char *argv[] )
     
 	/* copy C from device to host for error checking */
 
-    cudaMemcpy( h_c, d_c, numbytes, cudaMemcpyDeviceToHost );
+    CUDA_CALL( cudaMemcpy( h_c, d_c, numbytes, cudaMemcpyDeviceToHost ) );
 
 	/* reset C on device to zero */
 
@@ -170,17 +180,21 @@ int main( int argc, char *argv[] )
 
 	/* start timers */
 
-	cudaEventRecord( start, 0 );
+     CUDA_CALL( cudaEventRecord( start, 0 ) );
 
 	/* call GPU_naive */
 
-	GPU_naive<<< blocks, threads >>> ( size, d_a, d_b, d_c );
+     GPU_naive<<< blocks, threads >>> ( size, d_a, d_b, d_c );
+     CUDA_CHECK()
+#ifdef DEBUG
+     CUDA_CALL( cudaDeviceSynchronize() );
+#endif
 
 	/* stop timers */
 
-    cudaEventRecord( stop, 0 );
-    cudaEventSynchronize( stop );
-    cudaEventElapsedTime( &elapsedTime, start, stop );
+    CUDA_CALL( cudaEventRecord( stop, 0 ) );
+    CUDA_CALL( cudaEventSynchronize( stop ) );
+    CUDA_CALL( cudaEventElapsedTime( &elapsedTime, start, stop ) );
 
 	/* print data for GPU naive */
 
@@ -194,8 +208,8 @@ int main( int argc, char *argv[] )
 	cudaMemcpy( h_c1, d_c, numbytes, cudaMemcpyDeviceToHost );
 
     cublasDestroy( handle );
-    cudaEventDestroy( start );
-    cudaEventDestroy( stop );
+    CUDA_CALL( cudaEventDestroy( start ) );
+    CUDA_CALL( cudaEventDestroy( stop ) );
 
 	/* check CUBLAS versus GPU NAIVE numerical results */
 
@@ -211,20 +225,16 @@ int main( int argc, char *argv[] )
 
 	/* cleanup */
 
-    cudaFree( d_a );
-    cudaFree( d_b );
-	cudaFree( d_c );
+    CUDA_CALL( cudaFree( d_a ) );
+    CUDA_CALL( cudaFree( d_b ) );
+    CUDA_CALL( cudaFree( d_c ) );
 
     free( h_a );
     free( h_b );
     free( h_c );
     free( h_c1 );
 
-    cudaError_t cudaStatus = cudaDeviceReset();
-    if (cudaStatus != cudaSuccess) {
-        fprintf(stderr, "cudaDeviceReset failed!");
-        return 1;
-    }
+    CUDA_CALL( cudaDeviceReset() );
 
     return 0;
 }
