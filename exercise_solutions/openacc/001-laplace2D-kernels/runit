@@ -1,0 +1,20 @@
+#!/bin/bash
+
+#MSUB -N test
+#MSUB -j oe
+#MSUB -l nodes=1:ppn=6:gpus=1
+#MSUB -q shortq
+
+#module load cuda50/toolkit
+#module load cuda50/blas
+
+nvidia-smi
+cat /proc/cpuinfo
+
+cd $PBS_O_WORKDIR
+
+#OMP_NUM_THREADS=1 ./laplace2d_omp
+#OMP_NUM_THREADS=2 ./laplace2d_omp
+#OMP_NUM_THREADS=4 ./laplace2d_omp
+OMP_NUM_THREADS=6 ./laplace2d_omp
+OMP_NUM_THREADS=1 ./laplace2d_acc

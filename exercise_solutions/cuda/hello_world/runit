@@ -1,0 +1,13 @@
+#!/bin/bash
+
+#MSUB -N test
+#MSUB -j oe
+#MSUB -l nodes=1:ppn=1:gpus=1
+#MSUB -q shortq
+
+module load cuda50/toolkit
+module load cuda50/blas
+
+cd $PBS_O_WORKDIR
+
+./x.hello_world

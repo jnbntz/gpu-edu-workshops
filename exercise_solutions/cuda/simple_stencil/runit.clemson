@@ -1,0 +1,14 @@
+#!/bin/bash
+
+#PBS -N test
+#PBS -j oe
+#PBS -l select=1:ngpus=1:gpu_model=k20:ncpus=1
+#PBS -l walltime=00:10:00
+
+source /etc/profile.d/modules.sh
+module purge
+module load cuda-toolkit/5.5.22
+
+cd $PBS_O_WORKDIR
+
+./x.simple_stencil

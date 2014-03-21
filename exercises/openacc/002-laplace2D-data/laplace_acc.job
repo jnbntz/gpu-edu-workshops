@@ -1,0 +1,4 @@
+#!/bin/csh
+#PBS -l walltime=3:00
+./laplace2d_acc
+

@@ -1,0 +1,5 @@
+#!/bin/csh
+#PBS -l walltime=3:00
+setenv OMP_NUM_THREADS 6
+./laplace2d_omp
+

@@ -1,0 +1,14 @@
+#!/bin/bash
+
+#PBS -N test
+#PBS -j oe
+#PBS -l select=1:ngpus=1:gpu_model=k20:ncpus=1
+#PBS -l walltime=00:20:00
+
+source /etc/profile.d/modules.sh
+module purge
+module load pgi
+
+cd $PBS_O_WORKDIR
+
+./laplace2d_acc

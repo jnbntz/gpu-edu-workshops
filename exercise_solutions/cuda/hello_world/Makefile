@@ -1,0 +1,28 @@
+#
+#  Copyright 2014 NVIDIA Corporation
+#
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+#
+
+include ../make.common
+NVCC=nvcc
+NVOPTS=-arch $(ARCH)
+
+hello_world: kernel.o
+	$(NVCC) $(NVOPTS) -o x.hello_world kernel.o
+
+kernel.o: kernel.cu
+	$(NVCC) $(NVOPTS) -c kernel.cu 
+
+clean:
+	rm -rf kernel.o x.hello_world
