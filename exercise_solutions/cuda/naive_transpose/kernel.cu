@@ -194,7 +194,7 @@ int main( int argc, char *argv[] )
 		    if( h_c[INDX(i,j,size)] != h_a[INDX(i,j,size)] ) 
                     {
                       printf("Error in element %d,%d\n", i,j );
-                      printf("Host %f, device %d\n",h_c[INDX(i,j,size)],
+                      printf("Host %f, device %f\n",h_c[INDX(i,j,size)],
                                                     h_a[INDX(i,j,size)]);
                     }
 		} /* end for i */
