@@ -14,8 +14,18 @@
  *  limitations under the License.
  */
 
-#include "cuda_runtime.h"
-#include "device_launch_parameters.h"
+#ifdef DEBUG
+#define CUDA_CALL(F)  if( (F) != cudaSuccess ) \
+  {printf("Error %s at %s:%d\n", cudaGetErrorString(cudaGetLastError()), \
+   __FILE__,__LINE__); exit(-1);} 
+#define CUDA_CHECK()  if( (cudaPeekAtLastError()) != cudaSuccess ) \
+  {printf("Error %s at %s:%d\n", cudaGetErrorString(cudaGetLastError()), \
+   __FILE__,__LINE__-1); exit(-1);} 
+#else
+#define CUDA_CALL(F) (F)
+#define CUDA_CHECK() 
+#endif
+
 #include <stdio.h>
 
 #define N 4000000
@@ -24,98 +34,103 @@
 
 __global__ void stencil_1d(int n, double *in, double *out)
 {
-	/* calculate global index in the array */
-	int gindex = blockIdx.x * blockDim.x + threadIdx.x;
+/* calculate global index in the array */
+  int gindex = blockIdx.x * blockDim.x + threadIdx.x;
 	
-	/* return if my global index is larger than the array size */
-	if( gindex >= n ) return;
+/* return if my global index is larger than the array size */
+  if( gindex >= n ) return;
 
-	/* code to handle the boundary conditions */
-	if( gindex < RADIUS || gindex >= (n - RADIUS) ) 
-	{
-		out[gindex] = (double) gindex * ( (double)RADIUS*2 + 1) ;
-		return;
-	} /* end if */
+/* code to handle the boundary conditions */
+  if( gindex < RADIUS || gindex >= (n - RADIUS) ) 
+  {
+    out[gindex] = (double) gindex * ( (double)RADIUS*2 + 1) ;
+    return;
+  } /* end if */
 
-
-	double result = 0.0;
+  double result = 0.0;
 	
-	for( int i = gindex-(RADIUS); i <= gindex+(RADIUS); i++ ) 
-	{
-		result += in[i];
-	}
+  for( int i = gindex-(RADIUS); i <= gindex+(RADIUS); i++ ) 
+  {
+    result += in[i];
+  }
 
-	out[gindex] = result;
-	return;
+  out[gindex] = result;
+  return;
+
 }
 
 int main()
 {
-    double *in, *out;
-	double *d_in, *d_out;
-	int size = N * sizeof( double );
+  double *in, *out;
+  double *d_in, *d_out;
+  int size = N * sizeof( double );
 
-	/* allocate space for device copies of in, out */
+/* allocate space for device copies of in, out */
 
-	cudaMalloc( (void **) &d_in, size );
-	cudaMalloc( (void **) &d_out, size );
+  CUDA_CALL( cudaMalloc( (void **) &d_in, size ) );
+  CUDA_CALL( cudaMalloc( (void **) &d_out, size ) );
 
-	/* allocate space for host copies of in, out and setup input values */
+/* allocate space for host copies of in, out and setup input values */
 
-	in = (double *)malloc( size );
-	out = (double *)malloc( size );
+  in = (double *)malloc( size );
+  out = (double *)malloc( size );
 
-	for( int i = 0; i < N; i++ )
-	{
-		in[i] = (double) i;
-		out[i] = 0;
-	}
+  for( int i = 0; i < N; i++ )
+  {
+    in[i] = (double) i;
+    out[i] = 0;
+  }
 
-	/* copy inputs to device */
+/* copy inputs to device */
 
-	cudaMemcpy( d_in, in, size, cudaMemcpyHostToDevice );
-	cudaMemset( d_out, 0, size );
+  CUDA_CALL( cudaMemcpy( d_in, in, size, cudaMemcpyHostToDevice ) );
+  CUDA_CALL( cudaMemset( d_out, 0, size ) );
 
-	/* calculate block and grid sizes */
+/* calculate block and grid sizes */
 
-	dim3 blocks( BLOCK, 1, 1);
-	dim3 grids( (N / blocks.x) + 1, 1, 1);
+  dim3 threads( BLOCK, 1, 1);
+  dim3 blocks( (N / threads.x) + 1, 1, 1);
 
-	/* start the timers */
+/* start the timers */
 
-	cudaEvent_t start, stop;
-	cudaEventCreate( &start );
-	cudaEventCreate( &stop );
-	cudaEventRecord( start, 0 );
+  cudaEvent_t start, stop;
+  CUDA_CALL( cudaEventCreate( &start ) );
+  CUDA_CALL( cudaEventCreate( &stop ) );
+  CUDA_CALL( cudaEventRecord( start, 0 ) );
 
-	/* launch the kernel on the GPU */
+/* launch the kernel on the GPU */
 
-	stencil_1d<<< grids, blocks >>>( N, d_in, d_out );
+  stencil_1d<<< blocks, threads >>>( N, d_in, d_out );
+  CUDA_CHECK();
+  CUDA_CALL( cudaDeviceSynchronize() );
 
-	/* stop the timers */
+/* stop the timers */
 
-	cudaEventRecord( stop, 0 );
-	cudaEventSynchronize( stop );
-	float elapsedTime;
-	cudaEventElapsedTime( &elapsedTime, start, stop );
+  CUDA_CALL( cudaEventRecord( stop, 0 ) );
+  CUDA_CALL( cudaEventSynchronize( stop ) );
+  float elapsedTime;
+  CUDA_CALL( cudaEventElapsedTime( &elapsedTime, start, stop ) );
 
-	printf("Total time for %d elements was %f ms\n", N, elapsedTime );
+  printf("Total time for %d elements was %f ms\n", N, elapsedTime );
 
-	/* copy result back to host */
+/* copy result back to host */
 
-	cudaMemcpy( out, d_out, size, cudaMemcpyDeviceToHost );
+  CUDA_CALL( cudaMemcpy( out, d_out, size, cudaMemcpyDeviceToHost ) );
 
-	for( int i = 0; i < N; i++ )
-	{
-		if( in[i]*( (double)RADIUS*2+1 ) != out[i] ) printf("error in element %d in = %f out %f\n",i,in[i],out[i] );
-	} /* end for */
+  for( int i = 0; i < N; i++ )
+  {
+    if( in[i]*( (double)RADIUS*2+1 ) != out[i] ) 
+      printf("error in element %d in = %f out %f\n",i,in[i],out[i] );
+  } /* end for */
 
-	/* clean up */
+/* clean up */
 
-	free(in);
-	free(out);
-	cudaFree( d_in );
-	cudaFree( d_out );
+  free(in);
+  free(out);
+  CUDA_CALL( cudaFree( d_in ) );
+  CUDA_CALL( cudaFree( d_out ) );
+
+  CUDA_CALL( cudaDeviceReset() );
 	
-	return 0;
+  return 0;
 } /* end main */
