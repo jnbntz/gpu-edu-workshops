@@ -30,7 +30,7 @@
 
 #define N 4000000
 #define RADIUS 5
-#define BLOCK 512
+#define THREADS_PER_BLOCK 512
 
 __global__ void stencil_1d(int n, double *in, double *out)
 {
@@ -88,7 +88,7 @@ int main()
 
 /* calculate block and grid sizes */
 
-  dim3 threads( BLOCK, 1, 1);
+  dim3 threads( THREADS_PER_BLOCK, 1, 1);
   dim3 blocks( (N / threads.x) + 1, 1, 1);
 
 /* start the timers */
