@@ -14,6 +14,8 @@
  *  limitations under the License.
  */
 
+#include <stdio.h>
+
 #ifdef DEBUG
 #define CUDA_CALL(F)  if( (F) != cudaSuccess ) \
   {printf("Error %s at %s:%d\n", cudaGetErrorString(cudaGetLastError()), \
@@ -25,8 +27,6 @@
 #define CUDA_CALL(F) (F)
 #define CUDA_CHECK() 
 #endif
-
-#include <stdio.h>
 
 #define N 4000000
 #define RADIUS 5
