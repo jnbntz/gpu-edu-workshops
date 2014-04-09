@@ -14,7 +14,6 @@
  *  limitations under the License.
  */
 
-#include "cuda_runtime.h"
 #include <stdio.h>
 #include <math.h>
 
@@ -56,9 +55,12 @@ __global__ void smem_cuda_transpose( const int m, double const * const a, double
 		/* read to the shared mem array */
         smemArray[threadIdx.x][threadIdx.y] = a[INDX( sourceBlockX + threadIdx.x, sourceBlockY + threadIdx.y, m )];
 		
+	} /* end if */
 		/* synchronize */
 		__syncthreads();
 		
+	if( myRow < m && myCol < m )
+	{
 		/* write the result */
 	    c[INDX( sourceBlockY + threadIdx.x, sourceBlockX + threadIdx.y, m )] = smemArray[threadIdx.y][threadIdx.x];
 	
@@ -202,7 +204,7 @@ int main( int argc, char *argv[] )
 		    if( h_c[INDX(i,j,size)] != h_a[INDX(i,j,size)] ) 
                     {
                       printf("Error in element %d,%d\n", i,j );
-                      printf("Host %f, device %d\n",h_c[INDX(i,j,size)],
+                      printf("Host %f, device %f\n",h_c[INDX(i,j,size)],
                                                     h_a[INDX(i,j,size)]);
                     }
 		} /* end for i */
