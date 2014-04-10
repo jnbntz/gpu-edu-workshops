@@ -14,6 +14,8 @@
  *  limitations under the License.
  */
 
+#include <stdio.h>
+
 #ifdef DEBUG
 #define CUDA_CALL(F)  if( (F) != cudaSuccess ) \
   {printf("Error %s at %s:%d\n", cudaGetErrorString(cudaGetLastError()), \
@@ -26,8 +28,6 @@
 #define CUDA_CHECK() 
 #endif
 
-#include <stdio.h>
-
 __global__ void add(int *a, int *b, int *c)
 {
     *c = *a + *b;
@@ -35,48 +35,46 @@ __global__ void add(int *a, int *b, int *c)
 
 int main()
 {
-    int a, b, c;
-	int *d_a, *d_b, *d_c;
-	int size = sizeof( int );
+  int a, b, c;
+  int *d_a, *d_b, *d_c;
+  int size = sizeof( int );
 
-	/* allocate space for device copies of a, b, c */
+/* allocate space for device copies of a, b, c */
 
-	CUDA_CALL( cudaMalloc( (void **) &d_a, size ) );
-	CUDA_CALL( cudaMalloc( (void **) &d_b, size ) );
-	CUDA_CALL( cudaMalloc( (void **) &d_c, size ) );
+  CUDA_CALL( cudaMalloc( (void **) &d_a, size ) );
+  CUDA_CALL( cudaMalloc( (void **) &d_b, size ) );
+  CUDA_CALL( cudaMalloc( (void **) &d_c, size ) );
 
-	/* setup initial values */
+/* setup initial values */
 
-	a = 2;
-	b = 7;
-	c = -99;
+  a = 2;
+  b = 7;
+  c = -99;
 
-	/* copy inputs to device */
+/* copy inputs to device */
 
-	CUDA_CALL( cudaMemcpy( d_a, &a, size, cudaMemcpyHostToDevice ) );
-	CUDA_CALL( cudaMemcpy( d_b, &b, size, cudaMemcpyHostToDevice ) );
+  CUDA_CALL( cudaMemcpy( d_a, &a, size, cudaMemcpyHostToDevice ) );
+  CUDA_CALL( cudaMemcpy( d_b, &b, size, cudaMemcpyHostToDevice ) );
 
-	/* launch the kernel on the GPU */
+/* launch the kernel on the GPU */
 
-	add<<< 1, 1 >>>( d_a, d_b, d_c );
-        CUDA_CHECK()
-#ifdef DEBUG
-        CUDA_CALL( cudaDeviceSynchronize() );
-#endif
+  add<<< 1, 1 >>>( d_a, d_b, d_c );
+  CUDA_CHECK()
+  CUDA_CALL( cudaDeviceSynchronize() );
 
-	/* copy result back to host */
+/* copy result back to host */
 
-	CUDA_CALL( cudaMemcpy( &c, d_c, size, cudaMemcpyDeviceToHost ) );
+  CUDA_CALL( cudaMemcpy( &c, d_c, size, cudaMemcpyDeviceToHost ) );
 
-	printf("value of c after kernel is %d\n",c);
+  printf("value of c after kernel is %d\n",c);
 
-	/* clean up */
+/* clean up */
 
-	CUDA_CALL( cudaFree( d_a ) );
-	CUDA_CALL( cudaFree( d_b ) );
-	CUDA_CALL( cudaFree( d_c ) );
+  CUDA_CALL( cudaFree( d_a ) );
+  CUDA_CALL( cudaFree( d_b ) );
+  CUDA_CALL( cudaFree( d_c ) );
 
-        CUDA_CALL( cudaDeviceReset() );
+  CUDA_CALL( cudaDeviceReset() );
 	
-	return 0;
+  return 0;
 } /* end main */
