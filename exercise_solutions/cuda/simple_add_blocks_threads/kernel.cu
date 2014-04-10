@@ -88,6 +88,8 @@ int main()
   CUDA_CALL( cudaFree( d_a ) );
   CUDA_CALL( cudaFree( d_b ) );
   CUDA_CALL( cudaFree( d_c ) );
+
+  CUDA_CALL( cudaDeviceReset() );
 	
   return 0;
 } /* end main */
