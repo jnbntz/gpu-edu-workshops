@@ -14,14 +14,24 @@
  *  limitations under the License.
  */
 
-#include "cuda_runtime.h"
-#include "device_launch_parameters.h"
 #include <stdio.h>
+
+#ifdef DEBUG
+#define CUDA_CALL(F)  if( (F) != cudaSuccess ) \
+  {printf("Error %s at %s:%d\n", cudaGetErrorString(cudaGetLastError()), \
+   __FILE__,__LINE__); exit(-1);} 
+#define CUDA_CHECK()  if( (cudaPeekAtLastError()) != cudaSuccess ) \
+  {printf("Error %s at %s:%d\n", cudaGetErrorString(cudaGetLastError()), \
+   __FILE__,__LINE__-1); exit(-1);} 
+#else
+#define CUDA_CALL(F) (F)
+#define CUDA_CHECK() 
+#endif
 
 __global__ void add(int *a, int *b, int *c)
 {
-    int index = threadIdx.x + blockIdx.x * blockDim.x;
-	c[index] = a[index] + b[index];
+  int index = threadIdx.x + blockIdx.x * blockDim.x;
+  c[index] = a[index] + b[index];
 }
 
 #define N (2048*2048)
@@ -29,53 +39,55 @@ __global__ void add(int *a, int *b, int *c)
 
 int main()
 {
-    int *a, *b, *c;
-	int *d_a, *d_b, *d_c;
-	int size = N * sizeof( int );
+  int *a, *b, *c;
+  int *d_a, *d_b, *d_c;
+  int size = N * sizeof( int );
 
-	/* allocate space for device copies of a, b, c */
+/* allocate space for device copies of a, b, c */
 
-	cudaMalloc( (void **) &d_a, size );
-	cudaMalloc( (void **) &d_b, size );
-	cudaMalloc( (void **) &d_c, size );
+  CUDA_CALL( cudaMalloc( (void **) &d_a, size ) );
+  CUDA_CALL( cudaMalloc( (void **) &d_b, size ) );
+  CUDA_CALL( cudaMalloc( (void **) &d_c, size ) );
 
-	/* allocate space for host copies of a, b, c and setup input values */
+/* allocate space for host copies of a, b, c and setup input values */
 
-	a = (int *)malloc( size );
-	b = (int *)malloc( size );
-	c = (int *)malloc( size );
+  a = (int *)malloc( size );
+  b = (int *)malloc( size );
+  c = (int *)malloc( size );
 
-	for( int i = 0; i < N; i++ )
-	{
-		a[i] = b[i] = i;
-		c[i] = 0;
-	}
+  for( int i = 0; i < N; i++ )
+  {
+    a[i] = b[i] = i;
+    c[i] = 0;
+  }
 
-	/* copy inputs to device */
+/* copy inputs to device */
 
-	cudaMemcpy( d_a, a, size, cudaMemcpyHostToDevice );
-	cudaMemcpy( d_b, b, size, cudaMemcpyHostToDevice );
+  CUDA_CALL( cudaMemcpy( d_a, a, size, cudaMemcpyHostToDevice ) );
+  CUDA_CALL( cudaMemcpy( d_b, b, size, cudaMemcpyHostToDevice ) );
 
-	/* launch the kernel on the GPU */
+/* launch the kernel on the GPU */
 
-	add<<< N / THREADS_PER_BLOCK, THREADS_PER_BLOCK >>>( d_a, d_b, d_c );
+  add<<< N / THREADS_PER_BLOCK, THREADS_PER_BLOCK >>>( d_a, d_b, d_c );
+  CUDA_CHECK();
+  CUDA_CALL( cudaDeviceSynchronize() );
 
-	/* copy result back to host */
+/* copy result back to host */
 
-	cudaMemcpy( c, d_c, size, cudaMemcpyDeviceToHost );
+  CUDA_CALL( cudaMemcpy( c, d_c, size, cudaMemcpyDeviceToHost ) );
 
 
-	printf( "c[0] = %d\n",0,c[0] );
-	printf( "c[%d] = %d\n",N-1, c[N-1] );
+  printf( "c[0] = %d\n",0,c[0] );
+  printf( "c[%d] = %d\n",N-1, c[N-1] );
 
-	/* clean up */
+/* clean up */
 
-	free(a);
-	free(b);
-	free(c);
-	cudaFree( d_a );
-	cudaFree( d_b );
-	cudaFree( d_c );
+  free(a);
+  free(b);
+  free(c);
+  CUDA_CALL( cudaFree( d_a ) );
+  CUDA_CALL( cudaFree( d_b ) );
+  CUDA_CALL( cudaFree( d_c ) );
 	
-	return 0;
+  return 0;
 } /* end main */
