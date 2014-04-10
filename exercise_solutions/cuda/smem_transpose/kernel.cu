@@ -31,8 +31,8 @@
 
 /* definitions of threadblock size in X and Y directions */
 
-#define THREAD_X 16
-#define THREAD_Y 16
+#define THREADS_PER_BLOCK_X 16
+#define THREADS_PER_BLOCK_Y 16
 
 /* definition of matrix linear dimension */
 
@@ -49,7 +49,7 @@ __global__ void smem_cuda_transpose( const int m, double const * const a, double
 	
 /* declare a shared memory array */
 
-  __shared__ double smemArray[THREAD_X][THREAD_Y+1];
+  __shared__ double smemArray[THREADS_PER_BLOCK_X][THREADS_PER_BLOCK_Y+1];
 	
 /* determine my row and column indices for the error checking code */
 
@@ -183,8 +183,9 @@ int main( int argc, char *argv[] )
 
 /* setup threadblock size and grid sizes */
 
-  dim3 threads( THREAD_X, THREAD_Y, 1 );
-  dim3 blocks( ( size / THREAD_X ) + 1, ( size / THREAD_Y ) + 1, 1 );
+  dim3 threads( THREADS_PER_BLOCK_X, THREADS_PER_BLOCK_Y, 1 );
+  dim3 blocks( ( size / THREADS_PER_BLOCK_X ) + 1, 
+               ( size / THREADS_PER_BLOCK_Y ) + 1, 1 );
 
 /* start timers */
   CUDA_CALL( cudaEventRecord( start, 0 ) );
