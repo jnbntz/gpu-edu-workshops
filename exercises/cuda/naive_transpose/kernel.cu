@@ -14,14 +14,24 @@
  *  limitations under the License.
  */
 
-#include "cuda_runtime.h"
 #include <stdio.h>
-#include <math.h>
+
+#ifdef DEBUG
+#define CUDA_CALL(F)  if( (F) != cudaSuccess ) \
+  {printf("Error %s at %s:%d\n", cudaGetErrorString(cudaGetLastError()), \
+   __FILE__,__LINE__); exit(-1);} 
+#define CUDA_CHECK()  if( (cudaPeekAtLastError()) != cudaSuccess ) \
+  {printf("Error %s at %s:%d\n", cudaGetErrorString(cudaGetLastError()), \
+   __FILE__,__LINE__-1); exit(-1);} 
+#else
+#define CUDA_CALL(F) (F)
+#define CUDA_CHECK() 
+#endif
 
 /* definitions of threadblock size in X and Y directions */
 
-#define THREAD_X 16
-#define THREAD_Y 16
+#define THREADS_PER_BLOCK_X 16
+#define THREADS_PER_BLOCK_Y 16
 
 /* definition of matrix linear dimension */
 
@@ -33,175 +43,175 @@
 
 /* CUDA kernel for naive matrix transpose */
 
-__global__ void naive_cuda_transpose( const int m, double const * const a, double *c )
+__global__ void naive_cuda_transpose( const int m, double const * const a, 
+                                      double *c )
 {
-	/* insert code to calculate global row and column of the matrix */
-	const int myRow = FIXME
-	const int myCol = FIXME
+/* insert code to calculate row and column of the matrix */
+  const int myRow = FIXME
+  const int myCol = FIXME
 
-	if( myRow < m && myCol < m )
-	{
-		/* insert the indices for accessing the A and C matrices to execute the transpose */
-             c[FIXME] = a[FIXME];
-	} /* end if */
-	return;
+  if( myRow < m && myCol < m )
+  {
+/* insert the indices for accessing A anad C matrices to execute the 
+   transpose */
+    c[FIXME] = a[FIXME];
+  } /* end if */
+  return;
+
 } /* end naive_cuda_transpose */
 
 void host_transpose( const int m, double const * const a, double *c )
 {
 	
 /* 
- *  naive matrix transpose on CPU goes here.
+ *  naive matrix transpose goes here.
  */
  
- for( int j = 0; j < m; j++ )
-	{
-		for( int i = 0; i < m; i++ )
-		{
-		    c[INDX(i,j,m)] = a[INDX(j,i,m)];
-		} /* end for i */
-	} /* end for j */
+  for( int j = 0; j < m; j++ )
+  {
+    for( int i = 0; i < m; i++ )
+      {
+        c[INDX(i,j,m)] = a[INDX(j,i,m)];
+      } /* end for i */
+  } /* end for j */
 
 } /* end host_dgemm */
 
 int main( int argc, char *argv[] )
 {
 
-    int size = SIZE;
+  int size = SIZE;
 
-    fprintf(stdout, "Matrix size is %d\n",size);
+  fprintf(stdout, "Matrix size is %d\n",size);
 
 /* declaring pointers for array */
 
-    double *h_a, *h_c;
-    double *d_a, *d_c;
+  double *h_a, *h_c;
+  double *d_a, *d_c;
  
-    size_t numbytes = (size_t) size * (size_t) size * sizeof( double );
+  size_t numbytes = (size_t) size * (size_t) size * sizeof( double );
 
 /* allocating host memory */
 
-    h_a = (double *) malloc( numbytes );
-    if( h_a == NULL )
-    {
-      fprintf(stderr,"Error in host malloc h_a\n");
-      return 911;
-    }
+  h_a = (double *) malloc( numbytes );
+  if( h_a == NULL )
+  {
+    fprintf(stderr,"Error in host malloc h_a\n");
+    return 911;
+  }
 
-    h_c = (double *) malloc( numbytes );
-    if( h_c == NULL )
-    {
-      fprintf(stderr,"Error in host malloc h_c\n");
-      return 911;
-    }
+  h_c = (double *) malloc( numbytes );
+  if( h_c == NULL )
+  {
+    fprintf(stderr,"Error in host malloc h_c\n");
+    return 911;
+  }
 
 /* allocating device memory */
 
-    cudaMalloc( (void**) &d_a, numbytes );
-    cudaMalloc( (void**) &d_c, numbytes );
+  CUDA_CALL( cudaMalloc( (void**) &d_a, numbytes ) );
+  CUDA_CALL( cudaMalloc( (void**) &d_c, numbytes ) );
 
 /* set result matrices to zero */
 
-    memset( h_c, 0, numbytes );
-    cudaMemset( d_c, 0, numbytes );
+  memset( h_c, 0, numbytes );
+  CUDA_CALL( cudaMemset( d_c, 0, numbytes ) );
 
-    fprintf( stdout, "Total memory required per matrix is %lf MB\n", 
-       (double) numbytes / 1000000.0 );
+  fprintf( stdout, "Total memory required per matrix is %lf MB\n", 
+     (double) numbytes / 1000000.0 );
 
 /* initialize input matrix with random value */
 
-    for( int i = 0; i < size * size; i++ )
-    {
-      h_a[i] = double( rand() ) / ( double(RAND_MAX) + 1.0 );
-    }
+  for( int i = 0; i < size * size; i++ )
+  {
+    h_a[i] = double( rand() ) / ( double(RAND_MAX) + 1.0 );
+  }
 
 /* copy input matrix from host to device */
 
-    cudaMemcpy( d_a, h_a, numbytes, cudaMemcpyHostToDevice );
+  CUDA_CALL( cudaMemcpy( d_a, h_a, numbytes, cudaMemcpyHostToDevice ) );
 
 /* create and start timer */
 
-    cudaEvent_t start, stop;
-    cudaEventCreate( &start );
-    cudaEventCreate( &stop );
-    cudaEventRecord( start, 0 );
+  cudaEvent_t start, stop;
+  CUDA_CALL( cudaEventCreate( &start ) );
+  CUDA_CALL( cudaEventCreate( &stop ) );
+  CUDA_CALL( cudaEventRecord( start, 0 ) );
 
 /* call naive cpu transpose function */
 
-    host_transpose( size, h_a, h_c );
+  host_transpose( size, h_a, h_c );
 
 /* stop CPU timer */
 
-    cudaEventRecord( stop, 0 );
-    cudaEventSynchronize( stop );
-    float elapsedTime;
-    cudaEventElapsedTime( &elapsedTime, start, stop );
+  CUDA_CALL( cudaEventRecord( stop, 0 ) );
+  CUDA_CALL( cudaEventSynchronize( stop ) );
+  float elapsedTime;
+  CUDA_CALL( cudaEventElapsedTime( &elapsedTime, start, stop ) );
 
 /* print CPU timing information */
 
-    fprintf(stdout, "Total time CPU is %f sec\n", elapsedTime / 1000.0f );
-    fprintf(stdout, "Performance is %f GB/s\n", 
-      8.0 * 2.0 * (double) size * (double) size / 
-      ( (double) elapsedTime / 1000.0 ) * 1.e-9 );
+  fprintf(stdout, "Total time CPU is %f sec\n", elapsedTime / 1000.0f );
+  fprintf(stdout, "Performance is %f GB/s\n", 
+    8.0 * 2.0 * (double) size * (double) size / 
+    ( (double) elapsedTime / 1000.0 ) * 1.e-9 );
 
 /* setup threadblock size and grid sizes */
 
-    dim3 threads( THREAD_X, THREAD_Y, 1 );
-
-	/* insert code for proper grids in X and Y directions */
-    dim3 blocks( FIXME, FIXME, 1 );
+  dim3 threads( THREADS_PER_BLOCK_X, THREADS_PER_BLOCK_Y, 1 );
+/* insert code for proper block sizes in X and Y dimensions */
+  dim3 blocks( FIXME, FIXME, 1 );
 
 /* start timers */
-    cudaEventRecord( start, 0 );
+  CUDA_CALL( cudaEventRecord( start, 0 ) );
 
 /* call naive GPU transpose kernel */
 
-    naive_cuda_transpose<<< blocks, threads >>>( size, d_a, d_c );
+  naive_cuda_transpose<<< blocks, threads >>>( size, d_a, d_c );
+  CUDA_CHECK()
+  CUDA_CALL( cudaDeviceSynchronize() );
 
 /* stop the timers */
 
-    cudaEventRecord( stop, 0 );
-    cudaEventSynchronize( stop );
-    cudaEventElapsedTime( &elapsedTime, start, stop );
+  CUDA_CALL( cudaEventRecord( stop, 0 ) );
+  CUDA_CALL( cudaEventSynchronize( stop ) );
+  CUDA_CALL( cudaEventElapsedTime( &elapsedTime, start, stop ) );
 
 /* print GPU timing information */
 
-    fprintf(stdout, "Total time GPU is %f sec\n", elapsedTime / 1000.0f );
-    fprintf(stdout, "Performance is %f GB/s\n", 
-      8.0 * 2.0 * (double) size * (double) size / 
-      ( (double) elapsedTime / 1000.0 ) * 1.e-9 );
+  fprintf(stdout, "Total time GPU is %f sec\n", elapsedTime / 1000.0f );
+  fprintf(stdout, "Performance is %f GB/s\n", 
+    8.0 * 2.0 * (double) size * (double) size / 
+    ( (double) elapsedTime / 1000.0 ) * 1.e-9 );
 
 /* copy data from device to host */
 
-    cudaMemset( d_a, 0, numbytes );
-    cudaMemcpy( h_a, d_c, numbytes, cudaMemcpyDeviceToHost );
+  CUDA_CALL( cudaMemset( d_a, 0, numbytes ) );
+  CUDA_CALL( cudaMemcpy( h_a, d_c, numbytes, cudaMemcpyDeviceToHost ) );
 
 /* compare GPU to CPU for correctness */
 
-	for( int j = 0; j < size; j++ )
-	{
-		for( int i = 0; i < size; i++ )
-		{
-		    if( h_c[INDX(i,j,size)] != h_a[INDX(i,j,size)] ) 
-                    {
-                      printf("Error in element %d,%d\n", i,j );
-                      printf("Host %f, device %f\n",h_c[INDX(i,j,size)],
-                                                    h_a[INDX(i,j,size)]);
-                    }
-		} /* end for i */
-	} /* end for j */
+  for( int j = 0; j < size; j++ )
+  {
+    for( int i = 0; i < size; i++ )
+    {
+      if( h_c[INDX(i,j,size)] != h_a[INDX(i,j,size)] ) 
+      {
+        printf("Error in element %d,%d\n", i,j );
+        printf("Host %f, device %f\n",h_c[INDX(i,j,size)],
+                                      h_a[INDX(i,j,size)]);
+      } /* end fi */
+    } /* end for i */
+  } /* end for j */
 
 /* free the memory */
 
-    free( h_a );
-    free( h_c );
-    cudaFree( d_a );
-    cudaFree( d_c );
+  free( h_a );
+  free( h_c );
+  CUDA_CALL( cudaFree( d_a ) );
+  CUDA_CALL( cudaFree( d_c ) );
 
-    cudaError_t cudaStatus = cudaDeviceReset();
-    if (cudaStatus != cudaSuccess) {
-        fprintf(stderr, "cudaDeviceReset failed!");
-        return 1;
-    }
+  CUDA_CALL( cudaDeviceReset() );
 
-    return 0;
-}
+  return 0;
+} /* end main */
