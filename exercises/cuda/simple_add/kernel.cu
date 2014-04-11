@@ -60,6 +60,9 @@ int main()
 /* enter code here to launch the kernel on the GPU */
   FIXME
 
+  CUDA_CHECK()
+  CUDA_CALL( cudaDeviceSynchronize() );
+
 /* copy result back to host */
 
   CUDA_CALL( cudaMemcpy( &c, d_c, size, cudaMemcpyDeviceToHost ) );
