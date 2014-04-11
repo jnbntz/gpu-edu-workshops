@@ -17,7 +17,7 @@
 include ../make.common
 BIN=x.simple_stencil
 NVCC=nvcc
-NVOPTS=-arch $(ARCH)
+NVOPTS=-O3 $(ARCH)
 
 $(BIN): kernel.o
 	$(NVCC) $(NVOPTS) -o $(BIN) kernel.o

@@ -17,7 +17,7 @@
 include ../make.common
 BIN=x.naive_transpose
 NVCC=nvcc
-NVOPTS=-arch $(ARCH) -lineinfo 
+NVOPTS=-O3 $(ARCH) -lineinfo 
 
 $(BIN): kernel.o
 	$(NVCC) $(NVOPTS) -o $(BIN) kernel.o

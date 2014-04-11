@@ -17,7 +17,7 @@
 include ../make.common
 BIN=x.matmul_GPU_naive
 NVCC=nvcc
-NVOPTS=-O3 -arch $(ARCH) -lineinfo
+NVOPTS=-O3 $(ARCH) -lineinfo
 
 $(BIN): kernel.o
 	$(NVCC) $(NVOPTS) -o $(BIN) kernel.o -lcublas
