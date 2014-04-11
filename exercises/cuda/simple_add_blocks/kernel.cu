@@ -30,7 +30,9 @@
 
 __global__ void add(int *a, int *b, int *c)
 {
-  c[blockIdx.x] = a[blockIdx.x] + b[blockIdx.x];
+/* add the proper index so each block calculates a different value in the 
+   array  */
+  c[FIXME] = a[FIXME] + b[FIXME];
 }
 
 #define N 32
