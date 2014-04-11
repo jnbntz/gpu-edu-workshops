@@ -34,13 +34,13 @@ void host_dgemm( int m, int n, int k, double *a, double *b, double *c )
 
   for( int j = 0; j < n; j++ )
   {
-	for( int i = 0; i < m; i++ )
-	{
-		for( int koff = 0; koff < k; koff++ )
-		{
-			c[INDX(i, j, m)] += a[INDX( i, koff, m )] * b[INDX( koff, j, n )];
-		} /* end for i */
-	  } /* end jb */
+    for( int i = 0; i < m; i++ )
+    {
+      for( int koff = 0; koff < k; koff++ )
+      {
+	c[INDX(i, j, m)] += a[INDX( i, koff, m )] * b[INDX( koff, j, n )];
+      } /* end for i */
+    } /* end jb */
   } /* end for j */
 
 } /* end host_dgemm */
