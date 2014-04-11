@@ -16,7 +16,7 @@
 
 include ../make.common
 NVCC=nvcc
-NVOPTS=-arch $(ARCH)
+NVOPTS=$(ARCH)
 
 hello_world: kernel.o
 	$(NVCC) $(NVOPTS) -o x.hello_world kernel.o
