@@ -211,7 +211,7 @@ int main( int argc, char *argv[] )
 
 /* copy data from device to host */
 
-  CUDA_CALL( cudaMemset( h_a, 0, numbytes ) );
+  CUDA_CALL( cudaMemset( d_a, 0, numbytes ) );
   CUDA_CALL( cudaMemcpy( h_a, d_c, numbytes, cudaMemcpyDeviceToHost ) );
 
 /* compare GPU to CPU for correctness */
@@ -234,7 +234,7 @@ int main( int argc, char *argv[] )
   free( h_a );
   free( h_c );
   CUDA_CALL( cudaFree( d_a ) );
-  CUDA_CALL( cudaFree( h_a ) );
+  CUDA_CALL( cudaFree( d_c ) );
 
   CUDA_CALL( cudaDeviceReset() );
 
