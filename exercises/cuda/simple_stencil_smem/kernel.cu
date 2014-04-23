@@ -54,8 +54,6 @@ __global__ void stencil_1d(int n, double *in, double *out)
     temp[lindex - RADIUS] = in[gindex - RADIUS];
     temp[lindex + THREADS_PER_BLOCK] = in[gindex + THREADS_PER_BLOCK];
   } /* end if */
-
-  __syncthreads();
 	
 /* code to handle the boundary conditions */
   if( gindex < RADIUS || gindex >= (n - RADIUS) ) 
