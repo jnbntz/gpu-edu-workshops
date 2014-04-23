@@ -17,7 +17,7 @@
 include ../make.common
 BIN=x.simple_add_blocks_threads
 NVCC=nvcc
-NVOPTS=sm_20
+NVOPTS=$(ARCH)
 
 $(BIN): kernel.o
 	$(NVCC) $(NVOPTS) -o $(BIN) kernel.o
