@@ -31,12 +31,12 @@
 
 /* definitions of threadblock size in X and Y directions */
 
-#define THREADS_PER_BLOCK_X 16
-#define THREADS_PER_BLOCK_Y 16
+#define THREADS_PER_BLOCK_X 32
+#define THREADS_PER_BLOCK_Y 32
 
 /* definition of matrix linear dimension */
 
-#define SIZE 1024
+#define SIZE 4096
 
 /* macro to index a 1D memory array with 2D indices in column-major order */
 
@@ -44,22 +44,24 @@
 
 /* CUDA kernel for shared memory matrix transpose */
 
-__global__ void smem_cuda_transpose( const int m, double const * const a, double *c )
+__global__ void smem_cuda_transpose( const int m, 
+                                     double const * const a, 
+                                     double * const c )
 {
 	
 /* declare a shared memory array */
-/* insert proper sizes of the array */
+
   __shared__ double smemArray[FIXME][FIXME];
 	
 /* determine my row and column indices for the error checking code */
-/* insert code for global row and col for error checking */
-  const int myRow = FIXME
-  const int myCol = FIXME
 
-/* determine my row block and column block indices */
-/* insert code for proper indexing of the matrix blocks */
-  const int sourceBlockX = FIXME
-  const int sourceBlockY = FIXME
+  const int myRow = blockDim.x * blockIdx.x + threadIdx.x;
+  const int myCol = blockDim.y * blockIdx.y + threadIdx.y;
+
+/* determine my row tile and column tile index */
+
+  const int tileX = FIXME
+  const int tileY = FIXME
 
   if( myRow < m && myCol < m )
   {
@@ -68,22 +70,24 @@ __global__ void smem_cuda_transpose( const int m, double const * const a, double
 /* your INDX calculation for both a[] and c[].  This will ensure proper */
 /* coalescing. */
 
-   smemArray[FIXME][FIXME] = a[INDX( FIXME, FIXME, m )];
+   smemArray[FIXME][FIXME] = 
+      a[FIXME];
   } /* end if */
 
+/* synchronize */
+  __syncthreads();
 		
   if( myRow < m && myCol < m )
   {
 /* write the result */
-/* again threadIdx.x should appear in the first argument to INDX of c */
-/* this will ensure proper coalescing */
-    c[INDX( FIXME, FIXME, m )] = smemArray[FIXME][FIXME];
+    c[FIXME] = 
+           smemArray[FIXME][FIXME];
   } /* end if */
   return;
 
-} /* end naive_cuda_transpose */
+} /* end smem_cuda_transpose */
 
-void host_transpose( const int m, double const * const a, double *c )
+void host_transpose( const int m, double const * const a, double * const c )
 {
 	
 /* 
@@ -188,7 +192,7 @@ int main( int argc, char *argv[] )
 /* start timers */
   CUDA_CALL( cudaEventRecord( start, 0 ) );
 
-/* call naive GPU transpose kernel */
+/* call smem GPU transpose kernel */
 
   smem_cuda_transpose<<< blocks, threads >>>( size, d_a, d_c );
   CUDA_CHECK();
@@ -223,12 +227,16 @@ int main( int argc, char *argv[] )
         printf("Error in element %d,%d\n", i,j );
         printf("Host %f, device %f\n",h_c[INDX(i,j,size)],
                                       h_a[INDX(i,j,size)]);
+        printf("FAIL\n");
+        goto end;
       }
     } /* end for i */
   } /* end for j */
 
 /* free the memory */
+  printf("PASS\n");
 
+  end:
   free( h_a );
   free( h_c );
   CUDA_CALL( cudaFree( d_a ) );

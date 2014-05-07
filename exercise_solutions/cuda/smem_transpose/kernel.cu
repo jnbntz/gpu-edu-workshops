@@ -31,12 +31,12 @@
 
 /* definitions of threadblock size in X and Y directions */
 
-#define THREADS_PER_BLOCK_X 16
-#define THREADS_PER_BLOCK_Y 16
+#define THREADS_PER_BLOCK_X 32
+#define THREADS_PER_BLOCK_Y 32
 
 /* definition of matrix linear dimension */
 
-#define SIZE 1024
+#define SIZE 4096
 
 /* macro to index a 1D memory array with 2D indices in column-major order */
 
@@ -44,7 +44,9 @@
 
 /* CUDA kernel for shared memory matrix transpose */
 
-__global__ void smem_cuda_transpose( const int m, double const * const a, double *c )
+__global__ void smem_cuda_transpose( const int m, 
+                                     double const * const a, 
+                                     double * const c )
 {
 	
 /* declare a shared memory array */
@@ -56,10 +58,10 @@ __global__ void smem_cuda_transpose( const int m, double const * const a, double
   const int myRow = blockDim.x * blockIdx.x + threadIdx.x;
   const int myCol = blockDim.y * blockIdx.y + threadIdx.y;
 
-/* determine my row block and column block indices */
+/* determine my row tile and column tile index */
 
-  const int sourceBlockX = blockDim.x * blockIdx.x;
-  const int sourceBlockY = blockDim.y * blockIdx.y;
+  const int tileX = blockDim.x * blockIdx.x;
+  const int tileY = blockDim.y * blockIdx.y;
 
   if( myRow < m && myCol < m )
   {
@@ -69,7 +71,7 @@ __global__ void smem_cuda_transpose( const int m, double const * const a, double
 /* coalescing. */
 
    smemArray[threadIdx.x][threadIdx.y] = 
-      a[INDX( sourceBlockX + threadIdx.x, sourceBlockY + threadIdx.y, m )];
+      a[INDX( tileX + threadIdx.x, tileY + threadIdx.y, m )];
   } /* end if */
 
 /* synchronize */
@@ -78,14 +80,14 @@ __global__ void smem_cuda_transpose( const int m, double const * const a, double
   if( myRow < m && myCol < m )
   {
 /* write the result */
-    c[INDX( sourceBlockY + threadIdx.x, sourceBlockX + threadIdx.y, m )] = 
+    c[INDX( tileY + threadIdx.x, tileX + threadIdx.y, m )] = 
            smemArray[threadIdx.y][threadIdx.x];
   } /* end if */
   return;
 
-} /* end naive_cuda_transpose */
+} /* end smem_cuda_transpose */
 
-void host_transpose( const int m, double const * const a, double *c )
+void host_transpose( const int m, double const * const a, double * const c )
 {
 	
 /* 
@@ -190,7 +192,7 @@ int main( int argc, char *argv[] )
 /* start timers */
   CUDA_CALL( cudaEventRecord( start, 0 ) );
 
-/* call naive GPU transpose kernel */
+/* call smem GPU transpose kernel */
 
   smem_cuda_transpose<<< blocks, threads >>>( size, d_a, d_c );
   CUDA_CHECK();
@@ -225,12 +227,16 @@ int main( int argc, char *argv[] )
         printf("Error in element %d,%d\n", i,j );
         printf("Host %f, device %f\n",h_c[INDX(i,j,size)],
                                       h_a[INDX(i,j,size)]);
+        printf("FAIL\n");
+        goto end;
       }
     } /* end for i */
   } /* end for j */
 
 /* free the memory */
+  printf("PASS\n");
 
+  end:
   free( h_a );
   free( h_c );
   CUDA_CALL( cudaFree( d_a ) );

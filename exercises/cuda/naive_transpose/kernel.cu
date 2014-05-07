@@ -30,12 +30,12 @@
 
 /* definitions of threadblock size in X and Y directions */
 
-#define THREADS_PER_BLOCK_X 16
-#define THREADS_PER_BLOCK_Y 16
+#define THREADS_PER_BLOCK_X 32
+#define THREADS_PER_BLOCK_Y 32
 
 /* definition of matrix linear dimension */
 
-#define SIZE 1024
+#define SIZE 4096
 
 /* macro to index a 1D memory array with 2D indices in column-major order */
 
@@ -43,24 +43,22 @@
 
 /* CUDA kernel for naive matrix transpose */
 
-__global__ void naive_cuda_transpose( const int m, double const * const a, 
-                                      double *c )
+__global__ void naive_cuda_transpose( const int m, 
+                                      const double * const a, 
+                                      double * const c )
 {
-/* insert code to calculate row and column of the matrix */
   const int myRow = FIXME
   const int myCol = FIXME
 
   if( myRow < m && myCol < m )
   {
-/* insert the indices for accessing A anad C matrices to execute the 
-   transpose */
     c[FIXME] = a[FIXME];
   } /* end if */
   return;
 
 } /* end naive_cuda_transpose */
 
-void host_transpose( const int m, double const * const a, double *c )
+void host_transpose( const int m, const double * const a, double *c )
 {
 	
 /* 
@@ -159,7 +157,6 @@ int main( int argc, char *argv[] )
 /* setup threadblock size and grid sizes */
 
   dim3 threads( THREADS_PER_BLOCK_X, THREADS_PER_BLOCK_Y, 1 );
-/* insert code for proper block sizes in X and Y dimensions */
   dim3 blocks( FIXME, FIXME, 1 );
 
 /* start timers */
@@ -200,17 +197,20 @@ int main( int argc, char *argv[] )
         printf("Error in element %d,%d\n", i,j );
         printf("Host %f, device %f\n",h_c[INDX(i,j,size)],
                                       h_a[INDX(i,j,size)]);
+        printf("FAIL\n");
+        goto end;
       } /* end fi */
     } /* end for i */
   } /* end for j */
 
 /* free the memory */
+  printf("PASS\n");
 
+  end:
   free( h_a );
   free( h_c );
   CUDA_CALL( cudaFree( d_a ) );
   CUDA_CALL( cudaFree( d_c ) );
-
   CUDA_CALL( cudaDeviceReset() );
 
   return 0;
