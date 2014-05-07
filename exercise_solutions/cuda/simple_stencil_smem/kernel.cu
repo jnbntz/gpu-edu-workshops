@@ -137,8 +137,15 @@ int main()
   for( int i = 0; i < N; i++ )
   {
     if( in[i]*( (double)RADIUS*2+1 ) != out[i] ) 
+    {
       printf("error in element %d in = %f out %f\n",i,in[i],out[i] );
+      printf("FAIL\n");
+      goto end;
+    } /* end if */
   } /* end for */
+
+  printf("PASS\n");
+  end:
 
 /* clean up */
 
