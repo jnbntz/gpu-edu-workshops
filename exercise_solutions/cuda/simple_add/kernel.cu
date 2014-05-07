@@ -67,6 +67,8 @@ int main()
   CUDA_CALL( cudaMemcpy( &c, d_c, size, cudaMemcpyDeviceToHost ) );
 
   printf("value of c after kernel is %d\n",c);
+  if( c == ( a + b ) ) printf("PASS\n");
+  else printf("FAIL\n");
 
 /* clean up */
 
