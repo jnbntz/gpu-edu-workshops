@@ -77,7 +77,15 @@ int main()
   for( int i = 0; i < N; i++ )
   {
     printf("c[%d] = %d\n",i,c[i]);
+    if( c[i] != a[i] + b[i] )
+    {
+      printf("FAIL\n");
+      goto end;
+    } /* end if */
   } /* end for */
+
+  printf("PASS\n");
+  end:
 
 /* clean up */
 

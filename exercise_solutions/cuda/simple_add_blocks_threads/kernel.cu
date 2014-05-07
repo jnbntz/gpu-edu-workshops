@@ -76,9 +76,18 @@ int main()
 
   CUDA_CALL( cudaMemcpy( c, d_c, size, cudaMemcpyDeviceToHost ) );
 
+  for( int i = 0; i < N; i++ )
+  {
+    if( c[i] != a[i] + b[i] )
+    {
+      printf("c[%d] = %d\n",i,c[i] );
+      printf("FAIL\n");
+      goto end;
+    } /* end if */
+  }
 
-  printf( "c[0] = %d\n",0,c[0] );
-  printf( "c[%d] = %d\n",N-1, c[N-1] );
+  printf("PASS\n");
+  end:
 
 /* clean up */
 
