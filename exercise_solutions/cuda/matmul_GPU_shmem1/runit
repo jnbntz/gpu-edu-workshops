@@ -2,4 +2,4 @@
 
 #BATCHARGS
 
-./x.smem_transpose
+./x.matmul_GPU_shmem1
