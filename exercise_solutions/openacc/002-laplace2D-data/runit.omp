@@ -1,10 +1,5 @@
 #!/bin/bash
 
-#PBS -N test
-#PBS -j oe
-#PBS -l select=1:ngpus=1:gpu_model=k20:ncpus=1
-#PBS -l walltime=00:20:00
-
-cd $PBS_O_WORKDIR
+#BATCHARGS
 
 OMP_NUM_THREADS=1 ./laplace2d_omp
