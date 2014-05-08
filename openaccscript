@@ -1,0 +1,3 @@
+#PBS -j oe
+
+module load pgi
