@@ -8,4 +8,4 @@ sed -i '/\#BATCHARGS/ r cudascript'  runit.nvidia-smi
 
 or
 
-fine /path/to/dir/ -type f -exec sed -i '/\#BATCHARGS/ r cudascript' runit
+find /path/to/dir/ -type f -exec sed -i '/\#BATCHARGS/ r cudascript' runit
