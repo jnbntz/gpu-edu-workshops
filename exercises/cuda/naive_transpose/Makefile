@@ -15,7 +15,7 @@
 #
 
 include ../make.common
-BIN=x.transpose
+BIN=x.naive_transpose
 NVCC=nvcc
 NVOPTS=-O3 $(ARCH) -lineinfo
 
