@@ -2,4 +2,4 @@
 
 #BATCHARGS
 
-./x.transpose
+./x.naive_transpose
