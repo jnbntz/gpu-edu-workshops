@@ -1,0 +1,7 @@
+There are batch scripts located in each subdirectory.  
+
+Correct "cudascript" and "openaccscript" to add the proper batch arguments as
+well as any other "module load" requirements and anything else required before
+executing the executable.  Something like the following:
+
+sed '/\#BATCHARGS/ r cudascript'  runit.nvidia-smi.inp > runit.nvidia-smi
