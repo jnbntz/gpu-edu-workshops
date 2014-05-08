@@ -1,3 +1,4 @@
 #PBS -j oe
 
 module load cuda/5.5.22
+cd $PBS_O_WORKDIR
