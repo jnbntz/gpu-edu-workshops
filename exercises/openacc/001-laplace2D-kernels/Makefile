@@ -15,7 +15,7 @@
 #
 
 CC       = pgcc
-CCFLAGS  = -tp istanbul-64
+CCFLAGS  = -tp sandybridge-64
 ACCFLAGS = FIXME# add OpenACC compiler options here
 OMPFLAGS = -fast -mp -Minfo
 
