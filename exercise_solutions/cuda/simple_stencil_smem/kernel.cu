@@ -48,10 +48,16 @@ __global__ void stencil_1d(int n, double *in, double *out)
 
 /* read input elements into shared memory */
   temp[localIndex] = in[globalIndex];
-	
-  if( threadIdx.x < RADIUS )
+
+/* code to handle the halos.  need to make sure we don't walk off the end
+   of the array */	
+  if( threadIdx.x < RADIUS && globalIndex >= RADIUS )
   {
     temp[localIndex - RADIUS] = in[globalIndex - RADIUS];
+  } /* end if */
+
+  if( threadIdx.x < RADIUS && globalIndex < (n - RADIUS) )
+  {
     temp[localIndex + THREADS_PER_BLOCK] = in[globalIndex + THREADS_PER_BLOCK];
   } /* end if */
 
