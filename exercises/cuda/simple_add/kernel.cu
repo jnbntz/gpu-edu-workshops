@@ -74,6 +74,7 @@ int main()
 /* clean up */
 
   CUDA_CALL( cudaFree( d_a ) );
+  FIXME
 /* enter code here to cudaFree the d_b and d_c pointers */
 
 /* calling reset to check errors */
