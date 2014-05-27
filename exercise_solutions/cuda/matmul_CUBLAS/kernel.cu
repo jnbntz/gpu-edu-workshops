@@ -157,15 +157,15 @@ int main( int argc, char *argv[] )
     CUDA_CALL( cudaEventDestroy( start ) );
     CUDA_CALL( cudaEventDestroy( stop ) );
 
-	double temp = 0.0;
+    double temp = 0.0;
 
-	for( int i = 0; i < size * size; i++ )
-	{
-		temp += ( h_c[i] - h_cdef[i] ) * ( h_c[i] - h_cdef[i] );
-	} /* end for */
-
-	printf("error is %f\n",temp);
-	if( temp > 10 ) printf("Error value is suspiciously high!\n");
+    for( int i = 0; i < size * size; i++ )
+    {
+      temp += ( h_c[i] - h_cdef[i] ) * ( h_c[i] - h_cdef[i] );
+    } /* end for */
+    printf("error is %f\n",temp);
+    if( temp > 10 ) printf("FAIL\n");
+    else printf("PASS\n");
 
     CUDA_CALL( cudaFree( d_a ) );
     CUDA_CALL( cudaFree( d_b ) );

@@ -247,15 +247,16 @@ cublasDgemm( handle, CUBLAS_OP_N, CUBLAS_OP_N,
 
 	/* check CUBLAS versus GPU NAIVE numerical results */
 
-	double temp = 0.0;
+    double temp = 0.0;
 
-	for( int i = 0; i < size * size; i++ )
-	{
-		temp += ( h_c[i] - h_c1[i] ) * ( h_c[i] - h_c1[i] );
-	} /* end for */
+    for( int i = 0; i < size * size; i++ )
+    {
+      temp += ( h_c[i] - h_c1[i] ) * ( h_c[i] - h_c1[i] );
+    } /* end for */
 
-	printf("error is %f\n",temp);
-	if( temp > 10 ) printf("Error value is suspiciously high!\n");
+    printf("error is %f\n",temp);
+    if( temp > 10 ) printf("FAIL\n");
+    else printf("PASS\n");
 
 	/* cleanup */
 

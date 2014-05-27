@@ -223,7 +223,8 @@ int main( int argc, char *argv[] )
   } /* end for */
 
   printf("error is %f\n",temp);
-  if( temp > 10 ) printf("Error value is suspiciously high!\n");
+  if( temp > 10 ) printf("FAIL\n");
+  else printf("PASS\n");
 
 /* cleanup */
 
