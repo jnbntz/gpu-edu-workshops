@@ -15,7 +15,7 @@
 #
 
 CC       = pgcc
-CCFLAGS  = -tp istanbul-64
+CCFLAGS  = -tp sandybridge-64
 ACCFLAGS = -acc -ta=nvidia -Minfo=accel
 OMPFLAGS = -fast -mp -Minfo
 
