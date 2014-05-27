@@ -28,9 +28,9 @@
 #define CUDA_CHECK() 
 #endif
 
-#define N 4000000
+#define N ( 1024 * 1024 )
 #define RADIUS 5
-#define THREADS_PER_BLOCK 512
+#define THREADS_PER_BLOCK 32
 
 /* stencil kernel */
 
@@ -40,25 +40,25 @@ __global__ void stencil_1d(int n, double *in, double *out)
   __shared__ double temp[THREADS_PER_BLOCK + 2*(RADIUS)];
 
 /* calculate global index in the array */
-  int gindex = blockIdx.x * blockDim.x + threadIdx.x;
-  int lindex = threadIdx.x + RADIUS;
+  int globalIndex = blockIdx.x * blockDim.x + threadIdx.x;
+  int localIndex = threadIdx.x + RADIUS;
 
 /* return if my global index is larger than the array size */
-  if( gindex >= n ) return;
+  if( globalIndex >= n ) return;
 
 /* read input elements into shared memory */
-  temp[lindex] = in[gindex];
+  temp[localIndex] = in[globalIndex];
 	
   if( threadIdx.x < RADIUS )
   {
-    temp[lindex - RADIUS] = in[gindex - RADIUS];
-    temp[lindex + THREADS_PER_BLOCK] = in[gindex + THREADS_PER_BLOCK];
+    temp[localIndex - RADIUS] = in[globalIndex - RADIUS];
+    temp[localIndex + THREADS_PER_BLOCK] = in[globalIndex + THREADS_PER_BLOCK];
   } /* end if */
 	
 /* code to handle the boundary conditions */
-  if( gindex < RADIUS || gindex >= (n - RADIUS) ) 
+  if( globalIndex < RADIUS || globalIndex >= (n - RADIUS) ) 
   {
-    out[gindex] = (double) gindex * ( (double)RADIUS*2 + 1) ;
+    out[globalIndex] = (double) globalIndex * ( (double)RADIUS*2 + 1) ;
     return;
   } /* end if */
 
@@ -66,10 +66,10 @@ __global__ void stencil_1d(int n, double *in, double *out)
 
   for( int i = -(RADIUS); i <= (RADIUS); i++ ) 
   {
-    result += temp[lindex + i];
+    result += temp[localIndex + i];
   } /* end for */
 
-  out[gindex] = result;
+  out[globalIndex] = result;
   return;
 
 }
