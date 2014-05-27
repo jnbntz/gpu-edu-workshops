@@ -28,7 +28,7 @@
 #define CUDA_CHECK() 
 #endif
 
-#define N 4000000
+#define N ( 1024 * 1024 )
 #define RADIUS 5
 #define THREADS_PER_BLOCK 512
 
@@ -37,28 +37,28 @@ __global__ void stencil_1d(int n, double *in, double *out)
 /* calculate global index in the array */
 /* insert code to calculate global index in the array using block
    and thread built-in variables */
-  int gindex = FIXME
+  int globalIndex = FIXME
 	
 /* return if my global index is larger than the array size */
-  if( gindex >= n ) return;
+  if( globalIndex >= n ) return;
 
 /* code to handle the boundary conditions */
-  if( gindex < RADIUS || gindex >= (n - RADIUS) ) 
+  if( globalIndex < RADIUS || globalIndex >= (n - RADIUS) ) 
   {
-    out[gindex] = (double) gindex * ( (double)RADIUS*2 + 1) ;
+    out[globalIndex] = (double) globalIndex * ( (double)RADIUS*2 + 1) ;
     return;
   } /* end if */
 
   double result = 0.0;
 	
-  for( int i = gindex-(RADIUS); i <= gindex+(RADIUS); i++ ) 
+  for( int i = globalIndex-(RADIUS); i <= globalIndex+(RADIUS); i++ ) 
   {
 /* add the required elements from the array "in" to the temporary 
    variable "result */
     result += FIXME
   }
 
-  out[gindex] = result;
+  out[globalIndex] = result;
   return;
 
 }
