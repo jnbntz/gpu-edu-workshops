@@ -27,7 +27,8 @@
 
 /* CPU matrix multiply function */
 
-void host_dgemm( const int m, const int n, const int k, double const * const a, double const * const b, double *c )
+void host_dgemm( const int m, const int n, const int k, 
+                 double const * const a, double const * const b, double *c )
 {
 	
 /* 
@@ -39,107 +40,107 @@ void host_dgemm( const int m, const int n, const int k, double const * const a, 
 
 /* insert code here */
 
- for( int j = 0; j < n; j++ )
-	{
-		for( int i = 0; i < m; i++ )
-		{
-			for( int koff = 0; koff < k; koff++ )
-			{
-				c[INDX(i, j, m)] += a[INDX( i, koff, m )] * b[INDX( koff, j, n )];
-			} /* end for koff */
-		} /* end for i */
-	} /* end for j */
+for( int j = 0; j < n; j++ )
+{
+  for( int i = 0; i < m; i++ )
+  {
+    for( int koff = 0; koff < k; koff++ )
+    {
+      c[INDX(i, j, m)] += a[INDX( i, koff, m )] * b[INDX( koff, j, n )];
+    } /* end for koff */
+  } /* end for i */
+} /* end for j */
 
 } /* end host_dgemm */
 
 int main( int argc, char *argv[] )
 {
 
-    int size = SIZE;
+  int size = SIZE;
 
-    fprintf(stdout, "Matrix size is %d\n",size);
+  fprintf(stdout, "Matrix size is %d\n",size);
 
 /* declare host pointers */
 
-    double *h_a, *h_b, *h_cdef;
+  double *h_a, *h_b, *h_cdef;
  
-    size_t numbytes = size * size * sizeof( double );
+  size_t numbytes = size * size * sizeof( double );
 
 /* allocate host pointers */
 
-    h_a = (double *) malloc( numbytes );
-    if( h_a == NULL )
-    {
-      fprintf(stderr,"Error in host malloc\n");
-      return 911;
-    }
+  h_a = (double *) malloc( numbytes );
+  if( h_a == NULL )
+  {
+    fprintf(stderr,"Error in host malloc\n");
+    return 911;
+  }
 
-    h_b = (double *) malloc( numbytes );
-    if( h_b == NULL )
-    {
-      fprintf(stderr,"Error in host malloc\n");
-      return 911;
-    }
+  h_b = (double *) malloc( numbytes );
+  if( h_b == NULL )
+  {
+    fprintf(stderr,"Error in host malloc\n");
+    return 911;
+  }
 
-    h_cdef = (double *) malloc( numbytes );
-    if( h_cdef == NULL )
-    {
-      fprintf(stderr,"Error in host malloc\n");
-      return 911;
-    }
+  h_cdef = (double *) malloc( numbytes );
+  if( h_cdef == NULL )
+  {
+    fprintf(stderr,"Error in host malloc\n");
+    return 911;
+  }
 
 /* set C to zero */
 
-    memset( h_cdef, 0, numbytes );
+  memset( h_cdef, 0, numbytes );
 
-    fprintf( stdout, "Total memory required is %lf MB\n", 
+  fprintf( stdout, "Total memory required is %lf MB\n", 
        3.0 * (double) numbytes / 1000000.0 );
 
 /* initialize A and B on the host */
 
-    for( int i = 0; i < size * size; i++ )
-    {
-      h_a[i] = double( rand() ) / ( double(RAND_MAX) + 1.0 );
-      h_b[i] = double( rand() ) / ( double(RAND_MAX) + 1.0 );
-    }
+  for( int i = 0; i < size * size; i++ )
+  {
+    h_a[i] = double( rand() ) / ( double(RAND_MAX) + 1.0 );
+    h_b[i] = double( rand() ) / ( double(RAND_MAX) + 1.0 );
+  }
 
 /* start timers */
 
-    cudaEvent_t start, stop;
-    cudaEventCreate( &start );
-    cudaEventCreate( &stop );
+  cudaEvent_t start, stop;
+  cudaEventCreate( &start );
+  cudaEventCreate( &stop );
 
-    cudaEventRecord( start, 0 );
+  cudaEventRecord( start, 0 );
 
 /* call host dgemm */
 
-    host_dgemm( size, size, size, h_a, h_b, h_cdef );
+  host_dgemm( size, size, size, h_a, h_b, h_cdef );
 
 /* stop the timers */
 
-    cudaEventRecord( stop, 0 );
-    cudaEventSynchronize( stop );
-    float elapsedTime;
-    cudaEventElapsedTime( &elapsedTime, start, stop );
+  cudaEventRecord( stop, 0 );
+  cudaEventSynchronize( stop );
+  float elapsedTime;
+  cudaEventElapsedTime( &elapsedTime, start, stop );
 
 /* print the results */
 
-    fprintf(stdout, "Total time CPU is %f sec\n", elapsedTime / 1000.0f );
-    fprintf(stdout, "Performance is %f GFlop/s\n", 
-      2.0 * (double) size * (double) size * (double) size / 
-      ( (double) elapsedTime / 1000.0 ) * 1.e-9 );
+  fprintf(stdout, "Total time CPU is %f sec\n", elapsedTime / 1000.0f );
+  fprintf(stdout, "Performance is %f GFlop/s\n", 
+    2.0 * (double) size * (double) size * (double) size / 
+    ( (double) elapsedTime / 1000.0 ) * 1.e-9 );
 
 /* cleanup */
 
-    free( h_a );
-    free( h_b );
-    free( h_cdef );
+  free( h_a );
+  free( h_b );
+  free( h_cdef );
 
-    cudaError_t cudaStatus = cudaDeviceReset();
-    if (cudaStatus != cudaSuccess) {
-        fprintf(stderr, "cudaDeviceReset failed!");
-        return 1;
-    }
+  cudaError_t cudaStatus = cudaDeviceReset();
+  if (cudaStatus != cudaSuccess) {
+      fprintf(stderr, "cudaDeviceReset failed!");
+      return 1;
+  }
 
-    return 0;
+  return 0;
 }
