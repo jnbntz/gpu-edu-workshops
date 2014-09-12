@@ -1,0 +1,5 @@
+#!/bin/bash
+
+#BATCHARGS
+
+./x.matmul_streams
