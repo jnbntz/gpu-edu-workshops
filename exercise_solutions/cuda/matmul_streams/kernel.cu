@@ -271,14 +271,6 @@ int main( int argc, char *argv[] )
       {
         int coffset = INDX( rowTile[i], colTile[i], linearTiles ) *
                             tileSize * tileSize;
-#if 0
-        CUBLAS_CALL( cublasSetMatrixAsync( tileSize, tileSize, 8,
-          &p_c[coffset],
-          tileSize,
-          d_c[i],
-          tileSize,
-          stream[i] ));
-#endif
         CUDA_CALL( cudaMemcpyAsync( d_c[i], &p_c[coffset], tileBytes,
                      cudaMemcpyHostToDevice, stream[i] ) );
 
@@ -297,14 +289,6 @@ int main( int argc, char *argv[] )
 
         int aoffset = INDX( rowTile[i], k, linearTiles ) *
                             tileSize * tileSize;
-#if 0
-        CUBLAS_CALL( cublasSetMatrixAsync( tileSize, tileSize, 8,
-          &p_a[aoffset],
-          tileSize,
-          d_a[i],
-          tileSize,
-          stream[i] ));
-#endif
         CUDA_CALL( cudaMemcpyAsync( d_a[i], &p_a[aoffset], tileBytes,
                      cudaMemcpyHostToDevice, stream[i] ) );
         } /* end for */
@@ -313,18 +297,9 @@ int main( int argc, char *argv[] )
         {
         int boffset = INDX( k, colTile[i], linearTiles ) *
                             tileSize * tileSize;
-#if 0
-        CUBLAS_CALL( cublasSetMatrixAsync( tileSize, tileSize, 8,
-          &p_b[boffset],
-          tileSize,
-          d_b[i],
-          tileSize,
-          stream[i] ));
-#endif
         CUDA_CALL( cudaMemcpyAsync( d_b[i], &p_b[boffset], tileBytes,
                      cudaMemcpyHostToDevice, stream[i] ) );
 
-//        printMat<<<1,1,0,stream[i]>>>(d_b[i], tileSize*tileSize);
         } /* end for */
 
 /* do the dgemm */
@@ -350,11 +325,6 @@ int main( int argc, char *argv[] )
       {
         int coffset = INDX( rowTile[i], colTile[i], linearTiles ) *
                             tileSize * tileSize;
-#if 0
-        CUBLAS_CALL( cublasGetMatrixAsync( tileSize, tileSize, 8,
-          d_c[i], tileSize,
-          &p_c[coffset], tileSize, stream[i] ) );
-#endif
         CUDA_CALL( cudaMemcpyAsync( &p_c[coffset], d_c[i], tileBytes,
                         cudaMemcpyDeviceToHost, stream[i] ) );
       } /* end for */
