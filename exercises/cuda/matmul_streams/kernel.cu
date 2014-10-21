@@ -402,6 +402,12 @@ int main( int argc, char *argv[] )
     free( h_c );
     free( h_cdef );
 
+    for( int i = 0; i < nstreams; i++ )
+    {
+/* destroy the streams here */
+        CUDA_CALL( cudaStreamDestroy( stream[i] ) );
+    } /* end for */
+
     CUDA_CALL( cudaFreeHost( p_a ) );
     CUDA_CALL( cudaFreeHost( p_b ) );
     CUDA_CALL( cudaFreeHost( p_c ) );

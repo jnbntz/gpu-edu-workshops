@@ -238,7 +238,10 @@ int main( int argc, char *argv[] )
 
     cudaStream_t stream[nstreams];
     for( int i = 0; i < nstreams; i++ )
+    {
+/* create the streams here */
         CUDA_CALL( cudaStreamCreate( &stream[i] ) );
+    } /* end for */
 
     cublasDestroy( handle );
     stat = cublasCreate( &handle );
@@ -248,30 +251,39 @@ int main( int argc, char *argv[] )
 
     int currentTile = 0;
 
+/* starting the timer */
+
     CUDA_CALL( cudaEventRecord( start, 0 ) );
+
+/* while loop over all the tiles */
 
     while( currentTile < totalTiles )
     {
 
       int localStreams = 0;
 
+/* assign a tile to each stream */
+
       for( int i = 0; i < nstreams; i++ )
       {
         rowTile[i] = currentTile % linearTiles;
         colTile[i] = currentTile / linearTiles;
+
+/*   using localStreams in case we run out of tiles and still have streams
+     then we just keep some streams idle  */
 
         if( currentTile < totalTiles ) localStreams++;
 
         currentTile++;
       } /* end for */
 
-/* copy tile of C to device */
+/* copy tile of C to device, each stream does a different tile of C */
 
       for( int i = 0; i < localStreams; i++ )
       {
-        int coffset = INDX( rowTile[i], colTile[i], linearTiles ) *
+        int cOffset = INDX( rowTile[i], colTile[i], linearTiles ) *
                             tileSize * tileSize;
-        CUDA_CALL( cudaMemcpyAsync( d_c[i], &p_c[coffset], tileBytes,
+        CUDA_CALL( cudaMemcpyAsync( d_c[i], &p_c[cOffset], tileBytes,
                      cudaMemcpyHostToDevice, stream[i] ) );
 
       } /* end for */
@@ -282,22 +294,24 @@ int main( int argc, char *argv[] )
       for( int k = 0; k < linearTiles; k++ )
       {
 
-/* stream A and B into device */
+/* stream A into device */
 
         for( int i = 0; i < localStreams; i++ )
         {
 
-        int aoffset = INDX( rowTile[i], k, linearTiles ) *
+        int aOffset = INDX( rowTile[i], k, linearTiles ) *
                             tileSize * tileSize;
-        CUDA_CALL( cudaMemcpyAsync( d_a[i], &p_a[aoffset], tileBytes,
+        CUDA_CALL( cudaMemcpyAsync( d_a[i], &p_a[aOffset], tileBytes,
                      cudaMemcpyHostToDevice, stream[i] ) );
         } /* end for */
 
+/* stream B into device */
+
         for( int i = 0; i < localStreams; i++ )
         {
-        int boffset = INDX( k, colTile[i], linearTiles ) *
+        int bOffset = INDX( k, colTile[i], linearTiles ) *
                             tileSize * tileSize;
-        CUDA_CALL( cudaMemcpyAsync( d_b[i], &p_b[boffset], tileBytes,
+        CUDA_CALL( cudaMemcpyAsync( d_b[i], &p_b[bOffset], tileBytes,
                      cudaMemcpyHostToDevice, stream[i] ) );
 
         } /* end for */
@@ -306,7 +320,12 @@ int main( int argc, char *argv[] )
 
         for( int i = 0; i < localStreams; i++ )
         {
+/* set the stream for the cublas call */
+
           CUBLAS_CALL( cublasSetStream( handle, stream[i] ) );
+
+/* call the cublas dgemm function */
+
           CUBLAS_CALL( cublasDgemm( handle, CUBLAS_OP_N, CUBLAS_OP_N,
                  tileSize, tileSize, tileSize,
                  &alpha,
@@ -323,9 +342,9 @@ int main( int argc, char *argv[] )
 
       for( int i = 0; i < localStreams; i++ )
       {
-        int coffset = INDX( rowTile[i], colTile[i], linearTiles ) *
+        int cOffset = INDX( rowTile[i], colTile[i], linearTiles ) *
                             tileSize * tileSize;
-        CUDA_CALL( cudaMemcpyAsync( &p_c[coffset], d_c[i], tileBytes,
+        CUDA_CALL( cudaMemcpyAsync( &p_c[cOffset], d_c[i], tileBytes,
                         cudaMemcpyDeviceToHost, stream[i] ) );
       } /* end for */
 
@@ -382,6 +401,12 @@ int main( int argc, char *argv[] )
     free( h_b );
     free( h_c );
     free( h_cdef );
+
+    for( int i = 0; i < nstreams; i++ )
+    {
+/* destroy the streams here */
+        CUDA_CALL( cudaStreamDestroy( stream[i] ) );
+    } /* end for */
 
     CUDA_CALL( cudaFreeHost( p_a ) );
     CUDA_CALL( cudaFreeHost( p_b ) );
