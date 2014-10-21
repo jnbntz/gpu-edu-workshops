@@ -240,7 +240,7 @@ int main( int argc, char *argv[] )
     for( int i = 0; i < nstreams; i++ )
     {
 /* create the streams here */
-        CUDA_CALL( cudaStreamCreate( &stream[i] ) );
+      FIXME
     } /* end for */
 
     cublasDestroy( handle );
@@ -283,9 +283,9 @@ int main( int argc, char *argv[] )
       {
         int cOffset = INDX( rowTile[i], colTile[i], linearTiles ) *
                             tileSize * tileSize;
-        CUDA_CALL( cudaMemcpyAsync( d_c[i], &p_c[cOffset], tileBytes,
-                     cudaMemcpyHostToDevice, stream[i] ) );
-
+/* use cudaMemcpyAsync to move a tile of C to the device
+   HINT: cOffset points to the starting location of the tile, in host mem */
+        FIXME
       } /* end for */
 
 
@@ -301,8 +301,9 @@ int main( int argc, char *argv[] )
 
         int aOffset = INDX( rowTile[i], k, linearTiles ) *
                             tileSize * tileSize;
-        CUDA_CALL( cudaMemcpyAsync( d_a[i], &p_a[aOffset], tileBytes,
-                     cudaMemcpyHostToDevice, stream[i] ) );
+/* use cudaMemcpyAsync to move a tile of A to the device
+   HINT: aOffset points to the starting location of the tile, in host mem */
+        FIXME
         } /* end for */
 
 /* stream B into device */
@@ -311,8 +312,9 @@ int main( int argc, char *argv[] )
         {
         int bOffset = INDX( k, colTile[i], linearTiles ) *
                             tileSize * tileSize;
-        CUDA_CALL( cudaMemcpyAsync( d_b[i], &p_b[bOffset], tileBytes,
-                     cudaMemcpyHostToDevice, stream[i] ) );
+/* use cudaMemcpyAsync to move a tile of A to the device
+   HINT: bOffset points to the starting location of the tile, in host mem */
+        FIXME
 
         } /* end for */
 
@@ -322,17 +324,11 @@ int main( int argc, char *argv[] )
         {
 /* set the stream for the cublas call */
 
-          CUBLAS_CALL( cublasSetStream( handle, stream[i] ) );
+          FIXME
 
 /* call the cublas dgemm function */
 
-          CUBLAS_CALL( cublasDgemm( handle, CUBLAS_OP_N, CUBLAS_OP_N,
-                 tileSize, tileSize, tileSize,
-                 &alpha,
-                 d_a[i], tileSize,
-                 d_b[i], tileSize,
-                 &beta,
-                 d_c[i], tileSize ) );
+          FIXME
 
         } /* end for */
 
@@ -344,8 +340,9 @@ int main( int argc, char *argv[] )
       {
         int cOffset = INDX( rowTile[i], colTile[i], linearTiles ) *
                             tileSize * tileSize;
-        CUDA_CALL( cudaMemcpyAsync( &p_c[cOffset], d_c[i], tileBytes,
-                        cudaMemcpyDeviceToHost, stream[i] ) );
+/* use cudaMemcpyAsync to move a tile of C to the host
+   HINT: cOffset points to the starting location of the tile, in host mem */
+        FIXME
       } /* end for */
 
 
@@ -405,7 +402,7 @@ int main( int argc, char *argv[] )
     for( int i = 0; i < nstreams; i++ )
     {
 /* destroy the streams here */
-        CUDA_CALL( cudaStreamDestroy( stream[i] ) );
+      FIXME
     } /* end for */
 
     CUDA_CALL( cudaFreeHost( p_a ) );
