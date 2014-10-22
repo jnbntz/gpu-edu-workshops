@@ -132,6 +132,8 @@ int main( int argc, char *argv[] )
 
     CUDA_CALL( cudaEventRecord( start, 0 ) );
 
+    cublasSetStream( handle, 0 );
+
     cublasDgemm( handle, CUBLAS_OP_N, CUBLAS_OP_N,
                  size, size, size,
                  &alpha, 
