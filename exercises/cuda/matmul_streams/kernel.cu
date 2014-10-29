@@ -41,7 +41,7 @@
 
 #define INDX( row, col, ld ) ( ( (col) * (ld) ) + (row) )
 
-#define TILESIZE 4096
+#define TILESIZE 2048
 #define SIZE ( TILESIZE * 4 )
 #define NUM_STREAMS 8
 
