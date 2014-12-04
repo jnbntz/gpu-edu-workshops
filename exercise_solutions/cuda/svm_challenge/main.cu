@@ -118,13 +118,59 @@ int main(int argc, char **argv)
         int j = ceil( (float) trainingSize * 
                       float( rand() ) / ( float(RAND_MAX) + 1.0f ) );
 
+        while( j == i ) 
+          j = ceil( (float) trainingSize * 
+                      float( rand() ) / ( float(RAND_MAX) + 1.0f ) );
+        printf("j is %d\n",j);
 
+        for( int k = 0; k < trainingSize; k++ )
+        {  
+          tempSum += ( alphas[k] * y[k] * K[ INDX(k,j,trainingSize) ] );
+        } /* end for j */
+        
+        E[j] = b + tempSum - y[j];
+
+        float alphaIOld = alphas[i];
+        float alphaJOld = alphas[j];
+
+        if( y[i] == y[j] )
+        {
+          L = max( 0.0f, alphas[j] + alphas[i] - C );
+          H = min( C, alphas[j] + alphas[i] );
+        } /* end if */
+        else
+        {
+          L = max( 0.0f, alphas[j] - alphas[i] );
+          H = min( C, C + alphas[j] - alphas[i] );
+        } /* end else */
+
+        if( L == H ) continue;
+
+        eta = 2.0f * K[INDX(i,j,trainingSize)] 
+                   - K[INDX(i,i,trainingSize)] 
+                   - K[INDX(j,j,trainingSize)];
+
+        if( eta >= 0.0f ) continue;
+
+        alphas[j] = alphas[j] - ( y[j] * ( E[i] - E[j] ) ) / eta;
+
+        alphas[j] = min( H, alphas[j] );
+        alphas[j] = max( L, alphas[j] );
+
+        if( abs( alphas[j] - alphaJOld ) < tol )
+        {
+          alphas[j] = alphaJOld;
+          continue;
+        } /* end if */
+
+        float b1 = b - E[i]
+                     - y[i] * (alphas[i] - alphaIOld) * 
+                            K[INDX(i,j,trainingSize)]
+                     - y[j] * (alphas[j] - alphaJOld) * 
+                            K[INDX(i,j,trainingSize)];
 
 
       } /* end if */
-
-
-
 
       exit(911);
     } /* end for i */ 
