@@ -1,4 +1,10 @@
 #include <stdio.h>
+#include <math.h>
+
+extern "C" 
+{
+#include <cblas.h>
+}
 
 #define INDX(row,col,ld) (((col) * (ld)) + (row))
 
@@ -15,6 +21,10 @@ int main(int argc, char **argv)
   int featureVectorSize = FEATURE_VECTOR_SIZE;
   int trainingSize = TRAINING_SIZE;
   int *resultVector, *trainingMatrix;
+  int passes=0, maxPasses=5, numChangedAlphas;
+  float *X, *y, *K, *E, *alphas;
+  float b=0.0f, eta=0.0f, L=0.0f, H=0.0f, tol=1.0e-3;
+  float C=0.1f;
 
   resultVector = (int *) malloc( sizeof(int) * trainingSize );
   if( resultVector == NULL ) fprintf(stderr,"Houston we have a problem\n");
@@ -29,6 +39,32 @@ int main(int argc, char **argv)
   readMatrixFromFile( trainingSetFilename, trainingMatrix, 
                       trainingSize, featureVectorSize );
 
+  y = (float *) malloc( sizeof(float) * trainingSize );
+  if( y == NULL ) fprintf(stderr,"error malloc y\n");
+
+  X = (float *) malloc( sizeof(float) * trainingSize * featureVectorSize );
+  if( X == NULL ) fprintf(stderr,"error malloc X\n");
+
+  K = (float *) malloc( sizeof(float) * trainingSize * trainingSize );
+  if( K == NULL ) fprintf(stderr,"error malloc K\n");
+
+  for( int i = 0; i < trainingSize; i++ ) 
+    y[i] = (float) resultVector[i];
+
+  for( int i = 0; i < trainingSize * featureVectorSize; i++ )
+    X[i] = (float) trainingMatrix[i];
+
+  E = (float *) malloc( sizeof(float) * trainingSize );
+  if( E == NULL ) fprintf(stderr,"error malloc E\n");
+
+  memset( E, 0, sizeof(float) * trainingSize );
+
+  alphas = (float *) malloc( sizeof(float) * trainingSize );
+  if( alphas == NULL ) fprintf(stderr,"error malloc alphas\n");
+
+  memset( alphas, 0, sizeof(float) * trainingSize );
+
+#if 0
   for( int row = 0; row < trainingSize; row++ )
     printf("index %d resultVector %d\n",row, resultVector[row] );
 
@@ -37,62 +73,69 @@ int main(int argc, char **argv)
     for( int col = 0; col < featureVectorSize; col++ )
       printf("row %d col %d value %d\n",row,col,trainingMatrix[INDX(row,col,trainingSize)]);
   } 
+#endif
 
+/* map 0 values to -1 for training */
+
+  for( int i = 0; i < trainingSize; i++ )
+  {
+    if( y[i] == 0.0f ) y[i] = -1.0f;
+  } /* end for */
+/* compute the Kernel on every pair of examples */
+
+  cblas_sgemm( CblasColMajor, CblasNoTrans, CblasTrans, 
+               trainingSize, trainingSize, featureVectorSize,
+               1.0f, X, trainingSize, 
+               X, trainingSize, 0.0f, K, trainingSize );
+               
 #if 0
-  ifp = fopen( resultVectorFilename, "rt" );
+  for( int col = 0; col < trainingSize; col++ )
+  { 
+    for( int row = 0; row < trainingSize; row++ )
+      printf("row %d col %d value %f\n",row,col,K[INDX(row,col,trainingSize)]);
+    printf(" %d\n",(int) K[INDX(row,col,trainingSize)] );
+  } 
+#endif 
 
-  if( ifp == NULL ) 
+  while( passes < maxPasses )
   {
-    fprintf(stderr, "Error opening Results file\n");
-    exit(911);
-  } /* end if */
+    numChangedAlphas = 0;
+    for( int i = 0; i < trainingSize; i++ )
+    { 
+      float tempSum = 0.0f;
 
-  int index = 0;
+      for( int j = 0; j < trainingSize; j++ )
+      {  
+        tempSum += ( alphas[j] * y[j] * K[ INDX(j,i,trainingSize) ] );
+      } /* end for j */
 
-/* reading each element of the result vector */
+      E[i] = b + tempSum - y[i];
 
-  while( fgets( line, featureVectorSize, ifp ) != NULL )
-  {
-    printf("row is %d with length %d\n",index,strlen(line));
-    if( sscanf( line, "%d", &resultVector[index] ) != 1 )
-    {
-      fprintf(stderr,"there was an issue reading the input file!\n");
-    } /* end if */
-    printf(" index %d resultVec %d\n",index,resultVector[index] );
-    index++;
-  } /* end while */
-  
-  printf("index is %d\n",index);
-
-  fclose( ifp );
-
-  trainingMatrix = (int *) malloc( sizeof(int) * trainingSize * 
-                           featureVectorSize );
-  if( trainingMatrix == NULL ) fprintf(stderr,"Houston more problems\n");
-
-  ifp = fopen( trainingSetFilename, "r" );
-  
-  if( ifp == NULL ) 
-  {
-    fprintf(stderr, "Error opening training set file\n");
-    exit(911);
-  } /* end if */
-
-  for( int row = 0; row < trainingSize; row++ )
-  {
-    for( int col = 0; col < featureVectorSize; col++ )
-    {
-      if( !fscanf( ifp, "%d", 
-          &trainingMatrix[ INDX( row, col, trainingSize ) ] ) )
+      if( (y[i]*E[i] < -tol && alphas[i] < C ) || 
+           (y[i]*E[i] > tol  && alphas[i] > 0.0f ) )
       {
-        fprintf(stderr,"error reading training matrix file \n");
-        exit(911);
+
+        int j = ceil( (float) trainingSize * 
+                      float( rand() ) / ( float(RAND_MAX) + 1.0f ) );
+
+
+
+
       } /* end if */
 
-      printf("row %d col %d value %d\n",row,col,
-        trainingMatrix[ INDX(row,col,trainingSize)]);
-    } /* end for col */
-  } /* end for row */
-#endif
+
+
+
+      exit(911);
+    } /* end for i */ 
+  } /* end while */
+
+  free(E); 
+  free(alphas);
+  free(K);
+  free(y);
+  free(X);
+  free( resultVector );
+  free( trainingMatrix );
   return 0;
 } /* end main */

@@ -6,7 +6,7 @@ include ../make.common
 all: x.train x.porterStemmer
 
 x.train: main.o aux.o
-	$(NVCC) $(ARCH) -o x.train main.o aux.o
+	$(NVCC) $(ARCH) -o x.train main.o aux.o -L/usr/lib64/atlas -lcblas -latlas
 
 main.o: main.cu
 	$(NVCC) $(ARCH) -c main.cu
