@@ -21,7 +21,7 @@ int main(int argc, char **argv)
   int featureVectorSize = FEATURE_VECTOR_SIZE;
   int trainingSize = TRAINING_SIZE;
   int *resultVector, *trainingMatrix;
-  int passes=0, maxPasses=5, numChangedAlphas;
+  int passes=0, maxPasses=5, numChangedAlphas, dots=12;
   float *X, *y, *K, *E, *alphas;
   float b=0.0f, eta=0.0f, L=0.0f, H=0.0f, tol=1.0e-3;
   float C=0.1f;
@@ -121,7 +121,8 @@ int main(int argc, char **argv)
         while( j == i ) 
           j = ceil( (float) trainingSize * 
                       float( rand() ) / ( float(RAND_MAX) + 1.0f ) );
-        printf("j is %d\n",j);
+//        j = 3918;
+ //       printf("j is %d\n",j);
 
         for( int k = 0; k < trainingSize; k++ )
         {  
@@ -132,6 +133,9 @@ int main(int argc, char **argv)
 
         float alphaIOld = alphas[i];
         float alphaJOld = alphas[j];
+
+//        printf("alphaIOld %f alphaJOld %f\n",alphaIOld,alphaJOld);
+ //       printf("yi %f yj %f\n",y[i],y[j]);
 
         if( y[i] == y[j] )
         {
@@ -144,11 +148,15 @@ int main(int argc, char **argv)
           H = min( C, C + alphas[j] - alphas[i] );
         } /* end else */
 
+  //      printf("L %f H %f\n",L,H);
+
         if( L == H ) continue;
 
         eta = 2.0f * K[INDX(i,j,trainingSize)] 
                    - K[INDX(i,i,trainingSize)] 
                    - K[INDX(j,j,trainingSize)];
+
+   //     printf("eta %f\n",eta);
 
         if( eta >= 0.0f ) continue;
 
@@ -163,18 +171,53 @@ int main(int argc, char **argv)
           continue;
         } /* end if */
 
+        alphas[i] = alphas[i] + y[i] * y[j] * ( alphaJOld - alphas[j] );
+
+
         float b1 = b - E[i]
                      - y[i] * (alphas[i] - alphaIOld) * 
                             K[INDX(i,j,trainingSize)]
                      - y[j] * (alphas[j] - alphaJOld) * 
                             K[INDX(i,j,trainingSize)];
 
+        float b2 = b - E[j]
+                     - y[i] * (alphas[i] - alphaIOld) * 
+                            K[INDX(i,j,trainingSize)]
+                     - y[j] * (alphas[j] - alphaJOld) * 
+                            K[INDX(j,j,trainingSize)];
+
+
+
+        if( 0.0f < alphas[i] && alphas[i] < C ) b = b1;
+        else if( 0.0f < alphas[j] && alphas[j] < C ) b = b2;
+        else b = (b1 + b2) / 2.0f;
+
+
+        numChangedAlphas = numChangedAlphas + 1;
+
+//        printf("numChangedAlphas %d\n",numChangedAlphas );
 
       } /* end if */
 
-      exit(911);
     } /* end for i */ 
+   
+    if( numChangedAlphas == 0 ) passes = passes + 1;
+    else passes = 0; 
+
+    printf("b = %f\n",b);
+
+    fprintf(stdout,".");
+    dots = dots + 1;
+    if( dots > 78 )
+    {
+      dots = 0;
+      fprintf(stdout,"\n");
+    } 
+    
+   
   } /* end while */
+
+  printf("b is %f\n");
 
   free(E); 
   free(alphas);
