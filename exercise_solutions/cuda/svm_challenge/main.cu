@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <math.h>
 
 extern "C" 
@@ -103,10 +104,10 @@ int main(int argc, char **argv)
     for( int i = 0; i < trainingSize; i++ )
     { 
       float tempSum = 0.0f;
-
       for( int j = 0; j < trainingSize; j++ )
       {  
         tempSum += ( alphas[j] * y[j] * K[ INDX(j,i,trainingSize) ] );
+
       } /* end for j */
 
       E[i] = b + tempSum - y[i];
@@ -122,14 +123,25 @@ int main(int argc, char **argv)
           j = ceil( (float) trainingSize * 
                       float( rand() ) / ( float(RAND_MAX) + 1.0f ) );
 //        j = 3918;
- //       printf("j is %d\n",j);
+//       j = (i + 1) % trainingSize;
+ //      printf("j =  %d\n",j+1);
+  //     if( j >= 19 ) exit(911);
 
+        tempSum = 0.0f;
         for( int k = 0; k < trainingSize; k++ )
         {  
           tempSum += ( alphas[k] * y[k] * K[ INDX(k,j,trainingSize) ] );
+//        if( alphas[k] != 0.0f ) 
+ //          printf("k %d alphas %f y %f K %f\n",k+1,alphas[k],
+  //           y[k],K[INDX(k,j,trainingSize)] );
         } /* end for j */
         
         E[j] = b + tempSum - y[j];
+
+//printf("b = %f\n",b);
+//printf("tempsum = %f\n",tempSum);
+//printf("Yj = %f\n",y[j] );
+//printf("E_j = %f\n\n",E[j]);
 
         float alphaIOld = alphas[i];
         float alphaJOld = alphas[j];
@@ -204,7 +216,7 @@ int main(int argc, char **argv)
     if( numChangedAlphas == 0 ) passes = passes + 1;
     else passes = 0; 
 
-    printf("b = %f\n",b);
+//    printf("b = %f\n",b);
 
     fprintf(stdout,".");
     dots = dots + 1;
@@ -217,7 +229,7 @@ int main(int argc, char **argv)
    
   } /* end while */
 
-  printf("b is %f\n");
+  printf("b is %f\n",b);
 
   free(E); 
   free(alphas);
