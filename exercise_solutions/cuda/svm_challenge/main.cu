@@ -1,24 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include "headers.h"
 
-extern "C" 
-{
-#include <cblas.h>
-}
-
-typedef double floatType_t;
-
-#define INDX(row,col,ld) (((col) * (ld)) + (row))
-
-#define FEATURE_VECTOR_SIZE 1899
-#define TRAINING_SIZE 4000
-
-#define AA (1664525UL)
-#define CC (1013904223UL)
-#define MM (4294967296UL)
-
-void readMatrixFromFile( char *, int *, const int, const int );
 
 int main(int argc, char **argv) 
 {
@@ -27,8 +11,8 @@ int main(int argc, char **argv)
   int featureVectorSize = FEATURE_VECTOR_SIZE;
   int trainingSize = TRAINING_SIZE;
   int *resultVector, *trainingMatrix;
-  int passes=0, maxPasses=5, numChangedAlphas, dots=12;
-  floatType_t *X, *y, *K, *E, *alphas;
+  int passes=0, maxPasses=5, numChangedAlphas, dots=12, *pred;
+  floatType_t *X, *y, *K, *E, *alphas, *W;
   floatType_t b=0.0, eta=0.0, L=0.0, H=0.0, tol=1.0e-3;
   floatType_t C=0.1;
 
@@ -279,8 +263,74 @@ unsigned long seed = 8675309;
 //    printf(" %d\n",idx[i] );
   } /* end for */
 
-  printf("b is %f\n",b);
+//  printf("b is %f\n",b);
 
+  W = (floatType_t *) malloc( sizeof(floatType_t) * featureVectorSize );
+  if( W == NULL ) fprintf(stderr,"error malloc yW\n");
+
+  if( sizeof( floatType_t ) == 4 )
+  {
+    for( int i = 0; i < trainingSize; i++ )
+      alphas[i] *= y[i];
+    cblas_sgemm( CblasColMajor, CblasNoTrans, CblasNoTrans, 
+               1, featureVectorSize, trainingSize,
+               1.0, (float *)alphas, 1, 
+               (float *)X, trainingSize, 0.0, 
+               (float *)W, 1 );
+  }
+  else
+  {
+    for( int i = 0; i < trainingSize; i++ )
+      alphas[i] *= y[i];
+    cblas_dgemm( CblasColMajor, CblasNoTrans, CblasNoTrans, 
+               1, featureVectorSize, trainingSize,
+               1.0, (double *)alphas, 1, 
+               (double *)X, trainingSize, 0.0, 
+               (double *)W, 1 );
+  }
+
+//  for( int i = 0; i < featureVectorSize; i++ )
+ //   printf("%f\n",W[i]);
+
+//  p = alphas;
+  pred = (int *) malloc( sizeof(int) * trainingSize );
+  if( pred == NULL ) fprintf(stderr,"problem with malloc p in main\n");
+
+#if 0
+  for( int i = 0; i < trainingSize; i++ ) p[i] = b;
+
+  if( sizeof( floatType_t ) == 4 )
+  {
+    cblas_sgemv( CblasColMajor, CblasNoTrans,
+               trainingSize, featureVectorSize,
+               1.0, (float *)X, trainingSize,
+               (float *)W, 1, 1.0,
+               (float *)p, 1 );
+  }
+  else
+  {
+    cblas_dgemv( CblasColMajor, CblasNoTrans,
+               trainingSize, featureVectorSize,
+               1.0, (double *)X, trainingSize,
+               (double *)W, 1, 1.0,
+               (double *)p, 1 );
+  }
+#endif
+
+  svmPredict( X, W, b, trainingSize, featureVectorSize, pred );
+  
+  double mean = 0.0;
+  
+  for( int i = 0; i < trainingSize; i++ ) 
+  {
+//    int prediction = (p[i] >= 0.0) ? 1 : 0;
+    mean += (pred[i] == resultVector[i]) ? 1.0 : 0.0;
+  } /* end for */
+  mean /= (double) trainingSize;
+  printf("Prediction success rate is %f\n",mean*100.0);
+
+  free(pred);
+  free(W);
   free(E); 
   free(alphas);
   free(K);

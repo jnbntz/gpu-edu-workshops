@@ -1,6 +1,44 @@
 #include <stdio.h>
+#include "headers.h"
 
 #define INDX(row,col,ld) (((col) * (ld)) + (row))
+
+void svmPredict( floatType_t *X, floatType_t *W, floatType_t b, 
+               const int numExamples, const int numFeatures,
+               int *pred )
+{
+
+  floatType_t *p;
+
+  p = (floatType_t *) malloc( sizeof(floatType_t) * numExamples );
+  if( p == NULL ) fprintf(stderr,"error in malloc p in svmTrain\n");
+
+  for( int i = 0; i < numExamples; i++ ) p[i] = b;
+
+  if( sizeof( floatType_t ) == 4 )
+  {
+    cblas_sgemv( CblasColMajor, CblasNoTrans,
+               numExamples, numFeatures,
+               1.0, (float *)X, numExamples,
+               (float *)W, 1, 1.0,
+               (float *)p, 1 );
+  }
+  else
+  {
+    cblas_dgemv( CblasColMajor, CblasNoTrans,
+               numExamples, numFeatures,
+               1.0, (double *)X, numExamples,
+               (double *)W, 1, 1.0,
+               (double *)p, 1 );
+  }
+
+  for( int i = 0; i < numExamples; i++ )
+    pred[i] = ( p[i] >= 0.0 ) ? 1 : 0;
+ 
+  free(p);
+
+} /* end svmTrain */
+
 
 void readMatrixFromFile( char *fileName, 
                           int *matrix, 

@@ -8,10 +8,10 @@ all: x.train x.porterStemmer
 x.train: main.o aux.o
 	$(NVCC) $(ARCH) -o x.train main.o aux.o -L/usr/lib64/atlas -lcblas -latlas
 
-main.o: main.cu
+main.o: main.cu headers.h
 	$(NVCC) $(ARCH) -c main.cu
 
-aux.o: aux.cu
+aux.o: aux.cu headers.h
 	$(NVCC) $(ARCH) -c aux.cu
 
 x.porterStemmer: porterStemmer.o
