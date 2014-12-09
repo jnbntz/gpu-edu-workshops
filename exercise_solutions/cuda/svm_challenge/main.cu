@@ -7,13 +7,18 @@ extern "C"
 #include <cblas.h>
 }
 
+typedef double floatType_t;
+
 #define INDX(row,col,ld) (((col) * (ld)) + (row))
 
 #define FEATURE_VECTOR_SIZE 1899
 #define TRAINING_SIZE 4000
 
-void readMatrixFromFile( char *, int *, const int, const int );
+#define AA (1664525UL)
+#define CC (1013904223UL)
+#define MM (4294967296UL)
 
+void readMatrixFromFile( char *, int *, const int, const int );
 
 int main(int argc, char **argv) 
 {
@@ -23,9 +28,11 @@ int main(int argc, char **argv)
   int trainingSize = TRAINING_SIZE;
   int *resultVector, *trainingMatrix;
   int passes=0, maxPasses=5, numChangedAlphas, dots=12;
-  float *X, *y, *K, *E, *alphas;
-  float b=0.0f, eta=0.0f, L=0.0f, H=0.0f, tol=1.0e-3;
-  float C=0.1f;
+  floatType_t *X, *y, *K, *E, *alphas;
+  floatType_t b=0.0, eta=0.0, L=0.0, H=0.0, tol=1.0e-3;
+  floatType_t C=0.1;
+
+unsigned long seed = 8675309;
 
   resultVector = (int *) malloc( sizeof(int) * trainingSize );
   if( resultVector == NULL ) fprintf(stderr,"Houston we have a problem\n");
@@ -40,30 +47,30 @@ int main(int argc, char **argv)
   readMatrixFromFile( trainingSetFilename, trainingMatrix, 
                       trainingSize, featureVectorSize );
 
-  y = (float *) malloc( sizeof(float) * trainingSize );
+  y = (floatType_t *) malloc( sizeof(floatType_t) * trainingSize );
   if( y == NULL ) fprintf(stderr,"error malloc y\n");
 
-  X = (float *) malloc( sizeof(float) * trainingSize * featureVectorSize );
+  X = (floatType_t *) malloc( sizeof(floatType_t) * trainingSize * featureVectorSize );
   if( X == NULL ) fprintf(stderr,"error malloc X\n");
 
-  K = (float *) malloc( sizeof(float) * trainingSize * trainingSize );
+  K = (floatType_t *) malloc( sizeof(floatType_t) * trainingSize * trainingSize );
   if( K == NULL ) fprintf(stderr,"error malloc K\n");
 
   for( int i = 0; i < trainingSize; i++ ) 
-    y[i] = (float) resultVector[i];
+    y[i] = (floatType_t) resultVector[i];
 
   for( int i = 0; i < trainingSize * featureVectorSize; i++ )
-    X[i] = (float) trainingMatrix[i];
+    X[i] = (floatType_t) trainingMatrix[i];
 
-  E = (float *) malloc( sizeof(float) * trainingSize );
+  E = (floatType_t *) malloc( sizeof(floatType_t) * trainingSize );
   if( E == NULL ) fprintf(stderr,"error malloc E\n");
 
-  memset( E, 0, sizeof(float) * trainingSize );
+  memset( E, 0, sizeof(floatType_t) * trainingSize );
 
-  alphas = (float *) malloc( sizeof(float) * trainingSize );
+  alphas = (floatType_t *) malloc( sizeof(floatType_t) * trainingSize );
   if( alphas == NULL ) fprintf(stderr,"error malloc alphas\n");
 
-  memset( alphas, 0, sizeof(float) * trainingSize );
+  memset( alphas, 0, sizeof(floatType_t) * trainingSize );
 
 #if 0
   for( int row = 0; row < trainingSize; row++ )
@@ -80,14 +87,27 @@ int main(int argc, char **argv)
 
   for( int i = 0; i < trainingSize; i++ )
   {
-    if( y[i] == 0.0f ) y[i] = -1.0f;
+    if( y[i] == 0.0 ) y[i] = -1.0;
   } /* end for */
 /* compute the Kernel on every pair of examples */
 
-  cblas_sgemm( CblasColMajor, CblasNoTrans, CblasTrans, 
+  if( sizeof( floatType_t ) == 4 )
+  {
+    cblas_sgemm( CblasColMajor, CblasNoTrans, CblasTrans, 
                trainingSize, trainingSize, featureVectorSize,
-               1.0f, X, trainingSize, 
-               X, trainingSize, 0.0f, K, trainingSize );
+               1.0, (float *)X, trainingSize, 
+               (float *)X, trainingSize, 0.0, 
+               (float *)K, trainingSize );
+  }
+  else
+  {
+    cblas_dgemm( CblasColMajor, CblasNoTrans, CblasTrans, 
+               trainingSize, trainingSize, featureVectorSize,
+               1.0, (double *)X, trainingSize, 
+               (double *)X, trainingSize, 0.0, 
+               (double *)K, trainingSize );
+  }
+  
                
 #if 0
   for( int col = 0; col < trainingSize; col++ )
@@ -103,7 +123,7 @@ int main(int argc, char **argv)
     numChangedAlphas = 0;
     for( int i = 0; i < trainingSize; i++ )
     { 
-      float tempSum = 0.0f;
+      floatType_t tempSum = (floatType_t)0.0;
       for( int j = 0; j < trainingSize; j++ )
       {  
         tempSum += ( alphas[j] * y[j] * K[ INDX(j,i,trainingSize) ] );
@@ -113,21 +133,34 @@ int main(int argc, char **argv)
       E[i] = b + tempSum - y[i];
 
       if( (y[i]*E[i] < -tol && alphas[i] < C ) || 
-           (y[i]*E[i] > tol  && alphas[i] > 0.0f ) )
+           (y[i]*E[i] > tol  && alphas[i] > (floatType_t) 0.0 ) )
       {
 
+        int j;
+#if 0
         int j = ceil( (float) trainingSize * 
                       float( rand() ) / ( float(RAND_MAX) + 1.0f ) );
 
         while( j == i ) 
           j = ceil( (float) trainingSize * 
                       float( rand() ) / ( float(RAND_MAX) + 1.0f ) );
+#endif
+//        printf("seed before %ld\n",seed);
+ //       printf("ans = %ld\n",AA * seed + CC);
+        seed = (AA * seed + CC) % MM; 
+//        printf("AA %ld\n",AA);
+ //       printf("CC %ld\n",CC);
+  //      printf("MM %ld\n",MM);
+   //     printf("seed = %ld\n",seed);
+       double rx = (double)seed / (double)MM;
+   //     printf("rx = %f\n",rx);
 //        j = 3918;
-//       j = (i + 1) % trainingSize;
- //      printf("j =  %d\n",j+1);
-  //     if( j >= 19 ) exit(911);
+      j = floor( rx * double(trainingSize ) );
+  //     j = (i + 1) % trainingSize;
+//       printf("j =  %d\n",j+1);
+//      if( j > 3990 ) exit(911);
 
-        tempSum = 0.0f;
+        tempSum = (floatType_t)0.0;
         for( int k = 0; k < trainingSize; k++ )
         {  
           tempSum += ( alphas[k] * y[k] * K[ INDX(k,j,trainingSize) ] );
@@ -141,22 +174,22 @@ int main(int argc, char **argv)
 //printf("b = %f\n",b);
 //printf("tempsum = %f\n",tempSum);
 //printf("Yj = %f\n",y[j] );
-//printf("E_j = %f\n\n",E[j]);
+//printf("E_j = %f\n",E[j]);
 
-        float alphaIOld = alphas[i];
-        float alphaJOld = alphas[j];
+        floatType_t alphaIOld = alphas[i];
+        floatType_t alphaJOld = alphas[j];
 
 //        printf("alphaIOld %f alphaJOld %f\n",alphaIOld,alphaJOld);
  //       printf("yi %f yj %f\n",y[i],y[j]);
 
         if( y[i] == y[j] )
         {
-          L = max( 0.0f, alphas[j] + alphas[i] - C );
+          L = max( (floatType_t)0.0, alphas[j] + alphas[i] - C );
           H = min( C, alphas[j] + alphas[i] );
         } /* end if */
         else
         {
-          L = max( 0.0f, alphas[j] - alphas[i] );
+          L = max( (floatType_t)0.0, alphas[j] - alphas[i] );
           H = min( C, C + alphas[j] - alphas[i] );
         } /* end else */
 
@@ -164,13 +197,13 @@ int main(int argc, char **argv)
 
         if( L == H ) continue;
 
-        eta = 2.0f * K[INDX(i,j,trainingSize)] 
+        eta = (floatType_t)2.0 * K[INDX(i,j,trainingSize)] 
                    - K[INDX(i,i,trainingSize)] 
                    - K[INDX(j,j,trainingSize)];
 
-   //     printf("eta %f\n",eta);
+//        printf("eta %f\n",eta);
 
-        if( eta >= 0.0f ) continue;
+        if( eta >= (floatType_t)0.0 ) continue;
 
         alphas[j] = alphas[j] - ( y[j] * ( E[i] - E[j] ) ) / eta;
 
@@ -186,24 +219,29 @@ int main(int argc, char **argv)
         alphas[i] = alphas[i] + y[i] * y[j] * ( alphaJOld - alphas[j] );
 
 
-        float b1 = b - E[i]
+        floatType_t b1 = b - E[i]
                      - y[i] * (alphas[i] - alphaIOld) * 
                             K[INDX(i,j,trainingSize)]
                      - y[j] * (alphas[j] - alphaJOld) * 
                             K[INDX(i,j,trainingSize)];
 
-        float b2 = b - E[j]
+        floatType_t b2 = b - E[j]
                      - y[i] * (alphas[i] - alphaIOld) * 
                             K[INDX(i,j,trainingSize)]
                      - y[j] * (alphas[j] - alphaJOld) * 
                             K[INDX(j,j,trainingSize)];
 
+ //       printf("b1 = %f\n",b1);
+  //      printf("b2 = %f\n",b2);
+   //     printf("alphas(i) = %f\n",alphas[i]);
+    //    printf("alphas(j) = %f\n",alphas[j]);
 
 
-        if( 0.0f < alphas[i] && alphas[i] < C ) b = b1;
-        else if( 0.0f < alphas[j] && alphas[j] < C ) b = b2;
-        else b = (b1 + b2) / 2.0f;
+        if( (floatType_t)0.0 < alphas[i] && alphas[i] < C ) b = b1;
+        else if( (floatType_t)0.0 < alphas[j] && alphas[j] < C ) b = b2;
+        else b = (b1 + b2) / (floatType_t)2.0;
 
+//printf("b is %f\n",b);
 
         numChangedAlphas = numChangedAlphas + 1;
 
@@ -216,10 +254,12 @@ int main(int argc, char **argv)
     if( numChangedAlphas == 0 ) passes = passes + 1;
     else passes = 0; 
 
-//    printf("b = %f\n",b);
+//printf("new pass\n\n");
+ //   printf("b = %f\n",b);
 
     fprintf(stdout,".");
     dots = dots + 1;
+//    if( dots == 14 ) exit(911);
     if( dots > 78 )
     {
       dots = 0;
@@ -228,6 +268,16 @@ int main(int argc, char **argv)
     
    
   } /* end while */
+
+  int *idx;
+  idx = (int *) malloc( sizeof(int) * trainingSize );
+  if( idx == NULL ) fprintf(stderr,"Houston we have a problem with IDX\n");
+
+  for( int i = 0; i < trainingSize; i++ )
+  {
+    idx[i] = ( alphas[i] > 0.0f ) ? 1 : 0;
+//    printf(" %d\n",idx[i] );
+  } /* end for */
 
   printf("b is %f\n",b);
 
