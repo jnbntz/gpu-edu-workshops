@@ -25,6 +25,13 @@ typedef double floatType_t;
 /* function defs */
 
 void readMatrixFromFile( char *, int *, const int, const int );
+
 double myRand( unsigned long * );
-void svmPredict( floatType_t *, floatType_t *, floatType_t, 
-                 int, int, int * );
+
+void svmTrain( floatType_t const *, floatType_t const *, floatType_t const,
+               const int, const int,
+               const floatType_t , const int,
+               floatType_t *, floatType_t * );
+
+void svmPredict( floatType_t const *, floatType_t const *, floatType_t const, 
+                 int const, int const, int * );

@@ -25,4 +25,6 @@ awk 'NF > 0' > qwerty.txt
 
 ./x.porterStemmer qwerty.txt
 
+python processEmail.py > emailVector.txt
+
 rm -f qwerty.txt

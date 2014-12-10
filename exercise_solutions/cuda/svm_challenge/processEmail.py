@@ -11,7 +11,7 @@ f.close()
 
 email = []
 
-f = open('testemail1')
+f = open('qwerty.txt')
 [email.extend(line.strip().split()) for line in f]
 f.close
 
