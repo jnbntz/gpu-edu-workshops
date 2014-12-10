@@ -40,6 +40,13 @@ void svmPredict( floatType_t *X, floatType_t *W, floatType_t b,
 } /* end svmTrain */
 
 
+double myRand( unsigned long *seed )
+{
+    *seed = (AA * (*seed) + CC) % MM;
+    double rx = (double)*seed / (double)MM; 
+    return rx;
+} /* end myRand */
+
 void readMatrixFromFile( char *fileName, 
                           int *matrix, 
                      const int rows, 
@@ -65,8 +72,6 @@ void readMatrixFromFile( char *fileName,
         fprintf(stderr,"error reading training matrix file \n");
         exit(911);
       } /* end if */
-//      printf("row %d col %d value %d\n",row,col,
- //       trainingMatrix[ INDX(row,col,trainingSize)]);
     } /* end for col */
   } /* end for row */
 

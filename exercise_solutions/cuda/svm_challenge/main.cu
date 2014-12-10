@@ -6,66 +6,105 @@
 
 int main(int argc, char **argv) 
 {
-  char resultVectorFilename[] = "y_vals.txt";
-  char trainingSetFilename[] = "X_vals.txt";
+
+/* declare file pointers */
+
+  char resultVectorFilename[]     = "y_vals.txt";
+  char trainingSetFilename[]      = "X_vals.txt";
+  char testSetFilename[]          = "testSet.txt";
+  char testResultVectorFilename[] = "ytest.txt";
+
+/* define constants */
+
   int featureVectorSize = FEATURE_VECTOR_SIZE;
-  int trainingSize = TRAINING_SIZE;
-  int *resultVector, *trainingMatrix;
-  int passes=0, maxPasses=5, numChangedAlphas, dots=12, *pred;
+  int trainingSize      = TRAINING_SET_SIZE;
+  int testSize          = TEST_SET_SIZE;
+
+/* define the arrays going to be used */
+
+  int *resultVector, *trainingMatrix, *pred;
   floatType_t *X, *y, *K, *E, *alphas, *W;
+
+/* declare various constants */
+
+  int passes=0, maxPasses=5, numChangedAlphas, dots=12;
   floatType_t b=0.0, eta=0.0, L=0.0, H=0.0, tol=1.0e-3;
   floatType_t C=0.1;
+  unsigned long seed = 8675309;
 
-unsigned long seed = 8675309;
+/* malloc resultVector */
 
   resultVector = (int *) malloc( sizeof(int) * trainingSize );
-  if( resultVector == NULL ) fprintf(stderr,"Houston we have a problem\n");
+  if( resultVector == NULL ) 
+    fprintf(stderr,"Houston we have a problem\n");
+
+/* read resultVector from file */
  
   readMatrixFromFile( resultVectorFilename, resultVector, 
                       trainingSize, 1 );
 
-  trainingMatrix = (int *) malloc( sizeof(int) * trainingSize * 
-                           featureVectorSize );
-  if( trainingMatrix == NULL ) fprintf(stderr,"Houston more problems\n");
-
-  readMatrixFromFile( trainingSetFilename, trainingMatrix, 
-                      trainingSize, featureVectorSize );
+/* malloc y */
 
   y = (floatType_t *) malloc( sizeof(floatType_t) * trainingSize );
-  if( y == NULL ) fprintf(stderr,"error malloc y\n");
+  if( y == NULL ) 
+    fprintf(stderr,"error malloc y\n");
 
-  X = (floatType_t *) malloc( sizeof(floatType_t) * trainingSize * featureVectorSize );
-  if( X == NULL ) fprintf(stderr,"error malloc X\n");
-
-  K = (floatType_t *) malloc( sizeof(floatType_t) * trainingSize * trainingSize );
-  if( K == NULL ) fprintf(stderr,"error malloc K\n");
+/* copy result vector into y as float */
 
   for( int i = 0; i < trainingSize; i++ ) 
     y[i] = (floatType_t) resultVector[i];
 
+/* malloc the training matrix.  each row is a different training
+   example
+*/
+
+  trainingMatrix = (int *) malloc( sizeof(int) * trainingSize * 
+                           featureVectorSize );
+  if( trainingMatrix == NULL ) 
+    fprintf(stderr,"Houston more problems\n");
+
+/* read training examples from file as a matrix */
+
+  readMatrixFromFile( trainingSetFilename, trainingMatrix, 
+                      trainingSize, featureVectorSize );
+
+/* mallox X */
+
+  X = (floatType_t *) malloc( sizeof(floatType_t) * trainingSize * 
+                              featureVectorSize );
+  if( X == NULL ) 
+    fprintf(stderr,"error malloc X\n");
+
+/* copy trainingMatrix into X as floats */
+
   for( int i = 0; i < trainingSize * featureVectorSize; i++ )
     X[i] = (floatType_t) trainingMatrix[i];
 
+/* malloc K, the kernel matrix */
+
+  K = (floatType_t *) malloc( sizeof(floatType_t) * trainingSize * 
+                              trainingSize );
+  if( K == NULL ) 
+    fprintf(stderr,"error malloc K\n");
+
+/* malloc E */
+
   E = (floatType_t *) malloc( sizeof(floatType_t) * trainingSize );
-  if( E == NULL ) fprintf(stderr,"error malloc E\n");
+  if( E == NULL ) 
+    fprintf(stderr,"error malloc E\n");
+
+/* zero out E */
 
   memset( E, 0, sizeof(floatType_t) * trainingSize );
+
+/* malloc alphas */
 
   alphas = (floatType_t *) malloc( sizeof(floatType_t) * trainingSize );
   if( alphas == NULL ) fprintf(stderr,"error malloc alphas\n");
 
+/* zero alphas */
+
   memset( alphas, 0, sizeof(floatType_t) * trainingSize );
-
-#if 0
-  for( int row = 0; row < trainingSize; row++ )
-    printf("index %d resultVector %d\n",row, resultVector[row] );
-
-  for( int row = 0; row < trainingSize; row++ )
-  { 
-    for( int col = 0; col < featureVectorSize; col++ )
-      printf("row %d col %d value %d\n",row,col,trainingMatrix[INDX(row,col,trainingSize)]);
-  } 
-#endif
 
 /* map 0 values to -1 for training */
 
@@ -73,7 +112,10 @@ unsigned long seed = 8675309;
   {
     if( y[i] == 0.0 ) y[i] = -1.0;
   } /* end for */
-/* compute the Kernel on every pair of examples */
+
+/* compute the Kernel on every pair of examples.
+   K = X * X'
+*/
 
   if( sizeof( floatType_t ) == 4 )
   {
@@ -93,15 +135,6 @@ unsigned long seed = 8675309;
   }
   
                
-#if 0
-  for( int col = 0; col < trainingSize; col++ )
-  { 
-    for( int row = 0; row < trainingSize; row++ )
-      printf("row %d col %d value %f\n",row,col,K[INDX(row,col,trainingSize)]);
-    printf(" %d\n",(int) K[INDX(row,col,trainingSize)] );
-  } 
-#endif 
-
   while( passes < maxPasses )
   {
     numChangedAlphas = 0;
@@ -120,51 +153,20 @@ unsigned long seed = 8675309;
            (y[i]*E[i] > tol  && alphas[i] > (floatType_t) 0.0 ) )
       {
 
-        int j;
-#if 0
-        int j = ceil( (float) trainingSize * 
-                      float( rand() ) / ( float(RAND_MAX) + 1.0f ) );
-
-        while( j == i ) 
-          j = ceil( (float) trainingSize * 
-                      float( rand() ) / ( float(RAND_MAX) + 1.0f ) );
-#endif
-//        printf("seed before %ld\n",seed);
- //       printf("ans = %ld\n",AA * seed + CC);
-        seed = (AA * seed + CC) % MM; 
-//        printf("AA %ld\n",AA);
- //       printf("CC %ld\n",CC);
-  //      printf("MM %ld\n",MM);
-   //     printf("seed = %ld\n",seed);
-       double rx = (double)seed / (double)MM;
-   //     printf("rx = %f\n",rx);
-//        j = 3918;
-      j = floor( rx * double(trainingSize ) );
-  //     j = (i + 1) % trainingSize;
-//       printf("j =  %d\n",j+1);
-//      if( j > 3990 ) exit(911);
+        double rx = myRand( &seed );
+        int j = floor( rx * double(trainingSize ) );
 
         tempSum = (floatType_t)0.0;
         for( int k = 0; k < trainingSize; k++ )
         {  
           tempSum += ( alphas[k] * y[k] * K[ INDX(k,j,trainingSize) ] );
-//        if( alphas[k] != 0.0f ) 
- //          printf("k %d alphas %f y %f K %f\n",k+1,alphas[k],
-  //           y[k],K[INDX(k,j,trainingSize)] );
         } /* end for j */
         
         E[j] = b + tempSum - y[j];
 
-//printf("b = %f\n",b);
-//printf("tempsum = %f\n",tempSum);
-//printf("Yj = %f\n",y[j] );
-//printf("E_j = %f\n",E[j]);
-
         floatType_t alphaIOld = alphas[i];
         floatType_t alphaJOld = alphas[j];
 
-//        printf("alphaIOld %f alphaJOld %f\n",alphaIOld,alphaJOld);
- //       printf("yi %f yj %f\n",y[i],y[j]);
 
         if( y[i] == y[j] )
         {
@@ -177,15 +179,11 @@ unsigned long seed = 8675309;
           H = min( C, C + alphas[j] - alphas[i] );
         } /* end else */
 
-  //      printf("L %f H %f\n",L,H);
-
         if( L == H ) continue;
 
         eta = (floatType_t)2.0 * K[INDX(i,j,trainingSize)] 
                    - K[INDX(i,i,trainingSize)] 
                    - K[INDX(j,j,trainingSize)];
-
-//        printf("eta %f\n",eta);
 
         if( eta >= (floatType_t)0.0 ) continue;
 
@@ -215,35 +213,21 @@ unsigned long seed = 8675309;
                      - y[j] * (alphas[j] - alphaJOld) * 
                             K[INDX(j,j,trainingSize)];
 
- //       printf("b1 = %f\n",b1);
-  //      printf("b2 = %f\n",b2);
-   //     printf("alphas(i) = %f\n",alphas[i]);
-    //    printf("alphas(j) = %f\n",alphas[j]);
-
 
         if( (floatType_t)0.0 < alphas[i] && alphas[i] < C ) b = b1;
         else if( (floatType_t)0.0 < alphas[j] && alphas[j] < C ) b = b2;
         else b = (b1 + b2) / (floatType_t)2.0;
 
-//printf("b is %f\n",b);
-
         numChangedAlphas = numChangedAlphas + 1;
 
-//        printf("numChangedAlphas %d\n",numChangedAlphas );
-
       } /* end if */
-
     } /* end for i */ 
    
     if( numChangedAlphas == 0 ) passes = passes + 1;
     else passes = 0; 
 
-//printf("new pass\n\n");
- //   printf("b = %f\n",b);
-
     fprintf(stdout,".");
     dots = dots + 1;
-//    if( dots == 14 ) exit(911);
     if( dots > 78 )
     {
       dots = 0;
@@ -260,10 +244,8 @@ unsigned long seed = 8675309;
   for( int i = 0; i < trainingSize; i++ )
   {
     idx[i] = ( alphas[i] > 0.0f ) ? 1 : 0;
-//    printf(" %d\n",idx[i] );
   } /* end for */
 
-//  printf("b is %f\n",b);
 
   W = (floatType_t *) malloc( sizeof(floatType_t) * featureVectorSize );
   if( W == NULL ) fprintf(stderr,"error malloc yW\n");
@@ -289,33 +271,8 @@ unsigned long seed = 8675309;
                (double *)W, 1 );
   }
 
-//  for( int i = 0; i < featureVectorSize; i++ )
- //   printf("%f\n",W[i]);
-
-//  p = alphas;
   pred = (int *) malloc( sizeof(int) * trainingSize );
   if( pred == NULL ) fprintf(stderr,"problem with malloc p in main\n");
-
-#if 0
-  for( int i = 0; i < trainingSize; i++ ) p[i] = b;
-
-  if( sizeof( floatType_t ) == 4 )
-  {
-    cblas_sgemv( CblasColMajor, CblasNoTrans,
-               trainingSize, featureVectorSize,
-               1.0, (float *)X, trainingSize,
-               (float *)W, 1, 1.0,
-               (float *)p, 1 );
-  }
-  else
-  {
-    cblas_dgemv( CblasColMajor, CblasNoTrans,
-               trainingSize, featureVectorSize,
-               1.0, (double *)X, trainingSize,
-               (double *)W, 1, 1.0,
-               (double *)p, 1 );
-  }
-#endif
 
   svmPredict( X, W, b, trainingSize, featureVectorSize, pred );
   
@@ -323,11 +280,35 @@ unsigned long seed = 8675309;
   
   for( int i = 0; i < trainingSize; i++ ) 
   {
-//    int prediction = (p[i] >= 0.0) ? 1 : 0;
     mean += (pred[i] == resultVector[i]) ? 1.0 : 0.0;
   } /* end for */
+
   mean /= (double) trainingSize;
-  printf("Prediction success rate is %f\n",mean*100.0);
+  printf("Prediction success rate on training set is %f\n",mean*100.0);
+
+
+  readMatrixFromFile( testResultVectorFilename, resultVector, 
+                      testSize, 1 );
+  for( int i = 0; i < testSize; i++ ) 
+    y[i] = (floatType_t) resultVector[i];
+
+  readMatrixFromFile( testSetFilename, trainingMatrix, 
+                      testSize, featureVectorSize );
+  for( int i = 0; i < testSize * featureVectorSize; i++ )
+    X[i] = (floatType_t) trainingMatrix[i];
+
+  svmPredict( X, W, b, testSize, featureVectorSize, pred );
+
+  mean = 0.0;
+  
+  for( int i = 0; i < testSize; i++ ) 
+  {
+    mean += (pred[i] == resultVector[i]) ? 1.0 : 0.0;
+  } /* end for */
+
+  mean /= (double) testSize;
+  printf("Prediction success rate on test set is %f\n",mean*100.0);
+
 
   free(pred);
   free(W);
