@@ -51,7 +51,8 @@ int main(int argc, char **argv)
   if( Y == NULL ) 
     fprintf(stderr,"error malloc y\n");
 
-/* copy result vector into y as float */
+/* copy result vector into y as float 
+   aloso map 0 values to -1 for training */
 
   for( int i = 0; i < numTrainingExamples; i++ ) 
   {

@@ -12,6 +12,26 @@ typedef double floatType_t;
 
 #define INDX(row,col,ld) (((col) * (ld)) + (row))
 
+/* macros for max/min to combine with argmin */
+
+#define MYMAX(val,array,i,index) \
+if( array[i] > val ) \
+{ \
+  val = array[i]; \
+  index = i; \
+} \
+
+#define MYMIN(val,array,i,index) \
+if( array[i] < val ) \
+{ \
+  val = array[i]; \
+  index = i; \
+} \
+
+#define CLIP(val,min,max) \
+if( (val) < (min) ) val = (min); \
+else if( (val) > (max) ) val = (max);
+
 #define FEATURE_VECTOR_SIZE (1899)
 #define TRAINING_SET_SIZE (4000)
 #define TEST_SET_SIZE (1000)
@@ -27,6 +47,14 @@ typedef double floatType_t;
 void readMatrixFromFile( char *, int *, const int, const int );
 
 double myRand( unsigned long * );
+
+void calculateBI( floatType_t const *,
+                  floatType_t const *,
+                  floatType_t const *,
+                  int ,
+                  floatType_t *, floatType_t *,
+                  int *, int *,
+                  floatType_t const );
 
 void svmTrain( floatType_t const *, floatType_t const *, floatType_t const,
                const int, const int,
