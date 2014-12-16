@@ -23,6 +23,8 @@ int main(int argc, char **argv)
   floatType_t const tol         = 1.0e-3;
   floatType_t const C           = 0.1;
   int const maxPasses           = 5;
+  char spam[]                   = "SPAM";
+  char notSpam[]                = "NOT SPAM";
 
 /* declare variables with initial values */
 
@@ -184,8 +186,9 @@ int main(int argc, char **argv)
 
   svmPredict( Xtest, W, b, 1, numFeatures, pred );
 
-  printf("Email test results 1 is spam 0 is NOT spam\n");
-  printf("File Name %s, classification %d\n",sampleEmailFilename, pred[0]);
+  printf("Email test results 1 is SPAM 0 is NOT SPAM\n");
+  printf("File Name %s, classification %d %s\n",
+          sampleEmailFilename, pred[0], pred[0]==1 ? spam : notSpam);
 
   free(testVector);
   free(testMatrix);

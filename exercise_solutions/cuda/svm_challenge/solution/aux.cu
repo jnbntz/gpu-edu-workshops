@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <math.h>
 #include "headers.h"
+#include "cublas_v2.h"
+#include "kernels.h"
 
 #define INDX(row,col,ld) (((col) * (ld)) + (row))
 
@@ -17,12 +19,20 @@ void svmTrain( floatType_t const *X,
 
 /* declare pointers for arrays */
   floatType_t *K, *alphas, *f;
+  floatType_t *d_K, *d_alphas, *d_f, *d_y;
+  floatType_t *d_X;
 
 /* declare variables */
   floatType_t bHigh, bLow, eta;
   floatType_t alphaILow=0.0, alphaIHigh=0.0; 
   floatType_t alphaILowPrime=0.0, alphaIHighPrime=0.0;
   int ILow, IHigh;
+
+/* cuBLAS data */
+  cublasStatus_t stat;
+  cublasHandle_t handle;
+  floatType_t const alpha=1.0; 
+  floatType_t const beta =0.0;
 
 /* malloc alphas */
 
@@ -32,6 +42,11 @@ void svmTrain( floatType_t const *X,
 /* zero alphas */
 
   memset( alphas, 0, sizeof(floatType_t) * numTrainingExamples );
+
+  CUDA_CALL( cudaMalloc( (void**) &d_alphas, 
+               sizeof(floatType_t) * numTrainingExamples ) );
+  CUDA_CALL( cudaMemset( d_alphas, 0, 
+               sizeof(floatType_t)*numTrainingExamples ) );
 
 /* malloc f */
 
@@ -44,12 +59,34 @@ void svmTrain( floatType_t const *X,
   for( int i = 0; i < numTrainingExamples; i++ )
     f[i] = -y[i];
 
+  CUDA_CALL( cudaMalloc( (void**) &d_y,
+               sizeof(floatType_t) * numTrainingExamples ) );
+  CUDA_CALL( cudaMemcpy( d_y, y, sizeof(floatType_t)*numTrainingExamples,
+               cudaMemcpyHostToDevice ) );
+
+  CUDA_CALL( cudaMalloc( (void**) &d_f,
+               sizeof(floatType_t) * numTrainingExamples ) );
+  CUDA_CALL( cudaMemcpy( d_f, f, sizeof(floatType_t)*numTrainingExamples,
+               cudaMemcpyHostToDevice ) );
+
 /* malloc K, the kernel matrix */
 
   K = (floatType_t *) malloc( sizeof(floatType_t) * numTrainingExamples *
                               numTrainingExamples );
   if( K == NULL )
     fprintf(stderr,"error malloc K\n");
+
+  CUDA_CALL( cudaMalloc( (void**) &d_K,
+           sizeof(floatType_t) * numTrainingExamples * numTrainingExamples ) );
+  CUDA_CALL( cudaMemset( d_K, 0, 
+               sizeof(floatType_t)*numTrainingExamples*numTrainingExamples ));
+
+  CUDA_CALL( cudaMalloc( (void**) &d_X, 
+           sizeof(floatType_t) * numTrainingExamples * numFeatures ) );
+
+  CUDA_CALL( cudaMemcpy( d_X, X, 
+           sizeof(floatType_t)*numFeatures*numTrainingExamples,
+           cudaMemcpyHostToDevice ) );
 
 /* compute the Kernel on every pair of examples.
    K = X * X'
@@ -58,22 +95,44 @@ void svmTrain( floatType_t const *X,
    large loop
 */
 
-  if( sizeof( floatType_t ) == 4 )
+  stat = cublasCreate( &handle );
+  if( stat != CUBLAS_STATUS_SUCCESS ) printf("error creating cublas handle\n");
+
+  if( sizeof( floatType_t ) == sizeof( float ) )
   {
+#if 0
     cblas_sgemm( CblasColMajor, CblasNoTrans, CblasTrans,
                numTrainingExamples, numTrainingExamples, numFeatures,
                1.0, (float *)X, numTrainingExamples,
                (float *)X, numTrainingExamples, 0.0,
                (float *)K, numTrainingExamples );
+#endif
+    cublasSgemm( handle, CUBLAS_OP_N, CUBLAS_OP_T,
+               numTrainingExamples, numTrainingExamples, numFeatures,
+               (float *)&alpha, (float *)d_X, numTrainingExamples,
+               (float *)d_X, numTrainingExamples, (float *)&beta,
+               (float *)d_K, numTrainingExamples );
+   
   }
   else
   {
+#if 0
     cblas_dgemm( CblasColMajor, CblasNoTrans, CblasTrans,
                numTrainingExamples, numTrainingExamples, numFeatures,
                1.0, (double *)X, numTrainingExamples,
                (double *)X, numTrainingExamples, 0.0,
                (double *)K, numTrainingExamples );
+#endif
+    cublasDgemm( handle, CUBLAS_OP_N, CUBLAS_OP_T,
+               numTrainingExamples, numTrainingExamples, numFeatures,
+               (double *)&alpha, (double *)d_X, numTrainingExamples,
+               (double *)d_X, numTrainingExamples, (double *)&beta,
+               (double *)d_K, numTrainingExamples );
   }
+
+  CUDA_CALL( cudaMemcpy( K, d_K, 
+           sizeof(floatType_t)*numTrainingExamples*numTrainingExamples,
+           cudaMemcpyDeviceToHost ) );
 
 /* calculate bHigh/bLow/IHigh/ILow first time */
   calculateBI( f, alphas, y, numTrainingExamples,
@@ -107,10 +166,13 @@ void svmTrain( floatType_t const *X,
   alphas[IHigh] = alphaIHighPrime;
 
 /* start iterative loop */
+    CUDA_CALL( cudaMemcpy( d_f, f, sizeof(floatType_t)*numTrainingExamples,
+                           cudaMemcpyHostToDevice ) );
 
   while( true )
   {
 /* update f array */
+#if 0
     for( int i = 0; i < numTrainingExamples; i++ )
     {
       f[i] = f[i] 
@@ -119,6 +181,15 @@ void svmTrain( floatType_t const *X,
            + ( ( alphaILowPrime - alphaILow ) 
                * y[ILow] * K[INDX(ILow,i,numTrainingExamples)] );
     } /* end for i */
+#else
+    k_updateF<<<4000/512 + 1,512>>>( d_f, alphaIHighPrime, alphaIHigh, IHigh,
+                           alphaILowPrime, alphaILow, ILow,
+                           d_K, numTrainingExamples, d_y );
+#endif
+    CUDA_CHECK()
+    CUDA_CALL( cudaDeviceSynchronize() );
+    CUDA_CALL( cudaMemcpy( f, d_f, sizeof(floatType_t)*numTrainingExamples,
+                           cudaMemcpyDeviceToHost ) );
 
 /* calculate bHigh/bLow/IHigh/ILow */
     calculateBI( f, alphas, y, numTrainingExamples,
@@ -158,7 +229,7 @@ void svmTrain( floatType_t const *X,
 
 /* calculate W from alphas */
 
-  if( sizeof( floatType_t ) == 4 )
+  if( sizeof( floatType_t ) == sizeof( float ) )
   {
     for( int i = 0; i < numTrainingExamples; i++ )
       alphas[i] *= y[i];
@@ -179,6 +250,11 @@ void svmTrain( floatType_t const *X,
                (double *)W, 1 );
   }
   
+  CUDA_CALL( cudaFree( d_alphas ) );
+  CUDA_CALL( cudaFree( d_f ) );
+  CUDA_CALL( cudaFree( d_K ) );
+  CUDA_CALL( cudaFree( d_X ) );
+  CUDA_CALL( cudaFree( d_y ) );
   free(K);
   free(f);
   free(alphas);
