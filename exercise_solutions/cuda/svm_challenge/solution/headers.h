@@ -46,12 +46,6 @@ else if( (val) > (max) ) val = (max);
 #define TRAINING_SET_SIZE (4000)
 #define TEST_SET_SIZE (1000)
 
-/* constants for the RNG */
-
-#define AA (1664525UL)
-#define CC (1013904223UL)
-#define MM (4294967296UL)
-
 #ifdef DEBUG
 #define CUDA_CALL(F)  if( (F) != cudaSuccess ) \
   {printf("Error %s at %s:%d\n", cudaGetErrorString(cudaGetLastError()), \

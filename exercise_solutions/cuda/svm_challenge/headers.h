@@ -10,7 +10,7 @@ extern "C"
  * currently suppored
  */
 
-typedef float floatType_t;
+typedef double floatType_t;
 
 /* macro to convert 2d coords to 1d offset */
 
@@ -46,12 +46,6 @@ else if( (val) > (max) ) val = (max);
 #define TRAINING_SET_SIZE (4000)
 #define TEST_SET_SIZE (1000)
 
-/* constants for the RNG */
-
-#define AA (1664525UL)
-#define CC (1013904223UL)
-#define MM (4294967296UL)
-
 /* CUDA debugging */
 
 #ifdef DEBUG
@@ -70,8 +64,6 @@ else if( (val) > (max) ) val = (max);
 
 void readMatrixFromFile( char *, int *, const int, const int );
 
-double myRand( unsigned long * );
-
 void calculateBI( floatType_t const *,
                   floatType_t const *,
                   floatType_t const *,
@@ -82,8 +74,7 @@ void calculateBI( floatType_t const *,
 
 void svmTrain( floatType_t const *, floatType_t const *, floatType_t const,
                const int, const int,
-               const floatType_t , const int,
-               floatType_t *, floatType_t * );
+               const floatType_t, floatType_t * );
 
-void svmPredict( floatType_t const *, floatType_t const *, floatType_t const, 
+void svmPredict( floatType_t const *, floatType_t const *,
                  int const, int const, int * );

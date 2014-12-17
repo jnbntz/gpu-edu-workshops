@@ -21,13 +21,8 @@ int main(int argc, char **argv)
   int const numTestExamples     = TEST_SET_SIZE;
   floatType_t const tol         = 1.0e-3;
   floatType_t const C           = 0.1;
-  int const maxPasses           = 5;
   char spam[]                   = "SPAM";
   char notSpam[]                = "NOT SPAM";
-
-/* declare variables with initial values */
-
-  floatType_t b = 0.0;
 
 /* define the arrays going to be used */
 
@@ -103,8 +98,7 @@ int main(int argc, char **argv)
 
   svmTrain(X, Y, C,
            numFeatures, numTrainingExamples,
-           tol, maxPasses,
-           W, &b );
+           tol, W );
 
 /* report time of svmTrain */
 
@@ -125,7 +119,7 @@ int main(int argc, char **argv)
 
 /* call the predict function to populate the pred vector */
 
-  svmPredict( X, W, b, numTrainingExamples, numFeatures, pred );
+  svmPredict( X, W, numTrainingExamples, numFeatures, pred );
 
 /* report time of svmTrain */
 
@@ -184,7 +178,7 @@ int main(int argc, char **argv)
 
 /* predict the test set data using our original classifier */
 
-  svmPredict( Xtest, W, b, numTestExamples, numFeatures, pred );
+  svmPredict( Xtest, W, numTestExamples, numFeatures, pred );
 
   mean = 0.0;
   for( int i = 0; i < numTestExamples; i++ ) 
@@ -207,7 +201,7 @@ int main(int argc, char **argv)
 
 /* predict whether the email is spam using our original classifier */
 
-  svmPredict( Xtest, W, b, 1, numFeatures, pred );
+  svmPredict( Xtest, W, 1, numFeatures, pred );
 
   printf("Email test results 1 is SPAM 0 is NOT SPAM\n");
   printf("File Name %s, classification %d %s\n",

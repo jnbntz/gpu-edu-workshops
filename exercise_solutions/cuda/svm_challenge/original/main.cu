@@ -3,7 +3,6 @@
 #include <math.h>
 #include "headers.h"
 
-
 int main(int argc, char **argv) 
 {
 
@@ -22,11 +21,8 @@ int main(int argc, char **argv)
   int const numTestExamples     = TEST_SET_SIZE;
   floatType_t const tol         = 1.0e-3;
   floatType_t const C           = 0.1;
-  int const maxPasses           = 5;
-
-/* declare variables with initial values */
-
-  floatType_t b = 0.0;
+  char spam[]                   = "SPAM";
+  char notSpam[]                = "NOT SPAM";
 
 /* define the arrays going to be used */
 
@@ -91,12 +87,26 @@ int main(int argc, char **argv)
   W = (floatType_t *) malloc( sizeof(floatType_t) * numFeatures );
   if( W == NULL ) fprintf(stderr,"error malloc yW\n");
 
+/* setup timers */
+
+  cudaEvent_t start, stop;
+  CUDA_CALL( cudaEventCreate( &start ) );
+  CUDA_CALL( cudaEventCreate( &stop ) );
+  CUDA_CALL( cudaEventRecord( start, 0 ) );
+
 /* call the training function */
 
   svmTrain(X, Y, C,
            numFeatures, numTrainingExamples,
-           tol, maxPasses,
-           W, &b );
+           tol, W );
+
+/* report time of svmTrain */
+
+  CUDA_CALL( cudaEventRecord( stop, 0 ) );
+  CUDA_CALL( cudaEventSynchronize( stop ) );
+  float elapsedTime;
+  CUDA_CALL( cudaEventElapsedTime( &elapsedTime, start, stop ) );
+  fprintf(stdout, "Total time for svmTrain is %f sec\n",elapsedTime/1000.0f );
 
 /* malloc a prediction vector which will be the predicted values of the 
    results vector based on the training function 
@@ -105,9 +115,18 @@ int main(int argc, char **argv)
   pred = (int *) malloc( sizeof(int) * numTrainingExamples );
   if( pred == NULL ) fprintf(stderr,"problem with malloc p in main\n");
 
+  CUDA_CALL( cudaEventRecord( start, 0 ) );
+
 /* call the predict function to populate the pred vector */
 
-  svmPredict( X, W, b, numTrainingExamples, numFeatures, pred );
+  svmPredict( X, W, numTrainingExamples, numFeatures, pred );
+
+/* report time of svmTrain */
+
+  CUDA_CALL( cudaEventRecord( stop, 0 ) );
+  CUDA_CALL( cudaEventSynchronize( stop ) );
+  CUDA_CALL( cudaEventElapsedTime( &elapsedTime, start, stop ) );
+  fprintf(stdout, "Total time for svmPredict is %f sec\n",elapsedTime/1000.0f );
   
 /* calculate how well the predictions matched the actual values */
 
@@ -159,7 +178,7 @@ int main(int argc, char **argv)
 
 /* predict the test set data using our original classifier */
 
-  svmPredict( Xtest, W, b, numTestExamples, numFeatures, pred );
+  svmPredict( Xtest, W, numTestExamples, numFeatures, pred );
 
   mean = 0.0;
   for( int i = 0; i < numTestExamples; i++ ) 
@@ -182,10 +201,11 @@ int main(int argc, char **argv)
 
 /* predict whether the email is spam using our original classifier */
 
-  svmPredict( Xtest, W, b, 1, numFeatures, pred );
+  svmPredict( Xtest, W, 1, numFeatures, pred );
 
-  printf("Email test results 1 is spam 0 is NOT spam\n");
-  printf("File Name %s, classification %d\n",sampleEmailFilename, pred[0]);
+  printf("Email test results 1 is SPAM 0 is NOT SPAM\n");
+  printf("File Name %s, classification %d %s\n",
+          sampleEmailFilename, pred[0], pred[0]==1 ? spam : notSpam);
 
   free(testVector);
   free(testMatrix);
