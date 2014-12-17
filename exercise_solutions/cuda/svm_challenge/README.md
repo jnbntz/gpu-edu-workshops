@@ -10,7 +10,8 @@ The training and test data are taken from his homework example in this course.
 He wrote the code in Octave and I changed it to C as well as altered the CPU
 and GPU algorithms to more closely align with the algorithm described in [1],
 labeled as "Algorithm 1" on page 105, where the working set choice is using the
-first order heuristic, also described in [1] and a linear kernel is used.
+first order heuristic, also described in [1] and a linear kernel is used.  The
+general algorithm is the SMO algorithm from Platt [2].
 
 The training set is 4000 emails and there are 1899 features (keywords).  This
 is admittedly a reduced training set and reduced feature size for illustration
@@ -19,6 +20,10 @@ purposes only.
 [1] B. C. Catanzaro, N. Sundaram, K. Keutzer, "Fast Support Vector Machine
 Training and Classification on Graphics Processors", Proceedings of the 25th
 International Comference on Machine Learning, Helsinki, Finland, 2008.
+
+[2] J. C. Platt, "Fast training of support vector machines using sequential
+minimal optimization", Advances in kernel methods: support vector learning,
+Cambridge, MA, USA: MIT Press.
 
 Instructions
 ------------
