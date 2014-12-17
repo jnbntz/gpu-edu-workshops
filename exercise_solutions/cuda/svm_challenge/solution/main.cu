@@ -26,15 +26,12 @@ int main(int argc, char **argv)
   char spam[]                   = "SPAM";
   char notSpam[]                = "NOT SPAM";
 
-/* declare variables with initial values */
-
-  floatType_t b = 0.0;
-
 /* define the arrays going to be used */
 
   int *trainingVector, *trainingMatrix, *pred;
-  int *testVector, *testMatrix;
-  floatType_t *X, *Y, *W, *Xtest;
+  int *testVector,     *testMatrix;
+  floatType_t *X,   *Y,   *W, *Xtest;
+  floatType_t *d_X, *d_Y, *d_W;
 
 /* malloc trainingVector */
 
@@ -62,6 +59,11 @@ int main(int argc, char **argv)
     if( Y[i] == 0.0 ) Y[i] = -1.0;
   } /* end for */
 
+  CUDA_CALL( cudaMalloc( (void**)&d_Y, 
+               sizeof(floatType_t) * numTrainingExamples ) );
+  CUDA_CALL( cudaMemcpy( d_Y, Y, sizeof(floatType_t) * numTrainingExamples, 
+               cudaMemcpyHostToDevice ) );
+
 /* malloc the training matrix.  each row is a different training
    example
 */
@@ -88,17 +90,46 @@ int main(int argc, char **argv)
   for( int i = 0; i < numTrainingExamples * numFeatures; i++ )
     X[i] = (floatType_t) trainingMatrix[i];
 
-/* malloc the Weight matrix */
+  CUDA_CALL( cudaMalloc( (void**) &d_X, 
+               sizeof(floatType_t) * numFeatures * numTrainingExamples ) );
+  CUDA_CALL( cudaMemcpy( d_X, X, 
+               sizeof(floatType_t) * numFeatures * numTrainingExamples,  
+               cudaMemcpyHostToDevice ) );
+
+/* malloc the W matrix */
 
   W = (floatType_t *) malloc( sizeof(floatType_t) * numFeatures );
   if( W == NULL ) fprintf(stderr,"error malloc yW\n");
 
+  CUDA_CALL( cudaMalloc( (void**) &d_W, sizeof(floatType_t) * numFeatures ) );
+  CUDA_CALL( cudaMemset( d_W, 0, sizeof(floatType_t) * numFeatures ) );
+
+/* setup timers */
+
+  cudaEvent_t start, stop;
+  CUDA_CALL( cudaEventCreate( &start ) );
+  CUDA_CALL( cudaEventCreate( &stop ) );
+  CUDA_CALL( cudaEventRecord( start, 0 ) );
+
 /* call the training function */
 
-  svmTrain(X, Y, C,
+  svmTrain(d_X, d_Y, C,
            numFeatures, numTrainingExamples,
            tol, maxPasses,
-           W, &b );
+           d_W );
+
+/* report time of svmTrain */
+
+  CUDA_CALL( cudaEventRecord( stop, 0 ) );
+  CUDA_CALL( cudaEventSynchronize( stop ) );
+  float elapsedTime;
+  CUDA_CALL( cudaEventElapsedTime( &elapsedTime, start, stop ) );
+  fprintf(stdout, "Total time for svmTrain is %f sec\n",elapsedTime/1000.0f );
+
+/* copy W matrix back to host for test of prediction */
+
+  CUDA_CALL( cudaMemcpy( W, d_W, sizeof(floatType_t) * numFeatures,
+               cudaMemcpyDeviceToHost ) );
 
 /* malloc a prediction vector which will be the predicted values of the 
    results vector based on the training function 
@@ -107,9 +138,20 @@ int main(int argc, char **argv)
   pred = (int *) malloc( sizeof(int) * numTrainingExamples );
   if( pred == NULL ) fprintf(stderr,"problem with malloc p in main\n");
 
+/* start timer for svmTrain */
+
+  CUDA_CALL( cudaEventRecord( start, 0 ) );
+
 /* call the predict function to populate the pred vector */
 
-  svmPredict( X, W, b, numTrainingExamples, numFeatures, pred );
+  svmPredict( X, W, numTrainingExamples, numFeatures, pred );
+
+/* report time of svmTrain */
+
+  CUDA_CALL( cudaEventRecord( stop, 0 ) );
+  CUDA_CALL( cudaEventSynchronize( stop ) );
+  CUDA_CALL( cudaEventElapsedTime( &elapsedTime, start, stop ) );
+  fprintf(stdout, "Total time for svmPredict is %f sec\n",elapsedTime/1000.0f );
   
 /* calculate how well the predictions matched the actual values */
 
@@ -161,7 +203,7 @@ int main(int argc, char **argv)
 
 /* predict the test set data using our original classifier */
 
-  svmPredict( Xtest, W, b, numTestExamples, numFeatures, pred );
+  svmPredict( Xtest, W, numTestExamples, numFeatures, pred );
 
   mean = 0.0;
   for( int i = 0; i < numTestExamples; i++ ) 
@@ -184,7 +226,7 @@ int main(int argc, char **argv)
 
 /* predict whether the email is spam using our original classifier */
 
-  svmPredict( Xtest, W, b, 1, numFeatures, pred );
+  svmPredict( Xtest, W, 1, numFeatures, pred );
 
   printf("Email test results 1 is SPAM 0 is NOT SPAM\n");
   printf("File Name %s, classification %d %s\n",

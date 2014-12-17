@@ -10,7 +10,7 @@ extern "C"
  * currently suppored
  */
 
-typedef double floatType_t;
+typedef float floatType_t;
 
 /* macro to convert 2d coords to 1d offset */
 
@@ -51,6 +51,20 @@ else if( (val) > (max) ) val = (max);
 #define AA (1664525UL)
 #define CC (1013904223UL)
 #define MM (4294967296UL)
+
+/* CUDA debugging */
+
+#ifdef DEBUG
+#define CUDA_CALL(F)  if( (F) != cudaSuccess ) \
+  {printf("Error %s at %s:%d\n", cudaGetErrorString(cudaGetLastError()), \
+   __FILE__,__LINE__); exit(-1);}
+#define CUDA_CHECK()  if( (cudaPeekAtLastError()) != cudaSuccess ) \
+  {printf("Error %s at %s:%d\n", cudaGetErrorString(cudaGetLastError()), \
+   __FILE__,__LINE__-1); exit(-1);}
+#else
+#define CUDA_CALL(F) (F)
+#define CUDA_CHECK()
+#endif
 
 /* function defs */
 

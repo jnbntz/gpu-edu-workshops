@@ -8,7 +8,7 @@ all: x.train x.porterStemmer
 x.train: main.o aux.o
 	$(NVCC) $(ARCH) -o x.train main.o aux.o -L/usr/lib64/atlas -lcblas -latlas -lcublas
 
-main.o: main.cu headers.h
+main.o: main.cu headers.h kernels.h
 	$(NVCC) $(ARCH) -c main.cu -DDEBUG
 
 aux.o: aux.cu headers.h kernels.h

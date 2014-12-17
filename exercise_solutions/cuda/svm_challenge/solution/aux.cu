@@ -7,26 +7,25 @@
 
 #define INDX(row,col,ld) (((col) * (ld)) + (row))
 
-#if 1
-void svmTrain( floatType_t const *X, 
-               floatType_t const *y, 
+void svmTrain( floatType_t const *d_X, 
+               floatType_t const *d_y, 
                floatType_t const C,
                int const numFeatures, int const numTrainingExamples,
                floatType_t const tol, int const maxPasses, 
-               floatType_t *W, 
-               floatType_t *b )
+               floatType_t *d_W )
 {
 
 /* declare pointers for arrays */
-  floatType_t *K, *alphas, *f;
-  floatType_t *d_K, *d_alphas, *d_f, *d_y;
-  floatType_t *d_X;
+  floatType_t *d_K, *d_alphas, *d_f;
 
 /* declare variables */
-  floatType_t bHigh, bLow, eta;
-  floatType_t alphaILow=0.0, alphaIHigh=0.0; 
-  floatType_t alphaILowPrime=0.0, alphaIHighPrime=0.0;
+  floatType_t bHigh, bLow;
   int ILow, IHigh;
+
+/* device variables */
+
+  floatType_t *d_bLow, *d_bHigh;
+  int *d_ILow, *d_IHigh;
 
 /* cuBLAS data */
   cublasStatus_t stat;
@@ -36,57 +35,27 @@ void svmTrain( floatType_t const *X,
 
 /* malloc alphas */
 
-  alphas = (floatType_t *) malloc( sizeof(floatType_t) * numTrainingExamples );
-  if( alphas == NULL ) fprintf(stderr,"error malloc alphas\n");
+  CUDA_CALL( cudaMalloc( (void**) &d_alphas, 
+               sizeof(floatType_t) * numTrainingExamples ) );
 
 /* zero alphas */
 
-  memset( alphas, 0, sizeof(floatType_t) * numTrainingExamples );
-
-  CUDA_CALL( cudaMalloc( (void**) &d_alphas, 
-               sizeof(floatType_t) * numTrainingExamples ) );
   CUDA_CALL( cudaMemset( d_alphas, 0, 
                sizeof(floatType_t)*numTrainingExamples ) );
 
 /* malloc f */
 
-  f = (floatType_t *) malloc( sizeof(floatType_t) * numTrainingExamples );
-  if( f == NULL )
-    fprintf(stderr,"error malloc f\n");
-
-/* initialize y */
-
-  for( int i = 0; i < numTrainingExamples; i++ )
-    f[i] = -y[i];
-
-  CUDA_CALL( cudaMalloc( (void**) &d_y,
-               sizeof(floatType_t) * numTrainingExamples ) );
-  CUDA_CALL( cudaMemcpy( d_y, y, sizeof(floatType_t)*numTrainingExamples,
-               cudaMemcpyHostToDevice ) );
-
   CUDA_CALL( cudaMalloc( (void**) &d_f,
                sizeof(floatType_t) * numTrainingExamples ) );
-  CUDA_CALL( cudaMemcpy( d_f, f, sizeof(floatType_t)*numTrainingExamples,
-               cudaMemcpyHostToDevice ) );
+
+  k_initF<<<4000/256+1,256>>>( d_f, d_y, numTrainingExamples );
 
 /* malloc K, the kernel matrix */
-
-  K = (floatType_t *) malloc( sizeof(floatType_t) * numTrainingExamples *
-                              numTrainingExamples );
-  if( K == NULL )
-    fprintf(stderr,"error malloc K\n");
 
   CUDA_CALL( cudaMalloc( (void**) &d_K,
            sizeof(floatType_t) * numTrainingExamples * numTrainingExamples ) );
   CUDA_CALL( cudaMemset( d_K, 0, 
-               sizeof(floatType_t)*numTrainingExamples*numTrainingExamples ));
-
-  CUDA_CALL( cudaMalloc( (void**) &d_X, 
-           sizeof(floatType_t) * numTrainingExamples * numFeatures ) );
-
-  CUDA_CALL( cudaMemcpy( d_X, X, 
-           sizeof(floatType_t)*numFeatures*numTrainingExamples,
-           cudaMemcpyHostToDevice ) );
+           sizeof(floatType_t)*numTrainingExamples*numTrainingExamples ));
 
 /* compute the Kernel on every pair of examples.
    K = X * X'
@@ -100,13 +69,6 @@ void svmTrain( floatType_t const *X,
 
   if( sizeof( floatType_t ) == sizeof( float ) )
   {
-#if 0
-    cblas_sgemm( CblasColMajor, CblasNoTrans, CblasTrans,
-               numTrainingExamples, numTrainingExamples, numFeatures,
-               1.0, (float *)X, numTrainingExamples,
-               (float *)X, numTrainingExamples, 0.0,
-               (float *)K, numTrainingExamples );
-#endif
     cublasSgemm( handle, CUBLAS_OP_N, CUBLAS_OP_T,
                numTrainingExamples, numTrainingExamples, numFeatures,
                (float *)&alpha, (float *)d_X, numTrainingExamples,
@@ -116,13 +78,6 @@ void svmTrain( floatType_t const *X,
   }
   else
   {
-#if 0
-    cblas_dgemm( CblasColMajor, CblasNoTrans, CblasTrans,
-               numTrainingExamples, numTrainingExamples, numFeatures,
-               1.0, (double *)X, numTrainingExamples,
-               (double *)X, numTrainingExamples, 0.0,
-               (double *)K, numTrainingExamples );
-#endif
     cublasDgemm( handle, CUBLAS_OP_N, CUBLAS_OP_T,
                numTrainingExamples, numTrainingExamples, numFeatures,
                (double *)&alpha, (double *)d_X, numTrainingExamples,
@@ -130,328 +85,74 @@ void svmTrain( floatType_t const *X,
                (double *)d_K, numTrainingExamples );
   }
 
-  CUDA_CALL( cudaMemcpy( K, d_K, 
-           sizeof(floatType_t)*numTrainingExamples*numTrainingExamples,
-           cudaMemcpyDeviceToHost ) );
-
-/* calculate bHigh/bLow/IHigh/ILow first time */
-  calculateBI( f, alphas, y, numTrainingExamples,
-               &bLow, &bHigh, &ILow, &IHigh, C );
-
-/* original alpha values */
-
-  alphaILow  = alphas[ILow];
-  alphaIHigh = alphas[IHigh];
-
-/* calculate eta */
-
-  eta = K[INDX(IHigh,IHigh,numTrainingExamples)]
-      + K[INDX(ILow, ILow, numTrainingExamples)]
-      - (floatType_t)2.0 * K[INDX(IHigh,ILow,numTrainingExamples)];
-
-/* updated alpha values */
-
-  alphaILowPrime  = alphaILow + ( y[ILow] * ( bHigh - bLow ) ) / eta;
-  alphaIHighPrime = alphaIHigh + 
-                    y[ILow] * y[IHigh] * ( alphaILow - alphaILowPrime );
-
-/* ensure all values are clipped between 0 and C */
-
-  CLIP( alphaILowPrime,  (floatType_t) 0.0, C );
-  CLIP( alphaIHighPrime, (floatType_t) 0.0, C );
-
-/* reset alpha values in the array */
-
-  alphas[ILow]  = alphaILowPrime;
-  alphas[IHigh] = alphaIHighPrime;
-
-/* start iterative loop */
-    CUDA_CALL( cudaMemcpy( d_f, f, sizeof(floatType_t)*numTrainingExamples,
-                           cudaMemcpyHostToDevice ) );
+  CUDA_CALL( cudaMalloc( (void**)&d_bLow, sizeof(floatType_t) ) );
+  CUDA_CALL( cudaMalloc( (void**)&d_bHigh, sizeof(floatType_t) ) );
+  CUDA_CALL( cudaMalloc( (void**)&d_ILow, sizeof(int) ) );
+  CUDA_CALL( cudaMalloc( (void**)&d_IHigh, sizeof(int) ) );
 
   while( true )
   {
-/* update f array */
-#if 0
-    for( int i = 0; i < numTrainingExamples; i++ )
-    {
-      f[i] = f[i] 
-           + ( ( alphaIHighPrime - alphaIHigh ) 
-               * y[IHigh] * K[INDX(IHigh,i,numTrainingExamples)] )
-           + ( ( alphaILowPrime - alphaILow ) 
-               * y[ILow] * K[INDX(ILow,i,numTrainingExamples)] );
-    } /* end for i */
-#else
-    k_updateF<<<4000/512 + 1,512>>>( d_f, alphaIHighPrime, alphaIHigh, IHigh,
-                           alphaILowPrime, alphaILow, ILow,
-                           d_K, numTrainingExamples, d_y );
-#endif
+/* calculate the bLow and bHigh.  Must be called with only one 
+   threadblock because it does a reduction 
+*/
+
+    k_calculateBI<<<1,128>>>( d_f, d_alphas, d_y, numTrainingExamples,
+                            d_bLow, d_bHigh, d_ILow, d_IHigh, C );
     CUDA_CHECK()
     CUDA_CALL( cudaDeviceSynchronize() );
-    CUDA_CALL( cudaMemcpy( f, d_f, sizeof(floatType_t)*numTrainingExamples,
+
+    CUDA_CALL( cudaMemcpy( &bLow, d_bLow, sizeof(floatType_t),
                            cudaMemcpyDeviceToHost ) );
-
-/* calculate bHigh/bLow/IHigh/ILow */
-    calculateBI( f, alphas, y, numTrainingExamples,
-                 &bLow, &bHigh, &ILow, &IHigh, C );
-
-/* grab alpha values */
-
-    alphaILow  = alphas[ILow];
-    alphaIHigh = alphas[IHigh];
-
-/* calculate eta */
-
-    eta = K[INDX(IHigh,IHigh,numTrainingExamples)]
-        + K[INDX(ILow, ILow, numTrainingExamples)]
-        - (floatType_t)2.0 * K[INDX(IHigh,ILow,numTrainingExamples)];
-
-/* calculate new alpha values */
-
-    alphaILowPrime  = alphaILow + ( y[ILow] * ( bHigh - bLow ) ) / eta;
-    alphaIHighPrime = alphaIHigh + 
-                    y[ILow] * y[IHigh] * ( alphaILow - alphaILowPrime );
-
-/* clip the values */
-
-    CLIP( alphaILowPrime,  (floatType_t) 0.0, C );
-    CLIP( alphaIHighPrime, (floatType_t) 0.0, C );
-
-/* update alpha values in the array */
-
-    alphas[ILow]  = alphaILowPrime;
-    alphas[IHigh] = alphaIHighPrime;
+    CUDA_CALL( cudaMemcpy( &bHigh, d_bHigh, sizeof(floatType_t),
+                           cudaMemcpyDeviceToHost ) );
+    CUDA_CALL( cudaMemcpy( &ILow, d_ILow, sizeof(int),
+                           cudaMemcpyDeviceToHost ) );
+    CUDA_CALL( cudaMemcpy( &IHigh, d_IHigh, sizeof(int),
+                           cudaMemcpyDeviceToHost ) );
 
 /* exit loop once we are below tolerance level */     
     if( bLow <= ( bHigh + ((floatType_t) 2.0 * tol) ) ) 
       break; 
+
+/* update f array */
+
+    k_updateF<<<4000/256 + 1,256>>>( d_f, d_alphas,
+                           IHigh,
+                           ILow,
+                           d_K, numTrainingExamples, d_y, C, 
+                           bLow, bHigh );
+    CUDA_CHECK()
+    CUDA_CALL( cudaDeviceSynchronize() );
+
   } /* end while */
+    k_scaleAlpha<<<4000/256+1,256>>>( d_alphas, d_y, numTrainingExamples );
+    CUDA_CHECK()
+    CUDA_CALL( cudaDeviceSynchronize() );
 
 /* calculate W from alphas */
 
   if( sizeof( floatType_t ) == sizeof( float ) )
   {
-    for( int i = 0; i < numTrainingExamples; i++ )
-      alphas[i] *= y[i];
-    cblas_sgemm( CblasColMajor, CblasNoTrans, CblasNoTrans,
+    cublasSgemm( handle, CUBLAS_OP_N, CUBLAS_OP_N,
                1, numFeatures, numTrainingExamples,
-               1.0, (float *)alphas, 1,
-               (float *)X, numTrainingExamples, 0.0,
-               (float *)W, 1 );
+               (float *)&alpha, (float *)d_alphas, 1,
+               (float *)d_X, numTrainingExamples, (float *)&beta,
+               (float *)d_W, 1 );
   }
   else
   {
-    for( int i = 0; i < numTrainingExamples; i++ )
-      alphas[i] *= y[i];
-    cblas_dgemm( CblasColMajor, CblasNoTrans, CblasNoTrans,
+    cublasDgemm( handle, CUBLAS_OP_N, CUBLAS_OP_N,
                1, numFeatures, numTrainingExamples,
-               1.0, (double *)alphas, 1,
-               (double *)X, numTrainingExamples, 0.0,
-               (double *)W, 1 );
+               (double *)&alpha, (double *)d_alphas, 1,
+               (double *)d_X, numTrainingExamples, (double *)&beta,
+               (double *)d_W, 1 );
   }
   
   CUDA_CALL( cudaFree( d_alphas ) );
   CUDA_CALL( cudaFree( d_f ) );
   CUDA_CALL( cudaFree( d_K ) );
-  CUDA_CALL( cudaFree( d_X ) );
-  CUDA_CALL( cudaFree( d_y ) );
-  free(K);
-  free(f);
-  free(alphas);
 
 } /* end svmTrain */
-#else
-void svmTrain( floatType_t const *X, 
-               floatType_t const *y, 
-               floatType_t const C,
-               int const numFeatures, int const numTrainingExamples,
-               floatType_t const tol, int const maxPasses, 
-               floatType_t *W, 
-               floatType_t *b )
-{
-
-  int passes=0, numChangedAlphas, dots=12;
-  floatType_t *K, *E, *alphas;
-  floatType_t eta=0.0, L=0.0, H=0.0;
-  unsigned long seed=8675309;
-
-/* malloc K, the kernel matrix */
-
-  K = (floatType_t *) malloc( sizeof(floatType_t) * numTrainingExamples *
-                              numTrainingExamples );
-  if( K == NULL )
-    fprintf(stderr,"error malloc K\n");
-
-/* malloc E */
-
-  E = (floatType_t *) malloc( sizeof(floatType_t) * numTrainingExamples );
-  if( E == NULL )
-    fprintf(stderr,"error malloc E\n");
-
-/* zero out E */
-
-  memset( E, 0, sizeof(floatType_t) * numTrainingExamples );
-
-/* malloc alphas */
-
-  alphas = (floatType_t *) malloc( sizeof(floatType_t) * numTrainingExamples );
-  if( alphas == NULL ) fprintf(stderr,"error malloc alphas\n");
-
-/* zero alphas */
-
-  memset( alphas, 0, sizeof(floatType_t) * numTrainingExamples );
-
-/* compute the Kernel on every pair of examples.
-   K = X * X'
-*/
-
-  if( sizeof( floatType_t ) == 4 )
-  {
-    cblas_sgemm( CblasColMajor, CblasNoTrans, CblasTrans,
-               numTrainingExamples, numTrainingExamples, numFeatures,
-               1.0, (float *)X, numTrainingExamples,
-               (float *)X, numTrainingExamples, 0.0,
-               (float *)K, numTrainingExamples );
-  }
-  else
-  {
-    cblas_dgemm( CblasColMajor, CblasNoTrans, CblasTrans,
-               numTrainingExamples, numTrainingExamples, numFeatures,
-               1.0, (double *)X, numTrainingExamples,
-               (double *)X, numTrainingExamples, 0.0,
-               (double *)K, numTrainingExamples );
-  }
-
-
-  while( passes < maxPasses )
-  {
-
-    numChangedAlphas = 0;
-    for( int i = 0; i < numTrainingExamples; i++ )
-    {
-      floatType_t tempSum = (floatType_t)0.0;
-      for( int j = 0; j < numTrainingExamples; j++ )
-      {
-        tempSum += ( alphas[j] * y[j] * K[ INDX(j,i,numTrainingExamples) ] );
-
-      } /* end for j */
-
-      E[i] = *b + tempSum - y[i];
-
-      if( (y[i]*E[i] < -tol && alphas[i] < C ) ||
-           (y[i]*E[i] > tol  && alphas[i] > (floatType_t) 0.0 ) )
-      {
-
-        double rx = myRand( &seed );
-        int j = floor( rx * double(numTrainingExamples ) );
-
-        tempSum = (floatType_t)0.0;
-        for( int k = 0; k < numTrainingExamples; k++ )
-        {
-          tempSum += ( alphas[k] * y[k] * K[ INDX(k,j,numTrainingExamples) ] );
-        } /* end for j */
-
-        E[j] = *b + tempSum - y[j];
-
-        floatType_t alphaIOld = alphas[i];
-        floatType_t alphaJOld = alphas[j];
-
-
-        if( y[i] == y[j] )
-        {
-          L = max( (floatType_t)0.0, alphas[j] + alphas[i] - C );
-          H = min( C, alphas[j] + alphas[i] );
-        } /* end if */
-        else
-        {
-          L = max( (floatType_t)0.0, alphas[j] - alphas[i] );
-          H = min( C, C + alphas[j] - alphas[i] );
-        } /* end else */
-
-        if( L == H ) continue;
-
-        eta = (floatType_t)2.0 * K[INDX(i,j,numTrainingExamples)]
-                   - K[INDX(i,i,numTrainingExamples)]
-                   - K[INDX(j,j,numTrainingExamples)];
-
-        if( eta >= (floatType_t)0.0 ) continue;
-
-        alphas[j] = alphas[j] - ( y[j] * ( E[i] - E[j] ) ) / eta;
-
-        alphas[j] = min( H, alphas[j] );
-        alphas[j] = max( L, alphas[j] );
-
-        if( abs( alphas[j] - alphaJOld ) < tol )
-        {
-          alphas[j] = alphaJOld;
-          continue;
-        } /* end if */
-
-        alphas[i] = alphas[i] + y[i] * y[j] * ( alphaJOld - alphas[j] );
-
-
-        floatType_t b1 = *b - E[i]
-                     - y[i] * (alphas[i] - alphaIOld) *
-                            K[INDX(i,j,numTrainingExamples)]
-                     - y[j] * (alphas[j] - alphaJOld) *
-                            K[INDX(i,j,numTrainingExamples)];
-
-        floatType_t b2 = *b - E[j]
-                     - y[i] * (alphas[i] - alphaIOld) *
-                            K[INDX(i,j,numTrainingExamples)]
-                     - y[j] * (alphas[j] - alphaJOld) *
-                            K[INDX(j,j,numTrainingExamples)];
-
-
-        if( (floatType_t)0.0 < alphas[i] && alphas[i] < C ) *b = b1;
-        else if( (floatType_t)0.0 < alphas[j] && alphas[j] < C ) *b = b2;
-        else *b = (b1 + b2) / (floatType_t)2.0;
-
-        numChangedAlphas = numChangedAlphas + 1;
-
-      } /* end if */
-    } /* end for i */
-
-    if( numChangedAlphas == 0 ) passes = passes + 1;
-    else passes = 0;
-
-    fprintf(stdout,".");
-    dots = dots + 1;
-    if( dots > 78 )
-    {
-      dots = 0;
-      fprintf(stdout,"\n");
-    }
-  } /* end while */
-
-  if( sizeof( floatType_t ) == 4 )
-  {
-    for( int i = 0; i < numTrainingExamples; i++ )
-      alphas[i] *= y[i];
-    cblas_sgemm( CblasColMajor, CblasNoTrans, CblasNoTrans,
-               1, numFeatures, numTrainingExamples,
-               1.0, (float *)alphas, 1,
-               (float *)X, numTrainingExamples, 0.0,
-               (float *)W, 1 );
-  }
-  else
-  {
-    for( int i = 0; i < numTrainingExamples; i++ )
-      alphas[i] *= y[i];
-    cblas_dgemm( CblasColMajor, CblasNoTrans, CblasNoTrans,
-               1, numFeatures, numTrainingExamples,
-               1.0, (double *)alphas, 1,
-               (double *)X, numTrainingExamples, 0.0,
-               (double *)W, 1 );
-  }
-
-  free(alphas);
-  free(E);
-  free(K);
-
-  return;
-} /* end svmTrain */
-#endif
 
 void calculateBI( floatType_t const *f, 
                   floatType_t const *alphas, 
@@ -516,7 +217,6 @@ void calculateBI( floatType_t const *f,
 
 void svmPredict( floatType_t const *X, 
                  floatType_t const *W, 
-                 floatType_t const b, 
                  int const numExamples, int const numFeatures,
                  int *pred )
 {
@@ -525,14 +225,12 @@ void svmPredict( floatType_t const *X,
   p = (floatType_t *) malloc( sizeof(floatType_t) * numExamples );
   if( p == NULL ) fprintf(stderr,"error in malloc p in svmTrain\n");
 
-  for( int i = 0; i < numExamples; i++ ) p[i] = b;
-
   if( sizeof( floatType_t ) == 4 )
   {
     cblas_sgemv( CblasColMajor, CblasNoTrans,
                numExamples, numFeatures,
                1.0, (float *)X, numExamples,
-               (float *)W, 1, 1.0,
+               (float *)W, 1, 0.0,
                (float *)p, 1 );
   }
   else
@@ -540,7 +238,7 @@ void svmPredict( floatType_t const *X,
     cblas_dgemv( CblasColMajor, CblasNoTrans,
                numExamples, numFeatures,
                1.0, (double *)X, numExamples,
-               (double *)W, 1, 1.0,
+               (double *)W, 1, 0.0,
                (double *)p, 1 );
   }
 
@@ -550,14 +248,6 @@ void svmPredict( floatType_t const *X,
   free(p);
   return;
 } /* end svmTrain */
-
-
-double myRand( unsigned long *seed )
-{
-    *seed = (AA * (*seed) + CC) % MM;
-    double rx = (double)*seed / (double)MM; 
-    return rx;
-} /* end myRand */
 
 void readMatrixFromFile( char *fileName, 
                          int *matrix, 

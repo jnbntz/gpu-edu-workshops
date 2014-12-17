@@ -3,7 +3,6 @@
 #include <math.h>
 #include "headers.h"
 
-
 int main(int argc, char **argv) 
 {
 
@@ -93,12 +92,27 @@ int main(int argc, char **argv)
   W = (floatType_t *) malloc( sizeof(floatType_t) * numFeatures );
   if( W == NULL ) fprintf(stderr,"error malloc yW\n");
 
+/* setup timers */
+
+  cudaEvent_t start, stop;
+  CUDA_CALL( cudaEventCreate( &start ) );
+  CUDA_CALL( cudaEventCreate( &stop ) );
+  CUDA_CALL( cudaEventRecord( start, 0 ) );
+
 /* call the training function */
 
   svmTrain(X, Y, C,
            numFeatures, numTrainingExamples,
            tol, maxPasses,
            W, &b );
+
+/* report time of svmTrain */
+
+  CUDA_CALL( cudaEventRecord( stop, 0 ) );
+  CUDA_CALL( cudaEventSynchronize( stop ) );
+  float elapsedTime;
+  CUDA_CALL( cudaEventElapsedTime( &elapsedTime, start, stop ) );
+  fprintf(stdout, "Total time for svmTrain is %f sec\n",elapsedTime/1000.0f );
 
 /* malloc a prediction vector which will be the predicted values of the 
    results vector based on the training function 
@@ -107,9 +121,18 @@ int main(int argc, char **argv)
   pred = (int *) malloc( sizeof(int) * numTrainingExamples );
   if( pred == NULL ) fprintf(stderr,"problem with malloc p in main\n");
 
+  CUDA_CALL( cudaEventRecord( start, 0 ) );
+
 /* call the predict function to populate the pred vector */
 
   svmPredict( X, W, b, numTrainingExamples, numFeatures, pred );
+
+/* report time of svmTrain */
+
+  CUDA_CALL( cudaEventRecord( stop, 0 ) );
+  CUDA_CALL( cudaEventSynchronize( stop ) );
+  CUDA_CALL( cudaEventElapsedTime( &elapsedTime, start, stop ) );
+  fprintf(stdout, "Total time for svmPredict is %f sec\n",elapsedTime/1000.0f );
   
 /* calculate how well the predictions matched the actual values */
 
