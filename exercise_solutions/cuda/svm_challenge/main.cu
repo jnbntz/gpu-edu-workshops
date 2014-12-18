@@ -3,6 +3,7 @@
 #include <math.h>
 #include "headers.h"
 
+
 int main(int argc, char **argv) 
 {
 
@@ -21,14 +22,16 @@ int main(int argc, char **argv)
   int const numTestExamples     = TEST_SET_SIZE;
   floatType_t const tol         = 1.0e-3;
   floatType_t const C           = 0.1;
+  int const maxPasses           = 5;
   char spam[]                   = "SPAM";
   char notSpam[]                = "NOT SPAM";
 
 /* define the arrays going to be used */
 
   int *trainingVector, *trainingMatrix, *pred;
-  int *testVector, *testMatrix;
-  floatType_t *X, *Y, *W, *Xtest;
+  int *testVector,     *testMatrix;
+  floatType_t *X,   *Y,   *W, *Xtest;
+  floatType_t *d_X, *d_Y, *d_W;
 
 /* malloc trainingVector */
 
@@ -56,6 +59,11 @@ int main(int argc, char **argv)
     if( Y[i] == 0.0 ) Y[i] = -1.0;
   } /* end for */
 
+  CUDA_CALL( cudaMalloc( (void**)&d_Y, 
+               sizeof(floatType_t) * numTrainingExamples ) );
+  CUDA_CALL( cudaMemcpy( d_Y, Y, sizeof(floatType_t) * numTrainingExamples, 
+               cudaMemcpyHostToDevice ) );
+
 /* malloc the training matrix.  each row is a different training
    example
 */
@@ -82,10 +90,19 @@ int main(int argc, char **argv)
   for( int i = 0; i < numTrainingExamples * numFeatures; i++ )
     X[i] = (floatType_t) trainingMatrix[i];
 
-/* malloc the Weight matrix */
+  CUDA_CALL( cudaMalloc( (void**) &d_X, 
+               sizeof(floatType_t) * numFeatures * numTrainingExamples ) );
+  CUDA_CALL( cudaMemcpy( d_X, X, 
+               sizeof(floatType_t) * numFeatures * numTrainingExamples,  
+               cudaMemcpyHostToDevice ) );
+
+/* malloc the W matrix */
 
   W = (floatType_t *) malloc( sizeof(floatType_t) * numFeatures );
   if( W == NULL ) fprintf(stderr,"error malloc yW\n");
+
+  CUDA_CALL( cudaMalloc( (void**) &d_W, sizeof(floatType_t) * numFeatures ) );
+  CUDA_CALL( cudaMemset( d_W, 0, sizeof(floatType_t) * numFeatures ) );
 
 /* setup timers */
 
@@ -96,9 +113,10 @@ int main(int argc, char **argv)
 
 /* call the training function */
 
-  svmTrain(X, Y, C,
+  svmTrain(d_X, d_Y, C,
            numFeatures, numTrainingExamples,
-           tol, W );
+           tol, maxPasses,
+           d_W );
 
 /* report time of svmTrain */
 
@@ -108,12 +126,19 @@ int main(int argc, char **argv)
   CUDA_CALL( cudaEventElapsedTime( &elapsedTime, start, stop ) );
   fprintf(stdout, "Total time for svmTrain is %f sec\n",elapsedTime/1000.0f );
 
+/* copy W matrix back to host for test of prediction */
+
+  CUDA_CALL( cudaMemcpy( W, d_W, sizeof(floatType_t) * numFeatures,
+               cudaMemcpyDeviceToHost ) );
+
 /* malloc a prediction vector which will be the predicted values of the 
    results vector based on the training function 
 */
 
   pred = (int *) malloc( sizeof(int) * numTrainingExamples );
   if( pred == NULL ) fprintf(stderr,"problem with malloc p in main\n");
+
+/* start timer for svmTrain */
 
   CUDA_CALL( cudaEventRecord( start, 0 ) );
 

@@ -46,8 +46,6 @@ else if( (val) > (max) ) val = (max);
 #define TRAINING_SET_SIZE (4000)
 #define TEST_SET_SIZE (1000)
 
-/* CUDA debugging */
-
 #ifdef DEBUG
 #define CUDA_CALL(F)  if( (F) != cudaSuccess ) \
   {printf("Error %s at %s:%d\n", cudaGetErrorString(cudaGetLastError()), \
@@ -69,12 +67,12 @@ void calculateBI( floatType_t const *,
                   floatType_t const *,
                   int ,
                   floatType_t *, floatType_t *,
-                  int *, int *,
-                  floatType_t const );
+                  int *, int * );
 
 void svmTrain( floatType_t const *, floatType_t const *, floatType_t const,
                const int, const int,
-               const floatType_t, floatType_t * );
+               const floatType_t , const int,
+               floatType_t * );
 
-void svmPredict( floatType_t const *, floatType_t const *,
+void svmPredict( floatType_t const *, floatType_t const *,  
                  int const, int const, int * );
