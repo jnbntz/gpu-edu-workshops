@@ -73,54 +73,18 @@ void svmTrain( floatType_t const *X,
                (double *)K, numTrainingExamples );
   }
 
-/* calculate bHigh/bLow/IHigh/ILow first time */
-  calculateBI( f, alphas, y, numTrainingExamples,
-               &bLow, &bHigh, &ILow, &IHigh, C );
-
-/* original alpha values */
-
-  alphaILow  = alphas[ILow];
-  alphaIHigh = alphas[IHigh];
-
-/* calculate eta */
-
-  eta = K[INDX(IHigh,IHigh,numTrainingExamples)]
-      + K[INDX(ILow, ILow, numTrainingExamples)]
-      - (floatType_t)2.0 * K[INDX(IHigh,ILow,numTrainingExamples)];
-
-/* updated alpha values */
-
-  alphaILowPrime  = alphaILow + ( y[ILow] * ( bHigh - bLow ) ) / eta;
-  alphaIHighPrime = alphaIHigh + 
-                    y[ILow] * y[IHigh] * ( alphaILow - alphaILowPrime );
-
-/* ensure all values are clipped between 0 and C */
-
-  CLIP( alphaILowPrime,  (floatType_t) 0.0, C );
-  CLIP( alphaIHighPrime, (floatType_t) 0.0, C );
-
-/* reset alpha values in the array */
-
-  alphas[ILow]  = alphaILowPrime;
-  alphas[IHigh] = alphaIHighPrime;
-
 /* start iterative loop */
 
   while( true )
   {
-/* update f array */
-    for( int i = 0; i < numTrainingExamples; i++ )
-    {
-      f[i] = f[i] 
-           + ( ( alphaIHighPrime - alphaIHigh ) 
-               * y[IHigh] * K[INDX(IHigh,i,numTrainingExamples)] )
-           + ( ( alphaILowPrime - alphaILow ) 
-               * y[ILow] * K[INDX(ILow,i,numTrainingExamples)] );
-    } /* end for i */
 
 /* calculate bHigh/bLow/IHigh/ILow */
     calculateBI( f, alphas, y, numTrainingExamples,
                  &bLow, &bHigh, &ILow, &IHigh, C );
+
+/* exit loop once we are below tolerance level */     
+    if( bLow <= ( bHigh + ((floatType_t) 2.0 * tol) ) ) 
+      break; 
 
 /* grab alpha values */
 
@@ -149,9 +113,16 @@ void svmTrain( floatType_t const *X,
     alphas[ILow]  = alphaILowPrime;
     alphas[IHigh] = alphaIHighPrime;
 
-/* exit loop once we are below tolerance level */     
-    if( bLow <= ( bHigh + ((floatType_t) 2.0 * tol) ) ) 
-      break; 
+/* update f array */
+    for( int i = 0; i < numTrainingExamples; i++ )
+    {
+      f[i] = f[i] 
+           + ( ( alphaIHighPrime - alphaIHigh ) 
+               * y[IHigh] * K[INDX(IHigh,i,numTrainingExamples)] )
+           + ( ( alphaILowPrime - alphaILow ) 
+               * y[ILow] * K[INDX(ILow,i,numTrainingExamples)] );
+    } /* end for i */
+
   } /* end while */
 
 /* calculate W from alphas */
