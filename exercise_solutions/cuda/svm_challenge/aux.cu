@@ -64,7 +64,9 @@ void svmTrain( floatType_t const *d_X,
   CUDA_CALL( cudaMalloc( (void**) &d_f,
                sizeof(floatType_t) * numTrainingExamples ) );
 
-  k_initF<<<4000/256+1,256>>>( d_f, d_y, numTrainingExamples );
+  int threads_per_block = 256;
+  k_initF<<<TRAINING_SET_SIZE/threads_per_block+1,threads_per_block>>>
+                      ( d_f, d_y, numTrainingExamples );
 
 /* malloc K, the kernel matrix */
 
@@ -108,8 +110,10 @@ void svmTrain( floatType_t const *d_X,
 
   while( true )
   {
+
 /* calculate the bLow and bHigh.  Must be called with only one 
-   threadblock because it does a reduction 
+   threadblock because it does a reduction.  Now what we'd do in practice
+   but since the data size is small we can get away with it.
 */
 
     k_calculateBI<<<1,128>>>( d_f, d_alphas, d_y, numTrainingExamples,
@@ -132,7 +136,8 @@ void svmTrain( floatType_t const *d_X,
 
 /* update f array */
 
-    k_updateF<<<4000/256 + 1,256>>>( d_f, d_alphas,
+    k_updateF<<<TRAINING_SET_SIZE/threads_per_block + 1,threads_per_block>>>
+                  ( d_f, d_alphas,
                            IHigh,
                            ILow,
                            d_K, numTrainingExamples, d_y, C, 
@@ -141,9 +146,11 @@ void svmTrain( floatType_t const *d_X,
     CUDA_CALL( cudaDeviceSynchronize() );
 
   } /* end while */
-    k_scaleAlpha<<<4000/256+1,256>>>( d_alphas, d_y, numTrainingExamples );
-    CUDA_CHECK()
-    CUDA_CALL( cudaDeviceSynchronize() );
+
+  k_scaleAlpha<<<TRAINING_SET_SIZE/threads_per_block + 1,threads_per_block>>>
+                   ( d_alphas, d_y, numTrainingExamples );
+  CUDA_CHECK()
+  CUDA_CALL( cudaDeviceSynchronize() );
 
 /* calculate W from alphas */
 
@@ -167,69 +174,12 @@ void svmTrain( floatType_t const *d_X,
   CUDA_CALL( cudaFree( d_alphas ) );
   CUDA_CALL( cudaFree( d_f ) );
   CUDA_CALL( cudaFree( d_K ) );
+  CUDA_CALL( cudaFree( d_ILow ) );
+  CUDA_CALL( cudaFree( d_IHigh ) );
+  CUDA_CALL( cudaFree( d_bLow ) );
+  CUDA_CALL( cudaFree( d_bHigh ) );
 
 } /* end svmTrain */
-
-void calculateBI( floatType_t const *f, 
-                  floatType_t const *alphas, 
-                  floatType_t const *y,
-                  int numTrainingExamples,
-                  floatType_t *bLow, floatType_t *bHigh,
-                  int *ILow, int *IHigh,
-                  floatType_t const C )
-{
-  *bHigh = 100.0;
-  *bLow = -100.0;
-  for( int i = 0; i < numTrainingExamples; i++ )
-  {  
-    if( (floatType_t) 0.0 < alphas[i] && alphas[i] < C )
-    {
-/* set I_0 */
-      MYMIN(*bHigh, f, i, *IHigh );
-      MYMAX(*bLow, f, i, *ILow );
-    } /* end if */
-    else if( y[i] > (floatType_t) 0.0 )
-    {
-      if( alphas[i] == (floatType_t) 0.0 )
-      {
-/* set I_1 */
-        MYMIN(*bHigh, f, i, *IHigh );
-      } /* end if */
-      else if( alphas[i] == C )
-      {
-/* set I_3 */
-        MYMAX(*bLow, f, i, *ILow );
-      } /* end if */
-      else
-      {
-        printf("Shouldn't be getting to this else! y > 0\n");
-      } /* end if then else */ 
-    } /* end if */
-    else if( y[i] < (floatType_t) 0.0 )
-    {
-      if( alphas[i] == (floatType_t) 0.0 )
-      {
-/* set I_4 */
-        MYMAX(*bLow, f, i, *ILow );
-      } /* end if */
-      else if( alphas[i] == C )
-      {
-/* set I_2 */
-        MYMIN(*bHigh, f, i, *IHigh );
-      } /* end if */
-      else
-      {
-        printf("Shouldn't be getting to this else! y < 0\n");
-      } /* end if then else */ 
-    } /* end if */
-    else
-    {
-      printf("shouldn't be getting to this else \n");
-    } /* end if */
-
-  } /* end for */
-
-} /* end calculateBI */     
 
 void svmPredict( floatType_t const *X, 
                  floatType_t const *W, 

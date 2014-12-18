@@ -77,13 +77,6 @@ else if( (val) > (max) ) val = (max);
 
 void readMatrixFromFile( char *, int *, const int, const int );
 
-void calculateBI( floatType_t const *,
-                  floatType_t const *,
-                  floatType_t const *,
-                  int ,
-                  floatType_t *, floatType_t *,
-                  int *, int * );
-
 void svmTrain( floatType_t const *, floatType_t const *, floatType_t const,
                const int, const int,
                const floatType_t , const int,

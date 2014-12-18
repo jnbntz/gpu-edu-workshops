@@ -24,15 +24,18 @@ __global__ void k_updateF( floatType_t *f, floatType_t *alphas,
                          floatType_t const bLow, 
                          floatType_t const bHigh )
 {
+
+/* get global thread ID */
+
   int idx = blockIdx.x * blockDim.x + threadIdx.x;
-//  for( int i = 0; i < numTrainingExamples; i++ )
+
   if( idx < numTrainingExamples )
   {
-#if 1
+
 /* grab alpha values */
 
-    floatType_t ail  = alphas[ILow];
-    floatType_t aih  = alphas[IHigh];
+    floatType_t alphaILow  = alphas[ILow];
+    floatType_t alphaIHigh  = alphas[IHigh];
 
 /* calculate eta */
 
@@ -42,47 +45,35 @@ __global__ void k_updateF( floatType_t *f, floatType_t *alphas,
 
 /* calculate new alpha values */
 
-    floatType_t ailp  = ail + ( y[ILow] * ( bHigh - bLow ) ) / eta;
-    floatType_t aihp  = aih +
-                    y[ILow] * y[IHigh] * ( ail - ailp );
+    floatType_t alphaILowPrime   = alphaILow + 
+                                   ( y[ILow] * ( bHigh - bLow ) ) / eta;
+    floatType_t alphaIHighPrime  = alphaIHigh +
+                    y[ILow] * y[IHigh] * ( alphaILow - alphaILowPrime );
 
-#endif
-//    floatType_t ailp = alphaILowPrime;
- //   floatType_t aihp = alphaIHighPrime;
-  //  floatType_t ail  = alphaILow;
-   // floatType_t aih = alphaIHigh;
-    CLIP( ailp, (floatType_t) 0.0, C );
-    CLIP( aihp, (floatType_t) 0.0, C );
+/* clip the values to between 0 and C */
+
+    CLIP( alphaILowPrime, (floatType_t) 0.0, C );
+    CLIP( alphaIHighPrime, (floatType_t) 0.0, C );
 
 /* update alpha values in the array */
-#if 0
     if( idx == 0 )
     {
       alphas[ILow]  = alphaILowPrime;
       alphas[IHigh] = alphaIHighPrime;
     }
-#else
-    if( idx == 0 )
-    {
-      alphas[ILow]  = ailp;
-      alphas[IHigh] = aihp;
-    }
-#endif
-#if 0
+
+/* update f vector */
+
     f[idx] = f[idx]
          + ( ( alphaIHighPrime - alphaIHigh )
              * y[IHigh] * K[INDX(IHigh,idx,numTrainingExamples)] )
          + ( ( alphaILowPrime - alphaILow )
              * y[ILow] * K[INDX(ILow,idx,numTrainingExamples)] );
-#else
-    f[idx] = f[idx]
-         + ( ( aihp - aih )
-             * y[IHigh] * K[INDX(IHigh,idx,numTrainingExamples)] )
-         + ( ( ailp - ail )
-             * y[ILow] * K[INDX(ILow,idx,numTrainingExamples)] );
-#endif
+             
   } /* end for i */
+
   return; 
+
 } /* end updateF */ 
 
 __global__ void k_calculateBI( floatType_t const *f,
@@ -93,22 +84,47 @@ __global__ void k_calculateBI( floatType_t const *f,
                   int *ILow, int *IHigh,
                   floatType_t const C )
 {
+
+/* declare shared mem arrays one for each thread */
+
   __shared__ floatType_t bHighAr[1024];
   __shared__ floatType_t bLowAr[1024];
   __shared__ int         IHighAr[1024];
   __shared__ int         ILowAr[1024];
 
+/* get global index */
+
   int idx = blockDim.x * blockIdx.x + threadIdx.x;
+
+/* must be called with only one block so if more blocks were launched
+ * simply return
+ */
+
+  if( blockIdx.x > 0 ) return;
+
+/* setup shared arrays with initial values */
 
   bHighAr[threadIdx.x] = 100.0;
   bLowAr[threadIdx.x]  = -100.0;
   IHighAr[threadIdx.x] = -999;
   ILowAr[threadIdx.x] = -999;
 
+/*
+ * the sets I_0 through I_4 are outlined in the paper by Catanzaro
+ * see the README for more info.
+ * 
+ * This kernel is launched with only one threadblock.
+ * Each thread keeps track of it's own values of bHigh and bLow
+ * and then at the very end of the kernel a single thread does the final
+ * reduction.
+ *
+ * This is NOT what we'd do in practice with an extremely large dataset 
+ * but since our dataset in question is rather small we just use this 
+ * simplified algorithm.
+ */
+
   while( idx < numTrainingExamples )
   {
-//  for( int idx = 0; idx < numTrainingExamples; idx++ )
- // {
     if( (floatType_t) 0.0 < alphas[idx] && alphas[idx] < C )
     {
 /* set I_0 */
@@ -154,12 +170,14 @@ __global__ void k_calculateBI( floatType_t const *f,
       printf("shouldn't be getting to this else \n");
     } /* end else */
 
-     
-
-//  } /* end for */
     idx += blockDim.x;
+
   } /* end while */
-#if 1
+
+/* do the final stage in reduction using only one thread.  simply iterate
+ * through all the elements 
+ */
+
   if( threadIdx.x == 0 )
   { 
     for( int i = 1; i < blockDim.x; i++ )
@@ -181,8 +199,6 @@ __global__ void k_calculateBI( floatType_t const *f,
     *IHigh = IHighAr[0];
     *ILow  = ILowAr[0]; 
   } /* end if */
-#endif
-
   
   return;
 } /* end calculateBI */
