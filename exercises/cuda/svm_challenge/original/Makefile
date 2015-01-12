@@ -16,19 +16,21 @@
 
 CC=gcc
 NVCC=nvcc
+LIBS=-L. -lcblas -latlas
+INC=-I.
 
 include ../make.common
 
 all: x.train x.porterStemmer
 
 x.train: main.o auxiliary.o
-	$(NVCC) $(ARCH) -o x.train main.o auxiliary.o -L/usr/lib64/atlas -lcblas -latlas
+	$(NVCC) $(ARCH) -o x.train main.o auxiliary.o $(LIBS)
 
 main.o: main.cu headers.h
-	$(NVCC) $(ARCH) -c main.cu
+	$(NVCC) $(ARCH) -c main.cu $(INC)
 
 auxiliary.o: auxiliary.cu headers.h
-	$(NVCC) $(ARCH) -c auxiliary.cu
+	$(NVCC) $(ARCH) -c auxiliary.cu $(INC)
 
 x.porterStemmer: porterStemmer.o
 	$(CC) -o x.porterStemmer porterStemmer.o
