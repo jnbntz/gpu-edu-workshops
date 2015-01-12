@@ -21,14 +21,14 @@ include ../../make.common
 
 all: x.train x.porterStemmer
 
-x.train: main.o aux.o
-	$(NVCC) $(ARCH) -o x.train main.o aux.o -L/usr/lib64/atlas -lcblas -latlas
+x.train: main.o auxiliary.o
+	$(NVCC) $(ARCH) -o x.train main.o auxiliary.o -L/usr/lib64/atlas -lcblas -latlas
 
 main.o: main.cu headers.h
 	$(NVCC) $(ARCH) -c main.cu
 
-aux.o: aux.cu headers.h
-	$(NVCC) $(ARCH) -c aux.cu
+auxiliary.o: auxiliary.cu headers.h
+	$(NVCC) $(ARCH) -c auxiliary.cu
 
 x.porterStemmer: porterStemmer.o
 	$(CC) -o x.porterStemmer porterStemmer.o
