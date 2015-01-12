@@ -174,6 +174,8 @@ __global__ void k_calculateBI( floatType_t const *f,
 
   } /* end while */
 
+  __syncthreads();
+
 /* do the final stage in reduction using only one thread.  simply iterate
  * through all the elements 
  */

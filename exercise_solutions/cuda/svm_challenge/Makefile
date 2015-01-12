@@ -15,7 +15,7 @@
 #
 
 CC=gcc
-NVCC=nvcc
+NVCC=nvcc -lineinfo
 LIBS=-L. -lcblas -latlas -lcublas
 INC=-I.
 

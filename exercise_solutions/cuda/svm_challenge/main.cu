@@ -257,5 +257,12 @@ int main(int argc, char **argv)
   free(Xtest);
   free(trainingVector);
   free(trainingMatrix);
+
+  CUDA_CALL( cudaFree( d_Y ) );
+  CUDA_CALL( cudaFree( d_X ) );
+  CUDA_CALL( cudaFree( d_W ) );
+  
+  cudaDeviceReset();
+
   return 0;
 } /* end main */
