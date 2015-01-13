@@ -25,7 +25,7 @@ extern "C"
  * currently suppored
  */
 
-typedef double floatType_t;
+typedef float floatType_t;
 
 /* macro to convert 2d coords to 1d offset */
 

@@ -27,33 +27,33 @@ __global__ void k_updateF( floatType_t *f, floatType_t *alphas,
 
 /* grab alpha values */
 
-    floatType_t alphaILow  = alphas[ILow];
-    floatType_t alphaIHigh  = alphas[IHigh];
+  floatType_t alphaILow  = alphas[ILow];
+  floatType_t alphaIHigh  = alphas[IHigh];
 
 /* calculate eta */
 
-    floatType_t eta = K[INDX(IHigh,IHigh,numTrainingExamples)]
-        + K[INDX(ILow, ILow, numTrainingExamples)]
-        - (floatType_t)2.0 * K[INDX(IHigh,ILow,numTrainingExamples)];
+  floatType_t eta = K[INDX(IHigh,IHigh,numTrainingExamples)]
+      + K[INDX(ILow, ILow, numTrainingExamples)]
+      - (floatType_t)2.0 * K[INDX(IHigh,ILow,numTrainingExamples)];
 
 /* calculate new alpha values */
 
-    floatType_t alphaILowPrime   = alphaILow + 
-                                   ( y[ILow] * ( bHigh - bLow ) ) / eta;
-    floatType_t alphaIHighPrime  = alphaIHigh +
-                    y[ILow] * y[IHigh] * ( alphaILow - alphaILowPrime );
+  floatType_t alphaILowPrime   = alphaILow + 
+                                 ( y[ILow] * ( bHigh - bLow ) ) / eta;
+  floatType_t alphaIHighPrime  = alphaIHigh +
+                  y[ILow] * y[IHigh] * ( alphaILow - alphaILowPrime );
 
 /* clip the values to between 0 and C */
 
-    CLIP( alphaILowPrime, (floatType_t) 0.0, C );
-    CLIP( alphaIHighPrime, (floatType_t) 0.0, C );
+  CLIP( alphaILowPrime, (floatType_t) 0.0, C );
+  CLIP( alphaIHighPrime, (floatType_t) 0.0, C );
 
 /* update alpha values in the array */
-    if( threadIdx.x == 0 && blockIdx.x == 0 )
-    {
-      alphas[ILow]  = alphaILowPrime;
-      alphas[IHigh] = alphaIHighPrime;
-    }
+  if( threadIdx.x == 0 && blockIdx.x == 0 )
+  {
+    alphas[ILow]  = alphaILowPrime;
+    alphas[IHigh] = alphaIHighPrime;
+  }
 
 /* get global thread ID */
 
