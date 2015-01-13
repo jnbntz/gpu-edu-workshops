@@ -25,13 +25,6 @@ __global__ void k_updateF( floatType_t *f, floatType_t *alphas,
                          floatType_t const bHigh )
 {
 
-/* get global thread ID */
-
-  int idx = blockIdx.x * blockDim.x + threadIdx.x;
-
-  if( idx < numTrainingExamples )
-  {
-
 /* grab alpha values */
 
     floatType_t alphaILow  = alphas[ILow];
@@ -56,13 +49,19 @@ __global__ void k_updateF( floatType_t *f, floatType_t *alphas,
     CLIP( alphaIHighPrime, (floatType_t) 0.0, C );
 
 /* update alpha values in the array */
-    if( idx == 0 )
+    if( threadIdx.x == 0 && blockIdx.x == 0 )
     {
       alphas[ILow]  = alphaILowPrime;
       alphas[IHigh] = alphaIHighPrime;
     }
 
+/* get global thread ID */
+
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+
 /* update f vector */
+  while( idx < numTrainingExamples )
+  {
 
     f[idx] = f[idx]
          + ( ( alphaIHighPrime - alphaIHigh )
@@ -70,8 +69,8 @@ __global__ void k_updateF( floatType_t *f, floatType_t *alphas,
          + ( ( alphaILowPrime - alphaILow )
              * y[ILow] * K[INDX(ILow,idx,numTrainingExamples)] );
              
-  } /* end for i */
-
+    idx += gridDim.x * blockDim.x;
+  } /* end while */
   return; 
 
 } /* end updateF */ 
@@ -211,8 +210,11 @@ __global__ void k_scaleAlpha( floatType_t *alphas,
 {
 
   int idx = blockDim.x * blockIdx.x + threadIdx.x;
-  if( idx < numTrainingExamples )
+  while( idx < numTrainingExamples )
+  {
     alphas[idx] *= y[idx];
+    idx += gridDim.x * blockDim.x;
+  }
   return;
 } /* end k_scaleAlpha */
 
@@ -221,7 +223,10 @@ __global__ void k_initF( floatType_t *f,
                          int const numTrainingExamples )
 {
   int idx = blockDim.x * blockIdx.x + threadIdx.x;
-  if( idx < numTrainingExamples )
+  while( idx < numTrainingExamples )
+  {
     f[idx] = -y[idx];
+    idx += gridDim.x * blockDim.x;
+  } /* end while */ 
   return; 
 } /* end k_initF */
