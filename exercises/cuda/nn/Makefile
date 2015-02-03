@@ -16,7 +16,7 @@
 
 CC=gcc
 NVCC=nvcc
-LIBS=-L.
+LIBS=-L. -lcblas -latlas
 INC=-I.
 
 include ../make.common

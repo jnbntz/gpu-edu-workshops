@@ -18,7 +18,7 @@
 
 extern "C"
 {
-//#include <cblas.h>
+#include <cblas.h>
 }
 
 /* choose precision to train and classify.  Only float and double are 
@@ -92,10 +92,15 @@ void calculateBI( floatType_t const *,
                   floatType_t *, floatType_t *,
                   int *, int *,
                   floatType_t const );
+void costFunction( floatType_t *X,
+                   int const XRows,
+                   int const XCols,
+                   floatType_t const *theta1,
+                   int         const theta1Rows,
+                   int         const theta1Cols,
+                   floatType_t const *theta2,
+                   int         const theta2Rows,
+                   int         const theta2Cols,
+                   floatType_t const *Y,
+                   floatType_t *cost );
 
-void svmTrain( floatType_t const *, floatType_t const *, floatType_t const,
-               const int, const int,
-               const floatType_t, floatType_t * );
-
-void svmPredict( floatType_t const *, floatType_t const *,
-                 int const, int const, int * );

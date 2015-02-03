@@ -70,15 +70,20 @@ int main(int argc, char **argv)
 */
 
   trainingMatrix = (float *) malloc( sizeof(float) * numTrainingExamples * 
-                           numFeatures );
+                           (numFeatures+1) );
   if( trainingMatrix == NULL ) 
     fprintf(stderr,"Houston more problems\n");
 
-  memset( trainingMatrix, 0, sizeof(float)*numTrainingExamples*numFeatures );
+  memset( trainingMatrix, 0, sizeof(float)*
+               numTrainingExamples*(numFeatures+1) );
 
-/* read training examples from file as a matrix */
+/* read training examples from file as a matrix 
+   read first column of data into second column of array to leave room for
+   bias unit of ones
+*/
 
-  readMatrixFromFile( trainingSetFilename, trainingMatrix, 
+  readMatrixFromFile( trainingSetFilename, 
+                      &trainingMatrix[INDX(0,1,numTrainingExamples)],
                       numTrainingExamples, numFeatures );
 
 /* malloc the theta1 matrix.  each row is a different training
@@ -115,6 +120,14 @@ int main(int argc, char **argv)
 
 
   printf("sigmoid at %f is %f\n", 1.0, SIGMOID(1.0));
+  printf("sigmoid at %f is %f\n", 1.0, SIGMOID(-1.0));
+
+  floatType_t cost;
+
+  costFunction( trainingMatrix, numTrainingExamples, numFeatures+1,
+                theta1, sizeHiddenLayer, numFeatures+1,
+                theta2, numClasses, sizeHiddenLayer+1,
+                trainingVector, &cost );
 
 #if 0
 /* malloc y */
