@@ -48,7 +48,7 @@ int main(int argc, char **argv)
 
   float *trainingVector, *trainingMatrix, *pred;
   float *theta1, *theta2;
-  int *testVector, *testMatrix;
+  int *predictVector, *testMatrix;
   floatType_t *X, *Y, *W, *Xtest;
 
 /* malloc trainingVector */
@@ -127,6 +127,31 @@ int main(int argc, char **argv)
                 theta1, sizeHiddenLayer, numFeatures+1,
                 theta2, numClasses, sizeHiddenLayer+1,
                 trainingVector, &cost );
+
+/* malloc testVector */
+
+  predictVector = (int *) malloc( sizeof(int) * numTrainingExamples );
+  if( predictVector == NULL ) 
+    fprintf(stderr,"Houston we have a problem\n");
+
+  memset( predictVector, 0, sizeof(int)*numTrainingExamples );
+
+  predict( trainingMatrix, numTrainingExamples, numFeatures+1,
+                theta1, sizeHiddenLayer, numFeatures+1,
+                theta2, numClasses, sizeHiddenLayer+1,
+                predictVector );
+  
+  floatType_t result = 0.0;
+  for( int i = 0; i < numTrainingExamples; i++ )
+  {
+//    printf("i %d actual %f predict %d\n",i,trainingVector[i],predictVector[i]); 
+    if( (int) trainingVector[i] == predictVector[i] )
+      result += (floatType_t) 1.0;
+  } /* end for i */
+  
+  printf("total correct is %f\n",result);
+  printf("prediction rate is %f\n",
+      100.0 * result/(floatType_t)numTrainingExamples);
 
 #if 0
 /* malloc y */

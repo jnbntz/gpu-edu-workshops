@@ -126,4 +126,13 @@ void costFunction( floatType_t *X,
                    int         const theta2Cols,
                    floatType_t const *Y,
                    floatType_t *cost );
-
+void predict( floatType_t *X,
+                   int const XRows,
+                   int const XCols,
+                   floatType_t const *theta1,
+                   int         const theta1Rows,
+                   int         const theta1Cols,
+                   floatType_t const *theta2,
+                   int         const theta2Rows,
+                   int         const theta2Cols,
+                   int               *predictVector);

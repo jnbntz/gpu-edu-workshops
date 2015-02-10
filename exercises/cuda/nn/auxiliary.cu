@@ -33,10 +33,11 @@ void costFunction( floatType_t *X,
 {
 
   floatType_t *tempMatrix, *z2, *a2, *a3;
+  floatType_t *theta1Grad, *theta2Grad;
 
-printf("Xrows %d Xcols %d\n",XRows,XCols);
-printf("t1row %d t1col %d\n",theta1Rows,theta1Cols);
-printf("t2row %d t2col %d\n",theta2Rows,theta2Cols);
+  printf("Xrows %d Xcols %d\n",XRows,XCols);
+  printf("t1row %d t1col %d\n",theta1Rows,theta1Cols);
+  printf("t2row %d t2col %d\n",theta2Rows,theta2Cols);
 
   for( int i = 0; i < XRows; i++ ) X[i] = (floatType_t) 1.0;
   
@@ -128,14 +129,24 @@ printf("t2row %d t2col %d\n",theta2Rows,theta2Cols);
   floatType_t *delta2;
   delta2 = (floatType_t *)malloc( sizeof(floatType_t) * theta2Cols );
 
+  theta1Grad = (floatType_t *) malloc( sizeof(floatType_t) * 
+                                theta1Rows * theta1Cols );
+
+  memset( theta1Grad, 0, sizeof(floatType_t) * theta1Rows * theta1Cols );
+
+  theta2Grad = (floatType_t *) malloc( sizeof(floatType_t) * 
+                                theta2Rows * theta2Cols );
+
+  memset( theta2Grad, 0, sizeof(floatType_t) * theta2Rows * theta2Cols );
+
   for( int row = 0; row < XRows; row++ )
   { 
     memset( tempY, 0, sizeof( floatType_t) * 11 );
     tempY[ (int) Y[row] ] = (floatType_t) 1.0;
+
     for( int j = 0; j < 10; j++ ) 
     {
       tempY[j+1] = a3[INDX(row,j,XRows)] - tempY[j+1];
-//      printf("j %d delta3 %e\n",j+1, tempY[j+1] );
     } /* end for j */
 
     if( sizeof( floatType_t ) == 4 )
@@ -155,20 +166,145 @@ printf("t2row %d t2col %d\n",theta2Rows,theta2Cols);
     { 
     } /* end else */
 
+    for( int j = 0; j < theta1Cols; j++ )
+    {
+      for( int i = 0; i < theta1Rows; i++ )
+      {
+        theta1Grad[INDX(i,j,theta1Rows)] += 
+          ( delta2[i+1] * X[INDX(row,j,XRows)] );
+//        printf("i %d j %d val %f\n",i,j,theta1Grad[INDX(i,j,theta1Rows)]);
+      } /* end for i */    
+    } /* end for j */
 
-
-//    for( int j = 0; j <= theta1Rows; j++ )
- //    printf("j %d val %e\n",j,delta2[j] );
-  //  printf("\n");
+    for( int j = 0; j < theta2Cols; j++ )
+    {
+      for( int i = 0; i < theta2Rows; i++ )
+      {
+        theta2Grad[INDX(i,j,theta2Rows)] +=
+          ( delta3[i+1] * a2[INDX(row,j,XRows)] );
+//        printf("i %d j %d val %e\n",i,j,theta2Grad[INDX(i,j,theta2Rows)]);
+      } /* end for i */
+    } /* end for j */
 
   } /* end for row */
 
+  floatType_t recip = (floatType_t) 1.0 / (floatType_t) XRows;
+
+  for( int j = 0; j < theta1Cols; j++ )
+  {
+    for( int i = 0; i < theta1Rows; i++ )
+    {
+      theta1Grad[INDX(i,j,theta1Rows)] *= recip;
+//      printf("i %d j %d val %e\n",i,j,theta1Grad[INDX(i,j,theta1Rows)]);
+    } /* end for i */    
+//    printf("\n");
+  } /* end for j */
+
+  for( int j = 0; j < theta2Cols; j++ )
+  {
+    for( int i = 0; i < theta2Rows; i++ )
+    {
+      theta2Grad[INDX(i,j,theta2Rows)] *= recip;
+//      printf("i %d j %d val %e\n",i,j,theta2Grad[INDX(i,j,theta2Rows)]);
+    } /* end for i */
+ //   printf("\n");
+  } /* end for j */
 
 
   free(tempMatrix);
   free(tempY);
   free(delta2);
 } /* end costFunction */
+
+void predict( floatType_t *X, 
+                   int const XRows, 
+                   int const XCols,
+                   floatType_t const *theta1, 
+                   int         const theta1Rows,
+                   int         const theta1Cols,
+                   floatType_t const *theta2, 
+                   int         const theta2Rows,
+                   int         const theta2Cols,
+                   int               *predictVector)
+{
+
+  floatType_t *tempMatrix, *z2, *a2, *a3;
+  floatType_t *theta1Grad, *theta2Grad;
+ 
+  printf("Xrows %d Xcols %d\n",XRows,XCols);
+  printf("t1row %d t1col %d\n",theta1Rows,theta1Cols);
+  printf("t2row %d t2col %d\n",theta2Rows,theta2Cols);
+
+  for( int i = 0; i < XRows; i++ ) X[i] = (floatType_t) 1.0;
+
+  tempMatrix = (floatType_t *) malloc( sizeof(floatType_t) *
+                               ( XRows * (theta1Rows+1) + 
+                                 XRows * (theta1Rows+1) +
+                                 XRows * (theta2Rows+1) ) );
+
+  z2 = tempMatrix;
+  a2 = &z2[INDX(XRows,theta1Rows,XRows)];
+  a3 = &a2[INDX(XRows,theta1Rows+1,XRows)];
+
+  if( sizeof( floatType_t ) == 4 ) 
+  {
+    cblas_sgemm( CblasColMajor, CblasNoTrans, CblasTrans,
+                 XRows, theta1Rows, theta1Cols,
+                 1.0f, (float *) X, XRows,
+                 (float *) theta1, theta1Rows, 0.0f,
+                 (float *) &z2[INDX(0,1,XRows)], XRows );
+//                 (float *) &tempMatrix[INDX(0,1,XRows)], XRows );
+    for( int j = 1; j < theta1Rows+1; j++ )
+      for( int i = 0; i < XRows; i++ )
+        a2[INDX(i,j,XRows)] = 
+          sigmoid_f( z2[INDX(i,j,XRows)] );
+  } /* end if */
+  else
+  {
+  } /* end else */  
+
+
+
+  for( int i = 0; i < XRows; i++ ) 
+    a2[INDX(i,0,XRows)] = (floatType_t) 1.0;
+
+//  a3 = &tempMatrix[INDX(0,theta2Cols+1,XRows)];
+
+  if( sizeof( floatType_t ) == 4 )
+  {
+    cblas_sgemm( CblasColMajor, CblasNoTrans, CblasTrans,
+                 XRows, theta2Rows, theta2Cols,
+                 1.0f, (float *) a2, XRows,
+                 (float *) theta2, theta2Rows, 0.0f,
+                 (float *) a3, XRows );
+//                 (float *) &tempMatrix[INDX(0,theta2Cols+1,XRows)], XRows );
+    for( int j = 0; j < theta2Rows; j++ )
+      for( int i = 0; i < XRows; i++ )
+        a3[INDX(i,j,XRows)] = 
+          sigmoid_f( a3[INDX(i,j,XRows)] );
+  } /* end if */
+  else
+  { 
+  } /* end else */
+
+  for( int row = 0; row < XRows; row++ )
+  {
+    floatType_t max = -99.0;
+    int         idx = -10;
+    for( int i = 0; i < 10; i++ )
+    {
+      if( a3[INDX(row,i,XRows)] > max )
+      {
+        max = a3[INDX(row,i,XRows)];
+        idx = i+1;
+      } /* end if */
+    } /* end for i */
+    predictVector[row] = idx;
+  } /* end row */
+
+ 
+} /* end predict */ 
+
 
 void readMatrixFromFile( char *fileName, 
                          float *matrix, 
