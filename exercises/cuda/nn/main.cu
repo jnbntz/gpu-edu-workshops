@@ -89,7 +89,6 @@ int main(int argc, char **argv)
 /* malloc the theta1 matrix.  each row is a different training
    example
 */
-
   theta1 = (float *) malloc( sizeof(float) * sizeHiddenLayer * 
                            (numFeatures + 1 ) );
   if( theta1 == NULL ) 

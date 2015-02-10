@@ -55,7 +55,30 @@ else if( (val) > (max) ) val = (max);
 
 /* macro for sigmoid calculation */
 #define SIGMOID(z) ( (floatType_t) 1.0 ) / \
-( ( (floatType_t) 1.0 ) + exp(-z) )
+( ( (floatType_t) 1.0 ) + expf(-z) )
+
+inline float sigmoid_f( float z )
+{
+  return 1.0f / ( 1.0f + expf( -z ) );
+} /* end sigmoid_f */
+
+inline double sigmoid( double z )
+{
+  return 1.0 / ( 1.0 + exp( -z ) );
+} /* end sigmoid */
+
+inline float sigmoidGradient_f( float z )
+{
+  float temp = sigmoid_f( z );
+  return temp * ( 1.0f - temp );
+} /* end sigGrad_f */
+
+inline double sigmoidGradient( double z )
+{
+  double temp = sigmoid( z );
+  return temp * ( 1.0 - temp );
+} /* end sigGrad_f */
+
 
 /* hardcoded constants for training and test set size and feature
  * vector size
