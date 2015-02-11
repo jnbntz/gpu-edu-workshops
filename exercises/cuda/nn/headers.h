@@ -106,7 +106,7 @@ inline double sigmoidGradient( double z )
 
 /* function defs */
 
-void readMatrixFromFile( char *, float *, const int, const int );
+void readMatrixFromFile( char *, float *, const int, const int, const int );
 
 void calculateBI( floatType_t const *,
                   floatType_t const *,

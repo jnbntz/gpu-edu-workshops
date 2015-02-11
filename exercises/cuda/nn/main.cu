@@ -64,10 +64,10 @@ int main(int argc, char **argv)
 /* read trainingVector from file */
  
   readMatrixFromFile( trainingVectorFilename, trainingVector, 
-                      numTrainingExamples, 1 );
+                      numTrainingExamples, 1, 1 );
 
 
-/* malloc the training matrix.  each row is a different training
+/* malloc the training matrix.  each column is a different training
    example
 */
 
@@ -84,9 +84,12 @@ int main(int argc, char **argv)
    bias unit of ones
 */
 
+//  readMatrixFromFile( trainingSetFilename, 
+ //                     &trainingMatrix[INDX(0,1,numTrainingExamples)],
+  //                    numTrainingExamples, numFeatures );
   readMatrixFromFile( trainingSetFilename, 
-                      &trainingMatrix[INDX(0,1,numTrainingExamples)],
-                      numTrainingExamples, numFeatures );
+                      &trainingMatrix[1],
+                      numFeatures, numTrainingExamples, numFeatures+1 );
 
 /* malloc the theta1 matrix.  each row is a different training
    example
@@ -150,16 +153,18 @@ int main(int argc, char **argv)
 
   floatType_t cost;
 
+#if 1
   trainNetwork( trainingMatrix, numTrainingExamples, numFeatures+1,
                 theta1, sizeHiddenLayer, numFeatures+1,
                 theta2, numClasses, sizeHiddenLayer+1,
                 trainingVector );
-
-//  costFunction( trainingMatrix, numTrainingExamples, numFeatures+1,
- //               theta1, sizeHiddenLayer, numFeatures+1,
-  //              theta2, numClasses, sizeHiddenLayer+1,
-   //             trainingVector, &cost, theta1Grad, theta2Grad );
-
+#endif
+#if 0
+  costFunction( trainingMatrix, numTrainingExamples, numFeatures+1,
+                theta1, sizeHiddenLayer, numFeatures+1,
+                theta2, numClasses, sizeHiddenLayer+1,
+                trainingVector, &cost, theta1Grad, theta2Grad );
+#endif
  // printf("cost is %f\n",cost);
 
 /* malloc testVector */
