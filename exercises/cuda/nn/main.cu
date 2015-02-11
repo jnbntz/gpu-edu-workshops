@@ -43,11 +43,13 @@ int main(int argc, char **argv)
   floatType_t const C           = 0.1;
   char spam[]                   = "SPAM";
   char notSpam[]                = "NOT SPAM";
+  floatType_t const eps         = 0.12;
 
 /* define the arrays going to be used */
 
   float *trainingVector, *trainingMatrix, *pred;
   float *theta1, *theta2;
+  float *theta1Grad, *theta2Grad;
   int *predictVector, *testMatrix;
   floatType_t *X, *Y, *W, *Xtest;
 
@@ -98,8 +100,22 @@ int main(int argc, char **argv)
 
 /* read theta1 from file as a matrix */
 
-  readMatrixFromFile( theta1Filename, theta1,
-                      sizeHiddenLayer, numFeatures+1 );
+//  readMatrixFromFile( theta1Filename, theta1,
+ //                     sizeHiddenLayer, numFeatures+1 );
+  for( int i = 0; i < sizeHiddenLayer*(numFeatures+1); i++ )
+  {
+    theta1[i] = double(rand()) / (double(RAND_MAX) + 1.0);
+    theta1[i] *= (2.0*eps);
+    theta1[i] -= eps;
+//    printf("i %d theta2 %f\n",i,theta2[i]);
+  } /* end for */
+
+  theta1Grad = (float *) malloc( sizeof(float) * sizeHiddenLayer * 
+                           (numFeatures + 1 ) );
+  if( theta1Grad == NULL ) 
+    fprintf(stderr,"Houston more problems\n");
+
+  memset( theta1Grad, 0, sizeof(float)*sizeHiddenLayer*(numFeatures+1) );
 
 /* malloc the theta2 matrix.  each row is a different training
    example
@@ -112,21 +128,39 @@ int main(int argc, char **argv)
 
   memset( theta2, 0, sizeof(float)*numClasses*(sizeHiddenLayer+1) );
 
-/* read theta1 from file as a matrix */
+/* read theta2 from file as a matrix */
 
-  readMatrixFromFile( theta2Filename, theta2,
-                      numClasses, sizeHiddenLayer+1 );
+//  readMatrixFromFile( theta2Filename, theta2,
+ //                     numClasses, sizeHiddenLayer+1 );
+  for( int i = 0; i < numClasses*(sizeHiddenLayer+1); i++ )
+  {
+    theta2[i] = double(rand()) / (double(RAND_MAX) + 1.0);
+    theta2[i] *= (2.0*eps);
+    theta2[i] -= eps;
+//    printf("i %d theta2 %f\n",i,theta2[i]);
+  } /* end for */
 
+  theta2Grad = (float *) malloc( sizeof(float) * numClasses * 
+                           (sizeHiddenLayer + 1 ) );
+  if( theta2Grad == NULL ) 
+    fprintf(stderr,"Houston more problems\n");
 
-  printf("sigmoid at %f is %f\n", 1.0, SIGMOID(1.0));
-  printf("sigmoid at %f is %f\n", 1.0, SIGMOID(-1.0));
+  memset( theta2Grad, 0, sizeof(float)*numClasses*(sizeHiddenLayer+1) );
+
 
   floatType_t cost;
 
-  costFunction( trainingMatrix, numTrainingExamples, numFeatures+1,
+  trainNetwork( trainingMatrix, numTrainingExamples, numFeatures+1,
                 theta1, sizeHiddenLayer, numFeatures+1,
                 theta2, numClasses, sizeHiddenLayer+1,
-                trainingVector, &cost );
+                trainingVector );
+
+//  costFunction( trainingMatrix, numTrainingExamples, numFeatures+1,
+ //               theta1, sizeHiddenLayer, numFeatures+1,
+  //              theta2, numClasses, sizeHiddenLayer+1,
+   //             trainingVector, &cost, theta1Grad, theta2Grad );
+
+ // printf("cost is %f\n",cost);
 
 /* malloc testVector */
 

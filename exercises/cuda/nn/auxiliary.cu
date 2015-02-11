@@ -19,6 +19,83 @@
 #include <math.h>
 #include "headers.h"
 
+void trainNetwork( floatType_t       *X, 
+                   int         const XRows, 
+                   int         const XCols,
+                   floatType_t       *theta1, 
+                   int         const theta1Rows,
+                   int         const theta1Cols,
+                   floatType_t       *theta2, 
+                   int         const theta2Rows,
+                   int         const theta2Cols,
+                   floatType_t const *Y )
+{
+  floatType_t lambda = 1.0;
+  floatType_t cost;
+  floatType_t *theta1Grad, *theta2Grad;
+
+  theta1Grad = (floatType_t *) malloc( sizeof(floatType_t) * 
+                                theta1Rows * theta1Cols );
+
+  theta2Grad = (floatType_t *) malloc( sizeof(floatType_t) * 
+                                theta2Rows * theta2Cols );
+
+#if 0
+/* stochastic gradient descent */
+  int iter = 0;
+  while(iter < 5 )
+  {
+  for( int i = 0; i < 500; i++ )
+  {
+    for( int j = i; j < 5000; j+=500 )
+    {
+      costFunction( &X[j], 1, XCols,
+                    theta1, theta1Rows, theta1Cols, 
+                    theta2, theta2Rows, theta2Cols,
+                    &Y[j],
+                    &cost, theta1Grad, theta2Grad );
+
+      printf("iter %d cost is %.3e\n",j,cost);
+
+      for( int i = 0; i < theta1Rows*theta1Cols; i++ )
+        theta1[i] -= lambda * theta1Grad[i];
+
+      for( int i = 0; i < theta2Rows*theta2Cols; i++ )
+        theta2[i] -= lambda * theta2Grad[i];
+//      printf("j %d val %f\n",j,Y[j]);
+    } 
+  } /* end for i */
+  iter++;
+  } /* end while */
+#endif
+#if 1
+/* gradient descent algorithm */
+
+  int iter = 0;
+
+  while( iter < 400 )
+  {
+
+  costFunction( X, XRows, XCols,
+                theta1, theta1Rows, theta1Cols, 
+                theta2, theta2Rows, theta2Cols,
+                Y,
+                &cost, theta1Grad, theta2Grad );
+
+  printf("iter %d cost is %.3e\n",iter,cost);
+
+  for( int i = 0; i < theta1Rows*theta1Cols; i++ )
+    theta1[i] -= lambda * theta1Grad[i];
+
+  for( int i = 0; i < theta2Rows*theta2Cols; i++ )
+    theta2[i] -= lambda * theta2Grad[i];
+
+    iter++;
+  } /* end while */
+#endif
+
+} /* end trainNetwork */
+
 void costFunction( floatType_t *X, 
                    int const XRows, 
                    int const XCols,
@@ -29,15 +106,17 @@ void costFunction( floatType_t *X,
                    int         const theta2Rows,
                    int         const theta2Cols,
                    floatType_t const *Y, 
-                   floatType_t *cost )
+                   floatType_t *cost,
+                   floatType_t       *theta1Grad,
+                   floatType_t       *theta2Grad )
 {
 
   floatType_t *tempMatrix, *z2, *a2, *a3;
-  floatType_t *theta1Grad, *theta2Grad;
+//  floatType_t *theta1Grad, *theta2Grad;
 
-  printf("Xrows %d Xcols %d\n",XRows,XCols);
-  printf("t1row %d t1col %d\n",theta1Rows,theta1Cols);
-  printf("t2row %d t2col %d\n",theta2Rows,theta2Cols);
+//  printf("Xrows %d Xcols %d\n",XRows,XCols);
+ // printf("t1row %d t1col %d\n",theta1Rows,theta1Cols);
+  //printf("t2row %d t2col %d\n",theta2Rows,theta2Cols);
 
   for( int i = 0; i < XRows; i++ ) X[i] = (floatType_t) 1.0;
   
@@ -120,7 +199,9 @@ void costFunction( floatType_t *X,
   } /* end for */
 
   jTemp /= (floatType_t) XRows;
-  printf("jTemp is %f %f\n",jTemp, jTemp / (floatType_t)XRows );
+//  printf("jTemp is %f %f\n",jTemp, jTemp / (floatType_t)XRows );
+
+  *cost = jTemp;
 
   floatType_t *tempY, *delta3;
   tempY = (floatType_t *)malloc( sizeof(floatType_t)*11);
@@ -129,13 +210,13 @@ void costFunction( floatType_t *X,
   floatType_t *delta2;
   delta2 = (floatType_t *)malloc( sizeof(floatType_t) * theta2Cols );
 
-  theta1Grad = (floatType_t *) malloc( sizeof(floatType_t) * 
-                                theta1Rows * theta1Cols );
+//  theta1Grad = (floatType_t *) malloc( sizeof(floatType_t) * 
+ //                               theta1Rows * theta1Cols );
 
   memset( theta1Grad, 0, sizeof(floatType_t) * theta1Rows * theta1Cols );
 
-  theta2Grad = (floatType_t *) malloc( sizeof(floatType_t) * 
-                                theta2Rows * theta2Cols );
+//  theta2Grad = (floatType_t *) malloc( sizeof(floatType_t) * 
+ //                               theta2Rows * theta2Cols );
 
   memset( theta2Grad, 0, sizeof(floatType_t) * theta2Rows * theta2Cols );
 
@@ -210,10 +291,6 @@ void costFunction( floatType_t *X,
  //   printf("\n");
   } /* end for j */
 
-
-  free(tempMatrix);
-  free(tempY);
-  free(delta2);
 } /* end costFunction */
 
 void predict( floatType_t *X, 
@@ -229,7 +306,7 @@ void predict( floatType_t *X,
 {
 
   floatType_t *tempMatrix, *z2, *a2, *a3;
-  floatType_t *theta1Grad, *theta2Grad;
+//  floatType_t *theta1Grad, *theta2Grad;
  
   printf("Xrows %d Xcols %d\n",XRows,XCols);
   printf("t1row %d t1col %d\n",theta1Rows,theta1Cols);
