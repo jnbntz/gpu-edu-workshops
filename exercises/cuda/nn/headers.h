@@ -84,8 +84,8 @@ inline double sigmoidGradient( double z )
  * vector size
  */
 
-#define FEATURE_VECTOR_SIZE (400)
-#define TRAINING_SET_SIZE (5000)
+#define FEATURE_VECTOR_SIZE (784)
+#define TRAINING_SET_SIZE (60000)
 #define TEST_SET_SIZE (1000)
 #define HIDDEN_LAYER_SIZE (25)
 #define NUM_OUTPUT_CLASSES (10)
@@ -127,7 +127,8 @@ void costFunction( floatType_t *X,
                    floatType_t const *Y,
                    floatType_t *cost,
                    floatType_t       *theta1Grad,
-                   floatType_t       *theta2Grad );
+                   floatType_t       *theta2Grad,
+                   floatType_t       *tempMatrix );
 void predict( floatType_t *X,
                    int const XRows,
                    int const XCols,

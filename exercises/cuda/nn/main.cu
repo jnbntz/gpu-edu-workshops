@@ -24,11 +24,12 @@ int main(int argc, char **argv)
 
 /* declare file pointers */
 
-  char trainingVectorFilename[]   = "y_vals.txt";
-  char trainingSetFilename[]      = "X_vals.txt";
+//  char trainingVectorFilename[]   = "y_vals.txt";
+ // char trainingSetFilename[]      = "X_vals.txt";
+  char trainingVectorFilename[]   = "TrainLabels.txt";
+  char trainingSetFilename[]      = "Train.txt";
   char testSetFilename[]          = "testSet.txt";
   char testResultVectorFilename[] = "ytest.txt";
-  char sampleEmailFilename[]      = "emailVector.txt";
   char theta1Filename[]           = "Theta1.txt";
   char theta2Filename[]           = "Theta2.txt";
 
@@ -90,6 +91,10 @@ int main(int argc, char **argv)
   readMatrixFromFile( trainingSetFilename, 
                       &trainingMatrix[1],
                       numFeatures, numTrainingExamples, numFeatures+1 );
+
+  floatType_t scale = 1.0 / 256.0;
+  for( int i = 0; i < (numFeatures+1)*numTrainingExamples; i++ )
+    trainingMatrix[i] *= scale; 
 
 /* malloc the theta1 matrix.  each row is a different training
    example
