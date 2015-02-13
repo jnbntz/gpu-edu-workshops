@@ -86,7 +86,7 @@ inline double sigmoidGradient( double z )
 
 #define FEATURE_VECTOR_SIZE (784)
 #define TRAINING_SET_SIZE (60000)
-#define TEST_SET_SIZE (1000)
+#define TEST_SET_SIZE (10000)
 #define HIDDEN_LAYER_SIZE (25)
 #define NUM_OUTPUT_CLASSES (10)
 
@@ -108,13 +108,6 @@ inline double sigmoidGradient( double z )
 
 void readMatrixFromFile( char *, float *, const int, const int, const int );
 
-void calculateBI( floatType_t const *,
-                  floatType_t const *,
-                  floatType_t const *,
-                  int ,
-                  floatType_t *, floatType_t *,
-                  int *, int *,
-                  floatType_t const );
 void costFunction( floatType_t *X,
                    int const XRows,
                    int const XCols,

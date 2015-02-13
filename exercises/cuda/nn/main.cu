@@ -24,12 +24,10 @@ int main(int argc, char **argv)
 
 /* declare file pointers */
 
-//  char trainingVectorFilename[]   = "y_vals.txt";
- // char trainingSetFilename[]      = "X_vals.txt";
-  char trainingVectorFilename[]   = "TrainLabels.txt";
+  char trainingLabelFilename[]    = "TrainLabels.txt";
   char trainingSetFilename[]      = "Train.txt";
-  char testSetFilename[]          = "testSet.txt";
-  char testResultVectorFilename[] = "ytest.txt";
+  char testSetFilename[]          = "t10kout.txt";
+  char testLabelFilename[]        = "t10kLables.txt";
   char theta1Filename[]           = "Theta1.txt";
   char theta2Filename[]           = "Theta2.txt";
 
@@ -40,19 +38,21 @@ int main(int argc, char **argv)
   int const numTestExamples     = TEST_SET_SIZE;
   int const sizeHiddenLayer     = HIDDEN_LAYER_SIZE;
   int const numClasses          = NUM_OUTPUT_CLASSES;
-  floatType_t const tol         = 1.0e-3;
-  floatType_t const C           = 0.1;
-  char spam[]                   = "SPAM";
-  char notSpam[]                = "NOT SPAM";
   floatType_t const eps         = 0.12;
 
 /* define the arrays going to be used */
 
-  float *trainingVector, *trainingMatrix, *pred;
+  float *trainingVector, *trainingMatrix;
   float *theta1, *theta2;
   float *theta1Grad, *theta2Grad;
-  int *predictVector, *testMatrix;
-  floatType_t *X, *Y, *W, *Xtest;
+  float *testVector, *testMatrix;
+  int *predictVector;
+
+/* print some initial stuff */
+  printf("Number of training examples %d\n",numTrainingExamples);
+  printf("Number of features/pixels per example %d\n",numFeatures);
+  printf("Size of hidden layer %d\n",sizeHiddenLayer);
+  printf("Number of test examples %d\n",numTestExamples);
 
 /* malloc trainingVector */
 
@@ -64,7 +64,7 @@ int main(int argc, char **argv)
 
 /* read trainingVector from file */
  
-  readMatrixFromFile( trainingVectorFilename, trainingVector, 
+  readMatrixFromFile( trainingLabelFilename, trainingVector, 
                       numTrainingExamples, 1, 1 );
 
 
@@ -91,6 +91,8 @@ int main(int argc, char **argv)
   readMatrixFromFile( trainingSetFilename, 
                       &trainingMatrix[1],
                       numFeatures, numTrainingExamples, numFeatures+1 );
+
+/* scale the training matrix to 0 to 1 */
 
   floatType_t scale = 1.0 / 256.0;
   for( int i = 0; i < (numFeatures+1)*numTrainingExamples; i++ )
@@ -155,24 +157,33 @@ int main(int argc, char **argv)
 
   memset( theta2Grad, 0, sizeof(float)*numClasses*(sizeHiddenLayer+1) );
 
+/* setup timers */
 
-  floatType_t cost;
-
+  cudaEvent_t start, stop;
+  CUDA_CALL( cudaEventCreate( &start ) );
+  CUDA_CALL( cudaEventCreate( &stop ) );
+  CUDA_CALL( cudaEventRecord( start, 0 ) );
 #if 1
   trainNetwork( trainingMatrix, numTrainingExamples, numFeatures+1,
                 theta1, sizeHiddenLayer, numFeatures+1,
                 theta2, numClasses, sizeHiddenLayer+1,
                 trainingVector );
 #endif
+/* report time of training */
+
+  CUDA_CALL( cudaEventRecord( stop, 0 ) );
+  CUDA_CALL( cudaEventSynchronize( stop ) );
+  float elapsedTime;
+  CUDA_CALL( cudaEventElapsedTime( &elapsedTime, start, stop ) );
+  fprintf(stdout, "Total time for training is %e sec\n",elapsedTime/1000.0f );
 #if 0
   costFunction( trainingMatrix, numTrainingExamples, numFeatures+1,
                 theta1, sizeHiddenLayer, numFeatures+1,
                 theta2, numClasses, sizeHiddenLayer+1,
                 trainingVector, &cost, theta1Grad, theta2Grad );
 #endif
- // printf("cost is %f\n",cost);
 
-/* malloc testVector */
+/* malloc predictVector */
 
   predictVector = (int *) malloc( sizeof(int) * numTrainingExamples );
   if( predictVector == NULL ) 
@@ -188,14 +199,71 @@ int main(int argc, char **argv)
   floatType_t result = 0.0;
   for( int i = 0; i < numTrainingExamples; i++ )
   {
-//    printf("i %d actual %f predict %d\n",i,trainingVector[i],predictVector[i]); 
     if( (int) trainingVector[i] == predictVector[i] )
       result += (floatType_t) 1.0;
   } /* end for i */
   
-  printf("total correct is %f\n",result);
-  printf("prediction rate is %f\n",
+  printf("Total correct on training set is %d\n",(int)result);
+  printf("Prediction rate of training set is %f\n",
       100.0 * result/(floatType_t)numTrainingExamples);
+
+/* malloc testVector */
+
+  testVector = (float *) malloc( sizeof(float) * numTestExamples );
+  if( testVector == NULL ) 
+    fprintf(stderr,"Houston we have a problem\n");
+
+  memset( testVector, 0, sizeof(float)*numTestExamples );
+
+/* read trainingVector from file */
+ 
+  readMatrixFromFile( testLabelFilename, testVector, 
+                      numTestExamples, 1, 1 );
+
+/* malloc the test matrix.  each column is a different training
+   example
+*/
+
+  testMatrix = (float *) malloc( sizeof(float) * numTestExamples * 
+                           (numFeatures+1) );
+  if( testMatrix == NULL ) 
+    fprintf(stderr,"Houston more problems\n");
+
+  memset( testMatrix, 0, sizeof(float)*
+               numTestExamples*(numFeatures+1) );
+
+/* read training examples from file as a matrix 
+   read first column of data into second column of array to leave room for
+   bias unit of ones
+*/
+
+  readMatrixFromFile( testSetFilename, 
+                      &testMatrix[1],
+                      numFeatures, numTestExamples, numFeatures+1 );
+
+/* scale the training matrix to 0 to 1 */
+
+  scale = 1.0 / 256.0;
+  for( int i = 0; i < (numFeatures+1)*numTestExamples; i++ )
+    testMatrix[i] *= scale; 
+
+  memset( predictVector, 0, sizeof(int)*numTestExamples );
+
+  predict( testMatrix, numTestExamples, numFeatures+1,
+                theta1, sizeHiddenLayer, numFeatures+1,
+                theta2, numClasses, sizeHiddenLayer+1,
+                predictVector );
+  
+  result = 0.0;
+  for( int i = 0; i < numTestExamples; i++ )
+  {
+    if( (int) testVector[i] == predictVector[i] )
+      result += (floatType_t) 1.0;
+  } /* end for i */
+  
+  printf("Total correct on test set is %d\n",(int)result);
+  printf("Prediction rate of test set is %f\n",
+      100.0 * result/(floatType_t)numTestExamples);
 
 #if 0
 /* malloc y */
