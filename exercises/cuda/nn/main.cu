@@ -19,7 +19,7 @@
 #include <math.h>
 #include "headers.h"
 
-int main(int argc, char **argv) 
+int main(int argc, char *argv[]) 
 {
 
 /* declare file pointers */
@@ -36,7 +36,7 @@ int main(int argc, char **argv)
   int const numFeatures         = FEATURE_VECTOR_SIZE;
   int const numTrainingExamples = TRAINING_SET_SIZE;
   int const numTestExamples     = TEST_SET_SIZE;
-  int const sizeHiddenLayer     = HIDDEN_LAYER_SIZE;
+//  int const sizeHiddenLayer     = HIDDEN_LAYER_SIZE;
   int const numClasses          = NUM_OUTPUT_CLASSES;
   floatType_t const eps         = 0.12;
 
@@ -48,13 +48,65 @@ int main(int argc, char **argv)
   float *testVector, *testMatrix;
   int *predictVector;
 
+
+
+  float learningRate;// = atof( argv[1] );
+  int batchSize;// = atoi( argv[2] );
+  int iterations;// = atoi( argv[3] );
+  int sizeHiddenLayer;// = atoi( argv[4] );
+#if 0
+/* read command line input */
+  if( strcmp( argv[1],"-h" ) == 0 )
+  {
+    printf("Usage: ./x.nn -h for this message\n");
+    printf("Usage: ./x.nn <learningRate:float> <batchSize:int> <iterations:int> <hiddenLayerSize:int>\n");
+    exit(911);
+  } /* end for */
+
+  if( learningRate == 0.0f ) 
+  {
+    printf("Invalid learning rate %s, bombing out\n", argv[1] );
+    exit(911);
+  } /* end if */
+
+  if( batchSize <= 0 )
+  {
+    printf("Invalid batchSize %s, bombing out\n", argv[2] );
+    exit(911);
+  } /* end if */
+
+  if( iterations <= 0 )
+  {
+    printf("Invalid iteration size %s, bombing out\n", argv[3] );
+    exit(911);
+  } /* end if */
+
+  if( sizeHiddenLayer <= 0 )
+  {
+    printf("Invalid hidden layer size %s, bombing out\n", argv[4] );
+    exit(911);
+  } /* end if */
+
 /* print some initial stuff */
   printf("Number of training examples %d\n",numTrainingExamples);
   printf("Number of features/pixels per example %d\n",numFeatures);
-  printf("Size of hidden layer %d\n",sizeHiddenLayer);
   printf("Number of test examples %d\n",numTestExamples);
-
+  printf("Size of hidden layer %d\n",sizeHiddenLayer);
+  printf("Learning rate lambda is %e\n",learningRate);
+  printf("Batchsize is %d\n",batchSize);
+  printf("Number of iterations is %d\n",iterations);
+  printf("Hidden Layer Size is %d\n",sizeHiddenLayer);
+#endif
 /* malloc trainingVector */
+
+
+
+  readCommandLineArgs( argc, argv, &learningRate, &batchSize, &iterations, 
+                       &sizeHiddenLayer );
+
+  printf("Number of training examples %d\n",numTrainingExamples);
+  printf("Number of features/pixels per example %d\n",numFeatures);
+  printf("Number of test examples %d\n",numTestExamples);
 
   trainingVector = (float *) malloc( sizeof(float) * numTrainingExamples );
   if( trainingVector == NULL ) 

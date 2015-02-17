@@ -52,12 +52,12 @@ void trainNetwork( floatType_t       *X,
 #if 1
 /* stochastic gradient descent */
   int iter = 0;
-  int batchSize = 50;
+  int batchSize = 64;
 
   printf("Learning rate Lambda is %f\n",lambda);
   printf("Batchsize is %d\n",batchSize);
 
-  while(iter < 20 )
+  while(iter < 40 )
   {
 //  for( int i = 0; i < 500; i++ )
  // {
@@ -169,7 +169,7 @@ void costFunction( floatType_t       *X,
 //  delta2 = (floatType_t *)malloc( sizeof(floatType_t) * theta2Cols );
   delta2 = &yTemp[11];
 
-
+#if 1
   if( sizeof( floatType_t ) == 4 ) 
   {
     cblas_sgemm( CblasColMajor, CblasTrans, CblasTrans,
@@ -246,6 +246,8 @@ void costFunction( floatType_t       *X,
 
   *cost = jTemp;
 
+#endif
+#if 1
   floatType_t *delta3;
   delta3 = yTemp;
 
@@ -280,7 +282,7 @@ void costFunction( floatType_t       *X,
     else
     { 
     } /* end else */
-
+#if 1
     for( int j = 0; j < theta1Cols; j++ )
     {
       for( int i = 0; i < theta1Rows; i++ )
@@ -298,7 +300,7 @@ void costFunction( floatType_t       *X,
           ( delta3[i+1] * a2[INDX(row,j,Xexamples)] );
       } /* end for i */
     } /* end for j */
-
+#endif
   } /* end for row */
 
   floatType_t recip = (floatType_t) 1.0 / (floatType_t) Xexamples;
@@ -323,7 +325,7 @@ void costFunction( floatType_t       *X,
 //  } /* end for j */
   for( int i = 0; i < theta2Cols*theta2Rows; i++ )
     theta2Grad[i] *= recip;
-
+#endif
 } /* end costFunction */
 
 void predict(floatType_t       *X, 
@@ -416,6 +418,81 @@ void predict(floatType_t       *X,
 
  
 } /* end predict */ 
+
+void readCommandLineArgs( int    argc, 
+                          char   *argv[],
+                          float  *learningRate,
+                          int    *batchSize,
+                          int    *iterations,
+                          int    *sizeHiddenLayer )
+{
+/* read command line input */
+  switch( argc )
+  {
+    case 1:
+      *learningRate = 0.3;
+      *batchSize = 50;
+      *iterations = 1;
+      *sizeHiddenLayer = 25;
+      break;
+    case 2:
+      if( strcmp( argv[1],"-h" ) == 0 )
+      {
+        printf("Usage: ./x.nn -h for this message\n");
+        printf("Usage: ./x.nn <learningRate:float> <batchSize:int> <iterations:int> <hiddenLayerSize:int>\n");
+        exit(911);
+      } /* end for */
+      break;
+    case 5:
+      *learningRate = atof( argv[1] );
+      if( *learningRate == 0.0f )
+      {
+        printf("Invalid learning rate %s\n", argv[1] );
+        *learningRate = 0.3;
+        printf("Defaulting to %e\n", *learningRate );
+      } /* end if */
+
+      *batchSize = atoi( argv[2] );
+      if( *batchSize <= 0 )
+      {
+        printf("Invalid batchSize %s\n", argv[2] );
+        *batchSize = 50;
+        printf("Defaulting to %d\n",*batchSize );
+      } /* end if */
+
+      *iterations = atoi( argv[3] );
+      if( *iterations <= 0 )
+      {
+        printf("Invalid iteration size %s\n", argv[3] );
+        *iterations = 1;
+        printf("Defaulting to %d\n",*iterations);
+      } /* end if */
+
+      *sizeHiddenLayer = atoi( argv[4] );
+      if( *sizeHiddenLayer <= 0 )
+      {
+        printf("Invalid hidden layer size %s\n", argv[4] );
+        *sizeHiddenLayer = 25;
+        printf("Defaulting to %d\n",*sizeHiddenLayer );
+      } /* end if */
+      break;
+    default:
+      printf("Undefined command-line args\n");
+      printf("Usage: ./x.nn -h for this message\n");
+      printf("Usage: ./x.nn <learningRate:float> <batchSize:int> <iterations:int> <hiddenLayerSize:int>\n");
+      exit(911);
+      break;
+
+  } /* end switch */
+
+/* print some initial stuff */
+  printf("Learning rate lambda is %e\n",*learningRate);
+  printf("Batchsize is %d\n",*batchSize);
+  printf("Number of iterations is %d\n",*iterations);
+  printf("Hidden Layer Size is %d\n",*sizeHiddenLayer);
+
+
+} /* end readCommandLineArgs */
 
 
 void readMatrixFromFile( char *fileName, 

@@ -107,6 +107,7 @@ inline double sigmoidGradient( double z )
 /* function defs */
 
 void readMatrixFromFile( char *, float *, const int, const int, const int );
+void readCommandLineArgs( int, char *[], float *, int *, int *, int *);
 
 void costFunction( floatType_t *X,
                    int const XRows,

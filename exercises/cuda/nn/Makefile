@@ -15,7 +15,7 @@
 #
 
 CC=gcc
-NVCC=nvcc
+NVCC=nvcc -Xcompiler=-O3
 LIBS=-L. -lcblas -latlas
 INC=-I.
 
