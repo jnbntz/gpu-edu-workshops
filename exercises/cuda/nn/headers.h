@@ -142,4 +142,7 @@ void trainNetwork( floatType_t       *X,
                    floatType_t       *theta2,
                    int         const theta2Rows,
                    int         const theta2Cols,
-                   floatType_t const *Y );
+                   floatType_t const *Y,
+                   float       const learningRate,
+                   int         const iterations,
+                   int         const batchSize );

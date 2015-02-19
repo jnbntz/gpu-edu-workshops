@@ -54,59 +54,18 @@ int main(int argc, char *argv[])
   int batchSize;// = atoi( argv[2] );
   int iterations;// = atoi( argv[3] );
   int sizeHiddenLayer;// = atoi( argv[4] );
-#if 0
-/* read command line input */
-  if( strcmp( argv[1],"-h" ) == 0 )
-  {
-    printf("Usage: ./x.nn -h for this message\n");
-    printf("Usage: ./x.nn <learningRate:float> <batchSize:int> <iterations:int> <hiddenLayerSize:int>\n");
-    exit(911);
-  } /* end for */
-
-  if( learningRate == 0.0f ) 
-  {
-    printf("Invalid learning rate %s, bombing out\n", argv[1] );
-    exit(911);
-  } /* end if */
-
-  if( batchSize <= 0 )
-  {
-    printf("Invalid batchSize %s, bombing out\n", argv[2] );
-    exit(911);
-  } /* end if */
-
-  if( iterations <= 0 )
-  {
-    printf("Invalid iteration size %s, bombing out\n", argv[3] );
-    exit(911);
-  } /* end if */
-
-  if( sizeHiddenLayer <= 0 )
-  {
-    printf("Invalid hidden layer size %s, bombing out\n", argv[4] );
-    exit(911);
-  } /* end if */
-
-/* print some initial stuff */
-  printf("Number of training examples %d\n",numTrainingExamples);
-  printf("Number of features/pixels per example %d\n",numFeatures);
-  printf("Number of test examples %d\n",numTestExamples);
-  printf("Size of hidden layer %d\n",sizeHiddenLayer);
-  printf("Learning rate lambda is %e\n",learningRate);
-  printf("Batchsize is %d\n",batchSize);
-  printf("Number of iterations is %d\n",iterations);
-  printf("Hidden Layer Size is %d\n",sizeHiddenLayer);
-#endif
-/* malloc trainingVector */
 
 
 
   readCommandLineArgs( argc, argv, &learningRate, &batchSize, &iterations, 
                        &sizeHiddenLayer );
-
-  printf("Number of training examples %d\n",numTrainingExamples);
+  printf("Number of training examples           %d\n",numTrainingExamples);
   printf("Number of features/pixels per example %d\n",numFeatures);
-  printf("Number of test examples %d\n",numTestExamples);
+  printf("Number of test examples               %d\n",numTestExamples);
+
+/* malloc trainingVector */
+
+
 
   trainingVector = (float *) malloc( sizeof(float) * numTrainingExamples );
   if( trainingVector == NULL ) 
@@ -219,7 +178,7 @@ int main(int argc, char *argv[])
   trainNetwork( trainingMatrix, numTrainingExamples, numFeatures+1,
                 theta1, sizeHiddenLayer, numFeatures+1,
                 theta2, numClasses, sizeHiddenLayer+1,
-                trainingVector );
+                trainingVector, learningRate, iterations, batchSize );
 #endif
 /* report time of training */
 
@@ -227,7 +186,8 @@ int main(int argc, char *argv[])
   CUDA_CALL( cudaEventSynchronize( stop ) );
   float elapsedTime;
   CUDA_CALL( cudaEventElapsedTime( &elapsedTime, start, stop ) );
-  fprintf(stdout, "Total time for training is %e sec\n",elapsedTime/1000.0f );
+  fprintf(stdout, "Total time for training is            %.3e sec\n",
+    elapsedTime/1000.0f );
 #if 0
   costFunction( trainingMatrix, numTrainingExamples, numFeatures+1,
                 theta1, sizeHiddenLayer, numFeatures+1,
@@ -255,8 +215,8 @@ int main(int argc, char *argv[])
       result += (floatType_t) 1.0;
   } /* end for i */
   
-  printf("Total correct on training set is %d\n",(int)result);
-  printf("Prediction rate of training set is %f\n",
+  printf("Total correct on training set is      %d\n",(int)result);
+  printf("Prediction rate of training set is    %.3f\n",
       100.0 * result/(floatType_t)numTrainingExamples);
 
 /* malloc testVector */
@@ -313,187 +273,9 @@ int main(int argc, char *argv[])
       result += (floatType_t) 1.0;
   } /* end for i */
   
-  printf("Total correct on test set is %d\n",(int)result);
-  printf("Prediction rate of test set is %f\n",
+  printf("Total correct on test set is          %d\n",(int)result);
+  printf("Prediction rate of test set is        %.3f\n",
       100.0 * result/(floatType_t)numTestExamples);
 
-#if 0
-/* malloc y */
-
-  Y = (floatType_t *) malloc( sizeof(floatType_t) * numTrainingExamples );
-  if( Y == NULL ) 
-    fprintf(stderr,"error malloc y\n");
-
-/* copy result vector into y as float 
-   aloso map 0 values to -1 for training */
-
-  for( int i = 0; i < numTrainingExamples; i++ ) 
-  {
-    Y[i] = (floatType_t) trainingVector[i];
-    if( Y[i] == 0.0 ) Y[i] = -1.0;
-  } /* end for */
-
-/* malloc the training matrix.  each row is a different training
-   example
-*/
-
-  trainingMatrix = (int *) malloc( sizeof(int) * numTrainingExamples * 
-                           numFeatures );
-  if( trainingMatrix == NULL ) 
-    fprintf(stderr,"Houston more problems\n");
-
-/* read training examples from file as a matrix */
-
-  readMatrixFromFile( trainingSetFilename, trainingMatrix, 
-                      numTrainingExamples, numFeatures );
-
-/* malloc X */
-
-  X = (floatType_t *) malloc( sizeof(floatType_t) * numTrainingExamples * 
-                              numFeatures );
-  if( X == NULL ) 
-    fprintf(stderr,"error malloc X\n");
-
-/* copy trainingMatrix into X as floats */
-
-  for( int i = 0; i < numTrainingExamples * numFeatures; i++ )
-    X[i] = (floatType_t) trainingMatrix[i];
-
-/* malloc the Weight matrix */
-
-  W = (floatType_t *) malloc( sizeof(floatType_t) * numFeatures );
-  if( W == NULL ) fprintf(stderr,"error malloc yW\n");
-
-/* setup timers */
-
-  cudaEvent_t start, stop;
-  CUDA_CALL( cudaEventCreate( &start ) );
-  CUDA_CALL( cudaEventCreate( &stop ) );
-  CUDA_CALL( cudaEventRecord( start, 0 ) );
-
-/* call the training function */
-
-  svmTrain(X, Y, C,
-           numFeatures, numTrainingExamples,
-           tol, W );
-
-/* report time of svmTrain */
-
-  CUDA_CALL( cudaEventRecord( stop, 0 ) );
-  CUDA_CALL( cudaEventSynchronize( stop ) );
-  float elapsedTime;
-  CUDA_CALL( cudaEventElapsedTime( &elapsedTime, start, stop ) );
-  fprintf(stdout, "Total time for svmTrain is %f sec\n",elapsedTime/1000.0f );
-
-/* malloc a prediction vector which will be the predicted values of the 
-   results vector based on the training function 
-*/
-
-  pred = (int *) malloc( sizeof(int) * numTrainingExamples );
-  if( pred == NULL ) fprintf(stderr,"problem with malloc p in main\n");
-
-  CUDA_CALL( cudaEventRecord( start, 0 ) );
-
-/* call the predict function to populate the pred vector */
-
-  svmPredict( X, W, numTrainingExamples, numFeatures, pred );
-
-/* report time of svmTrain */
-
-  CUDA_CALL( cudaEventRecord( stop, 0 ) );
-  CUDA_CALL( cudaEventSynchronize( stop ) );
-  CUDA_CALL( cudaEventElapsedTime( &elapsedTime, start, stop ) );
-  fprintf(stdout, "Total time for svmPredict is %f sec\n",elapsedTime/1000.0f );
-  
-/* calculate how well the predictions matched the actual values */
-
-  double mean = 0.0;
-  for( int i = 0; i < numTrainingExamples; i++ ) 
-  {
-    mean += (pred[i] == trainingVector[i]) ? 1.0 : 0.0;
-  } /* end for */
-
-  mean /= (double) numTrainingExamples;
-  printf("Prediction success rate on training set is %f\n",mean*100.0);
-
-/* malloc testVector */
-
-  testVector = (int *) malloc( sizeof(int) * numTestExamples );
-  if( testVector == NULL ) 
-    fprintf(stderr,"Houston we have a problem\n");
-
-/* read the test vector */
-
-  readMatrixFromFile( testResultVectorFilename, testVector, 
-                      numTestExamples, 1 );
-
-/* malloc the test matrix.  each row is a different training
-   example
-*/
-
-  testMatrix = (int *) malloc( sizeof(int) * numTestExamples * 
-                           numFeatures );
-  if( trainingMatrix == NULL ) 
-    fprintf(stderr,"Houston more problems\n");
-
-/* read the testSet data */
-
-  readMatrixFromFile( testSetFilename, testMatrix, 
-                      numTestExamples, numFeatures );
-
-/* malloc Xtest */
-
-  Xtest = (floatType_t *) malloc( sizeof(floatType_t) * numTestExamples * 
-                              numFeatures );
-  if( X == NULL ) 
-    fprintf(stderr,"error malloc X\n");
-
-/* copy the testMatrix into Xtest as floating point numbers */
-
-  for( int i = 0; i < numTestExamples * numFeatures; i++ )
-    Xtest[i] = (floatType_t) testMatrix[i];
-
-/* predict the test set data using our original classifier */
-
-  svmPredict( Xtest, W, numTestExamples, numFeatures, pred );
-
-  mean = 0.0;
-  for( int i = 0; i < numTestExamples; i++ ) 
-  {
-    mean += (pred[i] == testVector[i]) ? 1.0 : 0.0;
-  } /* end for */
-
-  mean /= (double) numTestExamples;
-  printf("Prediction success rate on test set is %f\n",mean*100.0);
-
-/* read the single test email data */
-
-  readMatrixFromFile( sampleEmailFilename, testMatrix, 
-                      1, numFeatures );
-
-  for( int i = 0; i < numFeatures; i++ )
-  {
-    Xtest[i] = (floatType_t) testMatrix[i];
-  }
-
-/* predict whether the email is spam using our original classifier */
-
-  svmPredict( Xtest, W, 1, numFeatures, pred );
-
-  printf("Email test results 1 is SPAM 0 is NOT SPAM\n");
-  printf("File Name %s, classification %d %s\n",
-          sampleEmailFilename, pred[0], pred[0]==1 ? spam : notSpam);
-
-
-  free(testVector);
-  free(testMatrix);
-  free(pred);
-  free(W);
-  free(Y);
-  free(X);
-  free(Xtest);
-  free(trainingVector);
-  free(trainingMatrix);
-#endif
   return 0;
 } /* end main */
