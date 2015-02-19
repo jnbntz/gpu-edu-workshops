@@ -28,8 +28,11 @@ int main(int argc, char *argv[])
   char trainingSetFilename[]      = "train-images.txt";
   char testSetFilename[]          = "t10k-images.txt";
   char testLabelFilename[]        = "t10k-labels.txt";
+#if 0
+//used for debugging
   char theta1Filename[]           = "Theta1.txt";
   char theta2Filename[]           = "Theta2.txt";
+#endif
 
 /* define constants */
 
