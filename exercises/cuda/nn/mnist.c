@@ -14,6 +14,12 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+/* 
+ * Altered by Jonathan Bentz (NVIDIA), 2015.  
+ * Changes involve the ability to print the labels separate from the 
+ * images for input into other C programs.
+ */
+
 /* This program is written on an OpenBSD machine. This means that you most
  * likely need to change the betoh32() calls to ntohl(). Uncomment the next
  * macro if that is the case.

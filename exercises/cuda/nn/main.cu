@@ -24,10 +24,10 @@ int main(int argc, char *argv[])
 
 /* declare file pointers */
 
-  char trainingLabelFilename[]    = "TrainLabels.txt";
-  char trainingSetFilename[]      = "Train.txt";
-  char testSetFilename[]          = "t10kout.txt";
-  char testLabelFilename[]        = "t10kLables.txt";
+  char trainingLabelFilename[]    = "train-labels.txt";
+  char trainingSetFilename[]      = "train-images.txt";
+  char testSetFilename[]          = "t10k-images.txt";
+  char testLabelFilename[]        = "t10k-labels.txt";
   char theta1Filename[]           = "Theta1.txt";
   char theta2Filename[]           = "Theta2.txt";
 
@@ -36,7 +36,6 @@ int main(int argc, char *argv[])
   int const numFeatures         = FEATURE_VECTOR_SIZE;
   int const numTrainingExamples = TRAINING_SET_SIZE;
   int const numTestExamples     = TEST_SET_SIZE;
-//  int const sizeHiddenLayer     = HIDDEN_LAYER_SIZE;
   int const numClasses          = NUM_OUTPUT_CLASSES;
   floatType_t const eps         = 0.12;
 
