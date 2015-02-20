@@ -44,10 +44,11 @@ void trainNetwork( floatType_t       *X,
                                 theta2Rows * theta2Cols );
 
   tempMatrix = (floatType_t *) malloc( sizeof(floatType_t) *
-                               ( Xexamples * (theta1Rows+1) + 
-                                 Xexamples * (theta1Rows+1) +
-                                 Xexamples * (theta2Rows+1) + 
-                                 theta2Cols + 11) );
+                               ( Xexamples * (theta1Rows+1) + //z2
+                                 Xexamples * (theta1Rows+1) + //a2
+                                 Xexamples * (theta2Rows+1) + //a3
+                                 Xexamples * (theta1Rows+1) + //delta2
+                                 Xexamples * 11) );           //delta3
 
   for( int i = 0; i < Xexamples; i++ ) 
     X[INDX(0,i,Xfeatures)] = (floatType_t) 1.0;
@@ -55,18 +56,11 @@ void trainNetwork( floatType_t       *X,
 #if 1
 /* stochastic gradient descent */
   int iter = 0;
-//  int batchSize = 64;
-
-//  printf("Learning rate Lambda is %f\n",lambda);
- // printf("Batchsize is %d\n",batchSize);
 
   while(iter < iterations )
   {
-//  for( int i = 0; i < 500; i++ )
- // {
     for( int j = 0; j < Xexamples; j+=batchSize )
     {
-   //   int j = (int) ((double(rand()) / (double(RAND_MAX) + 1.0))*5000);
       
       costFunction( &X[INDX(0,j,Xfeatures)], batchSize, Xfeatures,
                     theta1, theta1Rows, theta1Cols, 
@@ -75,18 +69,13 @@ void trainNetwork( floatType_t       *X,
                     &cost, theta1Grad, theta2Grad, 
                     tempMatrix );
 
-//      printf("iter %d j %d cost is %.3e val %f\n",iter,j,cost,Y[j]);
-
       for( int i = 0; i < theta1Rows*theta1Cols; i++ )
         theta1[i] -= lambda * theta1Grad[i];
 
       for( int i = 0; i < theta2Rows*theta2Cols; i++ )
         theta2[i] -= lambda * theta2Grad[i];
-//      printf("j %d val %f\n",j,Y[j]);
-//     exit(911);
     } 
- // } /* end for i */
-  iter++;
+    iter++;
     printf("|");
     fflush(stdout);
     if( iter % 72 == 0 ) printf("\n");
@@ -151,10 +140,10 @@ void costFunction( floatType_t       *X,
 /* offset the pointers in the scratch memory */
 
   z2 = tempMatrix;
-  a2 = &z2[INDX(Xexamples,theta1Rows,Xexamples)];
+  a2 = &z2[INDX(Xexamples,theta1Rows+1,Xexamples)];
   a3 = &a2[INDX(Xexamples,theta1Rows+1,Xexamples)];
-  yTemp = &a3[INDX(Xexamples,theta2Rows+1,Xexamples)];
-  delta2 = &yTemp[11];
+  delta2 = &a3[INDX(Xexamples,theta2Rows+1,Xexamples)];
+  yTemp = &delta2[INDX(Xexamples,theta1Rows+1,Xexamples)];
 
 #if 1
   if( sizeof( floatType_t ) == 4 ) 
@@ -213,85 +202,59 @@ void costFunction( floatType_t       *X,
   *cost = jTemp;
 #endif
 #endif
-#if 1
+
   floatType_t *delta3;
   delta3 = yTemp;
 
-
-  memset( theta1Grad, 0, sizeof(floatType_t) * theta1Rows * theta1Cols );
-
-  memset( theta2Grad, 0, sizeof(floatType_t) * theta2Rows * theta2Cols );
-
+#if 1
   for( int row = 0; row < Xexamples; row++ )
   { 
-    memset( delta3, 0, sizeof( floatType_t) * 11 );
-    delta3[ (int) Y[row] ] = (floatType_t) 1.0;
-#if 1
+    memset( &delta3[INDX(0,row,11)], 0, sizeof( floatType_t) * 11 );
+    delta3[INDX((int)Y[row],row,11)] = (floatType_t) 1.0;
     for( int j = 0; j < 10; j++ ) 
     {
-      delta3[j+1] = a3[INDX(row,j,Xexamples)] - delta3[j+1];
+      delta3[INDX(j+1,row,11)] = a3[INDX(row,j,Xexamples)] 
+                               - delta3[INDX(j+1,row,11)];
     } /* end for j */
+  } /* end for */
 
-    if( sizeof( floatType_t ) == 4 )
-    {
-      cblas_sgemv( CblasColMajor, CblasTrans,
-                 theta2Rows, theta2Cols,
-                 1.0f, theta2, theta2Rows, 
-                 &delta3[1], 1, 0.0f,
-                 delta2, 1 );
+  if( sizeof( floatType_t ) == 4 )
+  {
 
-      for( int j = 1; j <= theta1Rows; j++ )
-      {
-        delta2[j] *= sigmoidGradient_f( z2[INDX(row,j,Xexamples)] );
-      } /* end for */
-    } /* end if */
-    else
+    cblas_sgemm( CblasColMajor, CblasTrans, CblasNoTrans,
+                 theta2Cols, Xexamples, theta2Rows,
+                 1.0f, theta2, theta2Rows,
+                 &delta3[1],11, 0.0f,
+                 delta2,theta1Rows+1);
+
+    for( int row = 0; row < Xexamples; row++ )
     { 
-    } /* end else */
-#endif
-#if 1
-    for( int j = 0; j < theta1Cols; j++ )
-    {
-      for( int i = 0; i < theta1Rows; i++ )
+      for( int j = 0; j <= theta1Rows; j++ )
       {
-        theta1Grad[INDX(i,j,theta1Rows)] += 
-          ( delta2[i+1] * X[INDX(j,row,Xfeatures)] );
-      } /* end for i */    
-    } /* end for j */
-
-    for( int j = 0; j < theta2Cols; j++ )
-    {
-      for( int i = 0; i < theta2Rows; i++ )
-      {
-        theta2Grad[INDX(i,j,theta2Rows)] +=
-          ( delta3[i+1] * a2[INDX(row,j,Xexamples)] );
-      } /* end for i */
-    } /* end for j */
-#endif
-  } /* end for row */
+        delta2[INDX(j,row,theta1Rows+1)] *= 
+                sigmoidGradient_f( z2[INDX(row,j,Xexamples)] );
+      } /* end for */
+    } /* end for */
+  } /* end if */
+  else
+  { 
+  } /* end else */
 
   floatType_t recip = (floatType_t) 1.0 / (floatType_t) Xexamples;
 
-//  for( int j = 0; j < theta1Cols; j++ )
- // {
-  //  for( int i = 0; i < theta1Rows; i++ )
-   // {
-    //  theta1Grad[INDX(i,j,theta1Rows)] *= recip;
-  //  } /* end for i */    
-//  } /* end for j */
+  cblas_sgemm( CblasColMajor, CblasNoTrans, CblasTrans,
+               theta1Rows, theta1Cols, Xexamples,
+               recip, (float *) &delta2[1], theta1Rows+1,
+               X, Xfeatures,
+               0.0f, (float *) theta1Grad, theta1Rows );
 
-  for( int i = 0; i < theta1Rows*theta1Cols; i++ )
-    theta1Grad[i] *= recip;
+  cblas_sgemm( CblasColMajor, CblasNoTrans, CblasNoTrans,
+               theta2Rows, theta2Cols, Xexamples,
+               recip, (float *) &delta3[1], 11,
+               (float *) a2, Xexamples, 0.0f,
+               (float *) theta2Grad, theta2Rows );
 
-//  for( int j = 0; j < theta2Cols; j++ )
- // {
-  //  for( int i = 0; i < theta2Rows; i++ )
-   // {
-    //  theta2Grad[INDX(i,j,theta2Rows)] *= recip;
-  //  } /* end for i */
-//  } /* end for j */
-  for( int i = 0; i < theta2Cols*theta2Rows; i++ )
-    theta2Grad[i] *= recip;
+
 #endif
 } /* end costFunction */
 
