@@ -23,7 +23,26 @@
 
 cudnnHandle_t cudnnHandle;
 cudnnTensorDescriptor_t srcTensorDesc, destTensorDesc;
+cudnnTensorDescriptor_t srcDiffTensorDesc, destDiffTensorDesc;
 cublasHandle_t cublasHandle;
+
+__global__ void  setYVec( floatType_t       *delta3, 
+                          floatType_t const *Y, 
+                          floatType_t const *a3,
+                          int         const  Xexamples )
+{
+  int tid = blockDim.x * blockIdx.x + threadIdx.x;
+  if( tid < Xexamples )
+  {
+    delta3[INDX((int)Y[tid],tid,11)] = (floatType_t) 1.0;
+    for( int j = 0; j < 10; j++ )
+    {
+      delta3[INDX(j+1,tid,11)] = a3[INDX(tid,j,Xexamples)]
+                               - delta3[INDX(j+1,tid,11)];
+    } /* end for j */
+  }
+  return;
+} /* end setYVec */
 
 __global__ void setVals( int rows, floatType_t *array )
 {
@@ -84,6 +103,8 @@ void trainNetwork( floatType_t       *X,
   checkCUDNN( cudnnCreate( &cudnnHandle ) );
   checkCUDNN( cudnnCreateTensorDescriptor( &srcTensorDesc ) );
   checkCUDNN( cudnnCreateTensorDescriptor( &destTensorDesc ) );
+  checkCUDNN( cudnnCreateTensorDescriptor( &srcDiffTensorDesc ) );
+  checkCUDNN( cudnnCreateTensorDescriptor( &destDiffTensorDesc ) );
   checkCUBLAS( cublasCreate( &cublasHandle ) );
 
   theta1Grad = (floatType_t *) malloc( sizeof(floatType_t) * 
@@ -93,10 +114,11 @@ void trainNetwork( floatType_t       *X,
                                 theta2Rows * theta2Cols );
 
   tempMatrix = (floatType_t *) malloc( sizeof(floatType_t) *
-                               ( Xexamples * (theta1Rows+1) + 
-                                 Xexamples * (theta1Rows+1) +
-                                 Xexamples * (theta2Rows+1) + 
-                                 theta2Cols + 11) );
+                               ( Xexamples * (theta1Rows+1) + //z2 
+                                 Xexamples * (theta1Rows+1) + //a2
+                                 Xexamples * (theta2Rows+1) + //a3
+                                 Xexamples * (theta1Rows+1) + //delta2
+                                 Xexamples * 11 ) );            //delta3
 
   for( int i = 0; i < Xexamples; i++ ) 
     X[INDX(0,i,Xfeatures)] = (floatType_t) 1.0;
@@ -199,26 +221,47 @@ void costFunction( floatType_t       *X,
 
 /* offset the pointers in the scratch memory */
 
+//  z2 = tempMatrix;
+//  a2 = &z2[INDX(Xexamples,theta1Rows,Xexamples)];
+//  a3 = &a2[INDX(Xexamples,theta1Rows+1,Xexamples)];
+//  yTemp = &a3[INDX(Xexamples,theta2Rows+1,Xexamples)];
+//  delta2 = &yTemp[11];
+#if 0
   z2 = tempMatrix;
-  a2 = &z2[INDX(Xexamples,theta1Rows,Xexamples)];
+  a2 = &z2[INDX(Xexamples,theta1Rows+1,Xexamples)];
   a3 = &a2[INDX(Xexamples,theta1Rows+1,Xexamples)];
-  yTemp = &a3[INDX(Xexamples,theta2Rows+1,Xexamples)];
-  delta2 = &yTemp[11];
+  delta2 = &a3[INDX(Xexamples,theta2Rows+1,Xexamples)];
+  yTemp = &delta2[INDX(Xexamples,theta1Rows+1,Xexamples)];
+#endif
+  z2     = tempMatrix;
+  a2     = &z2[Xexamples*(theta1Rows+1)];
+  a3     = &a2[Xexamples*(theta1Rows+1)];
+  delta2 = &a3[Xexamples*(theta2Rows+1)];
+  yTemp  = &delta2[Xexamples*(theta1Rows+1)];
 
   floatType_t *d_tempMatrix;
   CUDA_CALL( cudaMalloc( &d_tempMatrix, sizeof(floatType_t) *
-                               ( Xexamples * (theta1Rows+1) + 
-                                 Xexamples * (theta1Rows+1) +
-                                 Xexamples * (theta2Rows+1) + 
-                                 theta2Cols + 11) ) ) ;
+                               ( Xexamples * (theta1Rows+1) + //z2 
+                                 Xexamples * (theta1Rows+1) + //a2
+                                 Xexamples * (theta2Rows+1) + //a3
+                                 Xexamples * (theta1Rows+1) + //delta2
+                                 Xexamples * 11 ) ) );            //delta3
 
   floatType_t *d_z2, *d_a2, *d_a3, *d_yTemp, *d_delta2;
+
+  d_z2     = d_tempMatrix;
+  d_a2     = &d_z2[Xexamples*(theta1Rows+1)];
+  d_a3     = &d_a2[Xexamples*(theta1Rows+1)];
+  d_delta2 = &d_a3[Xexamples*(theta2Rows+1)];
+  d_yTemp  = &d_delta2[Xexamples*(theta1Rows+1)];
+
+#if 0
   d_z2 = d_tempMatrix;
   d_a2 = &d_z2[INDX(Xexamples,theta1Rows,Xexamples)];
   d_a3 = &d_a2[INDX(Xexamples,theta1Rows+1,Xexamples)];
-  d_yTemp = &d_a3[INDX(Xexamples,theta2Rows+1,Xexamples)];
-  d_delta2 = &d_yTemp[11];
-
+  d_delta2 = &d_a3[INDX(Xexamples,theta2Rows+1,Xexamples)];
+  d_yTemp = &d_delta2[INDX(Xexamples,theta1Rows+1,Xexamples)];
+#endif
 
   checkCUDNN( cudnnSetTensor4dDescriptor(srcTensorDesc,
                                          CUDNN_TENSOR_NCHW,
@@ -402,7 +445,142 @@ void costFunction( floatType_t       *X,
   *cost = jTemp;
 #endif
 #endif
+
 #if 1
+  floatType_t *delta3;
+  delta3 = yTemp;
+  memset( delta3, 0, sizeof( floatType_t) * 11 * Xexamples );
+
+  floatType_t *d_delta3;
+  d_delta3 = d_yTemp;
+  CUDA_CALL( cudaMemset( d_delta3, 0, sizeof(floatType_t)*11*Xexamples ) );
+
+  floatType_t *d_Y;
+  CUDA_CALL( cudaMalloc( &d_Y, sizeof(floatType_t) * Xexamples ) );
+
+  CUDA_CALL( cudaMemcpy( d_Y, Y, sizeof(floatType_t) * Xexamples,
+                         cudaMemcpyHostToDevice ) );
+#if 0
+  for( int row = 0; row < Xexamples; row++ )
+  {
+    delta3[INDX((int)Y[row],row,11)] = (floatType_t) 1.0;
+  }
+#endif
+  setYVec<<< Xexamples/256+1, 256 >>>( d_delta3, d_Y, d_a3, Xexamples );
+  CUDA_CHECK()
+  CUDA_CALL( cudaDeviceSynchronize() );
+
+  CUDA_CALL( cudaMemcpy( delta3, d_delta3, sizeof(floatType_t)*11*Xexamples,
+                         cudaMemcpyDeviceToHost ) );
+#if 0
+  for( int row = 0; row < Xexamples; row++ )
+  {
+    for( int j = 0; j < 10; j++ )
+    {
+      delta3[INDX(j+1,row,11)] = a3[INDX(row,j,Xexamples)]
+                               - delta3[INDX(j+1,row,11)];
+    } /* end for j */
+  } /* end for */
+#endif
+  if( sizeof( floatType_t ) == 4 )
+  {
+
+#if 1    
+    checkCUBLAS( cublasSgemm( cublasHandle, 
+                              CUBLAS_OP_T, CUBLAS_OP_N,
+                              theta2Cols, Xexamples, theta2Rows,
+			      &alpha, (float *)d_theta2, theta2Rows,
+                              (float *)&d_delta3[1], 11, &beta,
+                              (float *)d_delta2, theta1Rows+1 ) );   
+
+    CUDA_CALL( cudaMemcpy( delta2, d_delta2, 
+                           sizeof(floatType_t)*Xexamples*(theta1Rows+1),
+                           cudaMemcpyDeviceToHost ) );
+#endif
+#if 0
+    cblas_sgemm( CblasColMajor, CblasTrans, CblasNoTrans,
+                 theta2Cols, Xexamples, theta2Rows,
+                 1.0f, theta2, theta2Rows,
+                 &delta3[1],11, 0.0f,
+                 delta2,theta1Rows+1);
+#endif
+  checkCUDNN( cudnnSetTensor4dDescriptor(srcTensorDesc,
+                                         CUDNN_TENSOR_NCHW,
+                                         CUDNN_DATA_FLOAT,
+                                         Xexamples,
+                                         theta1Rows+1,
+                                         1,1) );
+
+  checkCUDNN( cudnnSetTensor4dDescriptor(destTensorDesc,
+                                         CUDNN_TENSOR_NCHW,
+                                         CUDNN_DATA_FLOAT,
+                                         Xexamples,
+                                         theta1Rows+1,
+                                         1,1) );
+
+  checkCUDNN( cudnnSetTensor4dDescriptor(srcDiffTensorDesc,
+                                         CUDNN_TENSOR_NCHW,
+                                         CUDNN_DATA_FLOAT,
+                                         Xexamples,
+                                         theta1Rows+1,
+                                         1,1) );
+
+  checkCUDNN( cudnnSetTensor4dDescriptor(destDiffTensorDesc,
+                                         CUDNN_TENSOR_NCHW,
+                                         CUDNN_DATA_FLOAT,
+                                         Xexamples,
+                                         theta1Rows+1,
+                                         1,1) );
+
+  checkCUDNN( cudnnActivationBackward( cudnnHandle, 
+                                       CUDNN_ACTIVATION_SIGMOID,
+				       &alpha,
+                                       srcTensorDesc, d_z2,
+                                       srcDiffTensorDesc, d_delta2,
+                                       destTensorDesc, d_z2, 
+                                       &beta,
+                                       destDiffTensorDesc, d_delta2 ) );
+
+//   CUDA_CALL( cudaMemcpy( delta2, d_delta2,
+ //                         sizeof(floatType_t) * Xexamples*(theta1Rows+1),
+  //                        cudaMemcpyDeviceToHost ) );
+
+#if 1
+#if 1
+   for( int i = 0; i < Xexamples*(theta1Rows+1); i++ )
+     z2[i] = sigmoidGradient_f( z2[i] );
+#endif
+   for( int row = 0; row < Xexamples; row++ )
+   {
+     for( int j = 0; j < theta1Rows+1; j++ )
+     {
+       delta2[INDX(j,row,theta1Rows+1)] *= z2[INDX(row,j,Xexamples)];
+     } /* end for */
+   } /* end for */
+#endif
+
+  } /* end if */
+  else
+  {
+  } /* end else */
+
+  floatType_t recip = (floatType_t) 1.0 / (floatType_t) Xexamples;
+
+  cblas_sgemm( CblasColMajor, CblasNoTrans, CblasTrans,
+               theta1Rows, theta1Cols, Xexamples,
+               recip, (float *) &delta2[1], theta1Rows+1,
+               X, Xfeatures,
+               0.0f, (float *) theta1Grad, theta1Rows );
+
+  cblas_sgemm( CblasColMajor, CblasNoTrans, CblasNoTrans,
+               theta2Rows, theta2Cols, Xexamples,
+               recip, (float *) &delta3[1], 11,
+               (float *) a2, Xexamples, 0.0f,
+               (float *) theta2Grad, theta2Rows );
+
+#endif
+
+#if 0
   floatType_t *delta3;
   delta3 = yTemp;
 
