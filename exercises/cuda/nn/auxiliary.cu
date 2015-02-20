@@ -139,11 +139,19 @@ void costFunction( floatType_t       *X,
 
 /* offset the pointers in the scratch memory */
 
+#if 0
   z2 = tempMatrix;
   a2 = &z2[INDX(Xexamples,theta1Rows+1,Xexamples)];
   a3 = &a2[INDX(Xexamples,theta1Rows+1,Xexamples)];
   delta2 = &a3[INDX(Xexamples,theta2Rows+1,Xexamples)];
   yTemp = &delta2[INDX(Xexamples,theta1Rows+1,Xexamples)];
+#endif
+  z2     = tempMatrix;
+  a2     = &z2[Xexamples*(theta1Rows+1)];
+  a3     = &a2[Xexamples*(theta1Rows+1)];
+  delta2 = &a3[Xexamples*(theta2Rows+1)];
+  yTemp  = &delta2[Xexamples*(theta1Rows+1)];
+
 
 #if 1
   if( sizeof( floatType_t ) == 4 ) 
@@ -227,12 +235,14 @@ void costFunction( floatType_t       *X,
                  &delta3[1],11, 0.0f,
                  delta2,theta1Rows+1);
 
+   for( int i = 0; i < Xexamples*(theta1Rows+1); i++ )
+     z2[i] = sigmoidGradient_f( z2[i] );
+   
     for( int row = 0; row < Xexamples; row++ )
     { 
-      for( int j = 0; j <= theta1Rows; j++ )
+      for( int j = 0; j < theta1Rows+1; j++ )
       {
-        delta2[INDX(j,row,theta1Rows+1)] *= 
-                sigmoidGradient_f( z2[INDX(row,j,Xexamples)] );
+        delta2[INDX(j,row,theta1Rows+1)] *= z2[INDX(row,j,Xexamples)];
       } /* end for */
     } /* end for */
   } /* end if */
