@@ -15,8 +15,8 @@
 #
 
 CC=gcc
-NVCC=nvcc -Xcompiler=-O3
-LIBS=-L. -lcblas -latlas
+NVCC=nvcc -Xcompiler=-O3 -DDEBUG
+LIBS=-L. -lcblas -latlas -lcudnn -lcublas
 INC=-I.
 
 include ../make.common

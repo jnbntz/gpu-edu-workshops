@@ -99,9 +99,17 @@ inline double sigmoidGradient( double z )
 #define CUDA_CHECK()  if( (cudaPeekAtLastError()) != cudaSuccess ) \
   {printf("Error %s at %s:%d\n", cudaGetErrorString(cudaGetLastError()), \
    __FILE__,__LINE__-1); exit(-1);}
+#define checkCUDNN(F)  if( (F) != CUDNN_STATUS_SUCCESS ) \
+  {printf("Error %d at %s:%d\n", F, \
+   __FILE__,__LINE__); exit(-1);}
+#define checkCUBLAS(F)  if( (F) != CUBLAS_STATUS_SUCCESS ) \
+  {printf("Error %d at %s:%d\n", F, \
+   __FILE__,__LINE__); exit(-1);}
 #else
 #define CUDA_CALL(F) (F)
 #define CUDA_CHECK()
+#define checkCUDNN(F) (F)
+#define checkCUBLAS(F) (F)
 #endif
 
 /* function defs */

@@ -17,7 +17,41 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <cudnn.h>
+#include <cublas_v2.h>
 #include "headers.h"
+
+cudnnHandle_t cudnnHandle;
+cudnnTensorDescriptor_t srcTensorDesc, destTensorDesc;
+cublasHandle_t cublasHandle;
+
+__global__ void setVals( int rows, floatType_t *array )
+{
+  for( int i = 0; i < rows; i++ )
+    array[i] = (floatType_t)i;
+} /* end setVAls */
+
+__global__ void printKernel( int rows, int cols, floatType_t *array )
+{
+  for( int j = 0; j < cols; j++ )
+  {
+    for( int i = 0; i < rows; i++ )
+    {
+      printf("row %d col %d value %e\n",i,j,array[INDX(i,j,rows)] );
+    } /* end for */
+  } /* end for */
+} /* end print Kernel */
+
+void printHost( int rows, int cols, floatType_t *array )
+{
+  for( int j = 0; j < cols; j++ )
+  {
+    for( int i = 0; i < rows; i++ )
+    {
+      printf("row %d col %d value %e\n",i,j,array[INDX(i,j,rows)] );
+    } /* end for */
+  } /* end for */
+} /* end print Kernel */
 
 void trainNetwork( floatType_t       *X, 
                    int         const Xexamples, 
@@ -36,6 +70,13 @@ void trainNetwork( floatType_t       *X,
   floatType_t lambda = learningRate;
   floatType_t cost;
   floatType_t *theta1Grad, *theta2Grad, *tempMatrix;
+
+
+
+  checkCUDNN( cudnnCreate( &cudnnHandle ) );
+  checkCUDNN( cudnnCreateTensorDescriptor( &srcTensorDesc ) );
+  checkCUDNN( cudnnCreateTensorDescriptor( &destTensorDesc ) );
+  checkCUBLAS( cublasCreate( &cublasHandle ) );
 
   theta1Grad = (floatType_t *) malloc( sizeof(floatType_t) * 
                                 theta1Rows * theta1Cols );
@@ -156,17 +197,102 @@ void costFunction( floatType_t       *X,
   yTemp = &a3[INDX(Xexamples,theta2Rows+1,Xexamples)];
   delta2 = &yTemp[11];
 
+  checkCUDNN( cudnnSetTensor4dDescriptor(srcTensorDesc,
+                                         CUDNN_TENSOR_NCHW,
+                                         CUDNN_DATA_FLOAT,
+                                         Xexamples,
+                                         theta1Rows+1,
+                                         1,1) );
+
+  checkCUDNN( cudnnSetTensor4dDescriptor(destTensorDesc,
+                                         CUDNN_TENSOR_NCHW,
+                                         CUDNN_DATA_FLOAT,
+                                         Xexamples,
+                                         theta1Rows+1,
+                                         1,1) );
+
+  floatType_t *d_srcData, *d_destData;
+  CUDA_CALL( cudaMalloc( &d_srcData, 
+          sizeof(floatType_t)*Xexamples*(theta1Rows+1)) );
+  CUDA_CALL( cudaMemset( d_srcData, 0,
+          sizeof(floatType_t)*Xexamples*(theta1Rows+1) ) );
+
+  CUDA_CALL( cudaMalloc( &d_destData, 
+          sizeof(floatType_t)*Xexamples*(theta1Rows+1)) );
+
+  CUDA_CALL( cudaMemset( d_destData, 0,
+          sizeof(floatType_t)*Xexamples*(theta1Rows+1) ) );
+
+  floatType_t *d_X;
+  CUDA_CALL( cudaMalloc( &d_X,
+          sizeof(floatType_t)*Xexamples*Xfeatures ) );
+
+  floatType_t *d_theta1;
+  CUDA_CALL( cudaMalloc( &d_theta1, 
+          sizeof(floatType_t) * theta1Rows * theta1Cols ) );
+
 #if 1
   if( sizeof( floatType_t ) == 4 ) 
   {
-    cblas_sgemm( CblasColMajor, CblasTrans, CblasTrans,
-                 Xexamples, theta1Rows, theta1Cols,
-                 1.0f, (float *) X, Xfeatures,
-                 (float *) theta1, theta1Rows, 0.0f,
-                 (float *) &z2[INDX(0,1,Xexamples)], Xexamples );
+//    cblas_sgemm( CblasColMajor, CblasTrans, CblasTrans,
+ //                Xexamples, theta1Rows, theta1Cols,
+  //               1.0f, (float *) X, Xfeatures,
+   //              (float *) theta1, theta1Rows, 0.0f,
+    //             (float *) &z2[INDX(0,1,Xexamples)], Xexamples );
 
+//    printHost(100,1,&z2[INDX(0,1,Xexamples)] );
+
+#if 0
     for( int i = Xexamples; i < Xexamples*(theta1Rows+1); i++ )
       a2[i] = sigmoid_f( z2[i] );
+#endif
+#if 1
+    CUDA_CALL( cudaMemcpy( d_X, X,
+                           sizeof(floatType_t)*Xexamples*Xfeatures,
+                           cudaMemcpyHostToDevice ) );
+    CUDA_CALL( cudaMemcpy( d_theta1, theta1,
+                           sizeof(floatType_t)*theta1Rows*theta1Cols,
+                           cudaMemcpyHostToDevice ) );
+//    CUDA_CALL( cudaMemcpy( d_srcData, z2, 
+ //                          sizeof(floatType_t)*Xexamples*(theta1Rows+1),
+  //                         cudaMemcpyHostToDevice ) );
+//    printf("rows %d cols %d\n",theta1Rows,theta1Cols);
+
+    float alpha = 1.0;
+    float beta  = 0.0;
+
+//    printHost(Xfeatures*Xexamples,1,X);
+ //   printKernel<<<1,1>>>( Xfeatures*Xexamples, 1, d_X );
+  //  CUDA_CHECK()
+   // CUDA_CALL( cudaDeviceSynchronize() );
+
+    checkCUBLAS( cublasSgemm( cublasHandle, 
+                              CUBLAS_OP_T, CUBLAS_OP_T,
+                              Xexamples, theta1Rows, theta1Cols,
+			      &alpha, d_X, Xfeatures,
+                              d_theta1, theta1Rows, &beta,
+                              &d_srcData[INDX(0,1,Xexamples)], Xexamples ) );                              
+    CUDA_CALL( cudaMemcpy( z2, d_srcData, 
+                           sizeof(floatType_t)*Xexamples*(theta1Rows+1),
+                           cudaMemcpyDeviceToHost ) );
+    
+//    setVals<<<1,1>>>(10,d_srcData );
+ //   printKernel<<<1,1>>>( 5, 1, &d_srcData[5] );
+  //  CUDA_CHECK()
+   // CUDA_CALL( cudaDeviceSynchronize() );
+                                
+
+    checkCUDNN( cudnnActivationForward( cudnnHandle,
+                                        CUDNN_ACTIVATION_SIGMOID,
+                                        &alpha,
+                                        srcTensorDesc, d_srcData,
+                                        &beta,
+                                        destTensorDesc, d_destData ) );
+    CUDA_CALL( cudaMemcpy( a2, d_destData, 
+                           sizeof(floatType_t)*Xexamples*(theta1Rows+1),
+                           cudaMemcpyDeviceToHost ) );
+#endif
+//exit(911);
 
   } /* end if */
   else
@@ -192,7 +318,7 @@ void costFunction( floatType_t       *X,
   { 
   } /* end else */
 
-/* enabled the following code if you wish to calculate the forward cost 
+/* enable the following code if you wish to calculate the forward cost 
    not strictly necessary to generate the gradients
 */
 #if 0
