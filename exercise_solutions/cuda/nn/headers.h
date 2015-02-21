@@ -57,7 +57,7 @@ else if( (val) > (max) ) val = (max);
 #define SIGMOID(z) ( (floatType_t) 1.0 ) / \
 ( ( (floatType_t) 1.0 ) + expf(-z) )
 
-inline float sigmoid_f( float z )
+__host__ __device__ inline float sigmoid_f( float z )
 {
   return 1.0f / ( 1.0f + expf( -z ) );
 } /* end sigmoid_f */
@@ -67,7 +67,7 @@ inline double sigmoid( double z )
   return 1.0 / ( 1.0 + exp( -z ) );
 } /* end sigmoid */
 
-inline float sigmoidGradient_f( float z )
+__host__ __device__ inline float sigmoidGradient_f( float z )
 {
   float temp = sigmoid_f( z );
   return temp * ( 1.0f - temp );
