@@ -39,13 +39,15 @@
 #include <stdio.h>
 #include "cublas_v2.h"
 
+typedef float floatType_t;
+
 #define INDX( row, col, ld ) ( ( (col) * (ld) ) + (row) )
 
 #define TILESIZE 2048
 #define SIZE ( TILESIZE * 4 )
-#define NUM_STREAMS 8
+#define NUM_STREAMS 3
 
-__global__ void printMat( const double *A, int size )
+__global__ void printMat( const floatType_t *A, int size )
 {
   if( threadIdx.x == 0 && blockIdx.x == 0 )
     for( int i = 0; i < size; i++ )
@@ -53,7 +55,7 @@ __global__ void printMat( const double *A, int size )
   return;
 } /* end printMat */
 
-void printMatHost( const double *A, int size )
+void printMatHost( const floatType_t *A, int size )
 {
   for( int i = 0; i < size; i++ )
     printf("A[%d] = %f\n",i,A[i]);
@@ -72,35 +74,35 @@ int main( int argc, char *argv[] )
     fprintf(stdout, "Tile size is %d by %d\n",tileSize, tileSize);
     fprintf(stdout, "Number of streams is %d\n\n",nstreams);
 
-    double *h_a, *h_b, *h_c, *h_cdef;
-    double *p_a, *p_b, *p_c;
-    double **d_a, **d_b, **d_c;
+    floatType_t *h_a, *h_b, *h_c, *h_cdef;
+    floatType_t *p_a, *p_b, *p_c;
+    floatType_t **d_a, **d_b, **d_c;
 
-    size_t numbytes = size * size * sizeof( double );
-    size_t tileBytes = tileSize * tileSize * sizeof( double );
+    size_t numbytes = size * size * sizeof( floatType_t );
+    size_t tileBytes = tileSize * tileSize * sizeof( floatType_t );
 
-    h_a = (double *) malloc( numbytes );
+    h_a = (floatType_t *) malloc( numbytes );
     if( h_a == NULL )
     {
       fprintf(stderr,"Error in host malloc\n");
       return 911;
     }
 
-    h_b = (double *) malloc( numbytes );
+    h_b = (floatType_t *) malloc( numbytes );
     if( h_b == NULL )
     {
       fprintf(stderr,"Error in host malloc\n");
       return 911;
     }
 
-    h_c = (double *) malloc( numbytes );
+    h_c = (floatType_t *) malloc( numbytes );
     if( h_c == NULL )
     {
       fprintf(stderr,"Error in host malloc\n");
       return 911;
     }
 
-    h_cdef = (double *) malloc( numbytes );
+    h_cdef = (floatType_t *) malloc( numbytes );
     if( h_cdef == NULL )
     {
       fprintf(stderr,"Error in host malloc\n");
@@ -129,9 +131,9 @@ int main( int argc, char *argv[] )
     memset( h_c, 0, numbytes );
     memset( h_cdef, 0, numbytes );
 
-    d_a = (double **) malloc( sizeof( double *) * nstreams );
-    d_b = (double **) malloc( sizeof( double *) * nstreams );
-    d_c = (double **) malloc( sizeof( double *) * nstreams );
+    d_a = (floatType_t **) malloc( sizeof( floatType_t *) * nstreams );
+    d_b = (floatType_t **) malloc( sizeof( floatType_t *) * nstreams );
+    d_c = (floatType_t **) malloc( sizeof( floatType_t *) * nstreams );
 
     CUDA_CALL( cudaMalloc( (void **)&d_a[0], numbytes ) );
     CUDA_CALL( cudaMalloc( (void **)&d_b[0], numbytes ) );
@@ -148,8 +150,8 @@ int main( int argc, char *argv[] )
     cublasHandle_t handle;
     cublasStatus_t stat = cublasCreate( &handle );
 
-    double alpha = 1.0;
-    double beta  = 1.0;
+    floatType_t alpha = 1.0;
+    floatType_t beta  = 1.0;
 
     CUDA_CALL( cudaEventRecord( start, 0 ) );
 
@@ -157,13 +159,26 @@ int main( int argc, char *argv[] )
     CUDA_CALL( cudaMemcpy( d_b[0], h_b, numbytes, cudaMemcpyHostToDevice ) );
     CUDA_CALL( cudaMemcpy( d_c[0], h_c, numbytes, cudaMemcpyHostToDevice ) );
 
+    if( sizeof(floatType_t) == 4 )
+    {
+    cublasSgemm( handle, CUBLAS_OP_N, CUBLAS_OP_N,
+                 size, size, size,
+                 (float *)&alpha,
+                 (float *)d_a[0], size,
+                 (float *)d_b[0], size,
+                 (float *)&beta,
+                 (float *)d_c[0], size );
+    }
+    else
+    {
     cublasDgemm( handle, CUBLAS_OP_N, CUBLAS_OP_N,
                  size, size, size,
-                 &alpha,
-                 d_a[0], size,
-                 d_b[0], size,
-                 &beta,
-                 d_c[0], size );
+                 (double *)&alpha,
+                 (double *)d_a[0], size,
+                 (double *)d_b[0], size,
+                 (double *)&beta,
+                 (double *)d_c[0], size );
+    }
 
     CUDA_CALL( cudaMemcpy( h_cdef, d_c[0], numbytes, cudaMemcpyDeviceToHost ) );
 
@@ -318,7 +333,7 @@ int main( int argc, char *argv[] )
 
         } /* end for */
 
-/* do the dgemm */
+/* do the gemm */
 
         for( int i = 0; i < localStreams; i++ )
         {
@@ -326,7 +341,7 @@ int main( int argc, char *argv[] )
 
           FIXME
 
-/* call the cublas dgemm function */
+/* call the cublas gemm function */
 
           FIXME
 
@@ -387,11 +402,11 @@ int main( int argc, char *argv[] )
     double temp = 0.0;
     for( int i = 0; i < size * size; i++ )
     {
-      temp += ( h_c[i] - h_cdef[i] ) * ( h_c[i] - h_cdef[i] );
-//      printf("i %d host %f device %f\n",i, h_cdef[i], h_c[i] );
+        temp = max( temp, abs( (double)h_c[i] - (double)h_cdef[i] )/
+                      abs((double)h_cdef[i]) );
     } /* end for */
-    printf("error is %f\n",temp);
-    if( temp > 10 ) printf("FAIL\n");
+    printf("Maximum error is %e percent \n",temp*100.0);
+    if( temp > 0.001 ) printf("FAIL\n");
     else printf("PASS\n");
 
     free( h_a );
