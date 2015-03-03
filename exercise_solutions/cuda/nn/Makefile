@@ -15,7 +15,8 @@
 #
 
 CC=gcc
-NVCC=nvcc -Xcompiler=-O3 -DDEBUG
+NVCC=nvcc
+NVOPTS= -Xcompiler=-O3 -DDEBUG -lineinfo $(ARCH) -g -G
 LIBS=-L. -lcblas -latlas -lcudnn -lcublas
 INC=-I.
 
@@ -24,13 +25,13 @@ include ../make.common
 all: x.nn
 
 x.nn: main.o auxiliary.o
-	$(NVCC) $(ARCH) -o x.nn main.o auxiliary.o $(LIBS)
+	$(NVCC) $(NVOPTS) -o x.nn main.o auxiliary.o $(LIBS)
 
 main.o: main.cu headers.h
-	$(NVCC) $(ARCH) -c main.cu $(INC)
+	$(NVCC) $(NVOPTS) -c main.cu $(INC)
 
 auxiliary.o: auxiliary.cu headers.h
-	$(NVCC) $(ARCH) -c auxiliary.cu $(INC)
+	$(NVCC) $(NVOPTS) -c auxiliary.cu $(INC)
 
 clean:
 	rm -rf *.o
