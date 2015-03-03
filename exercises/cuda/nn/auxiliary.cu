@@ -61,8 +61,8 @@ void trainNetwork( floatType_t       *X,
   {
     for( int j = 0; j < Xexamples; j+=batchSize )
     {
-      
-      costFunction( &X[INDX(0,j,Xfeatures)], batchSize, Xfeatures,
+      int tempBatchSize = min( batchSize, Xexamples - j );      
+      costFunction( &X[INDX(0,j,Xfeatures)], tempBatchSize, Xfeatures,
                     theta1, theta1Rows, theta1Cols, 
                     theta2, theta2Rows, theta2Cols,
                     &Y[j],

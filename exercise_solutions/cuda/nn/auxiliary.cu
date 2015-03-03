@@ -226,12 +226,16 @@ void trainNetwork( floatType_t       *X,
  //                        sizeof(floatType_t)*theta2Rows*theta2Cols,
   //                       cudaMemcpyHostToDevice ) );
       
-      costFunction( &d_X[INDX(0,j,Xfeatures)], batchSize, Xfeatures,
+      int tempBatchSize = min( batchSize, Xexamples - j );
+ //     printf("before j %d tempBatchSize is %d\n",j,tempBatchSize);
+//      costFunction( &d_X[INDX(0,j,Xfeatures)], batchSize, Xfeatures,
+      costFunction( &d_X[INDX(0,j,Xfeatures)], tempBatchSize, Xfeatures,
                     d_theta1, theta1Rows, theta1Cols, 
                     d_theta2, theta2Rows, theta2Cols,
                     &d_Y[j],
                     &cost, d_theta1Grad, d_theta2Grad, 
                     d_tempMatrix );
+//      printf("after j %d tempBatchsize is %d\n",j,tempBatchSize);
 #if 0
   CUDA_CALL( cudaMemcpy( theta1Grad, d_theta1Grad,
                          sizeof(floatType_t)*theta1Rows*theta1Cols,
