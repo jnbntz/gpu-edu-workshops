@@ -16,7 +16,7 @@
 
 CC=gcc
 NVCC=nvcc
-NVOPTS= -Xcompiler=-O3 -DDEBUG -lineinfo $(ARCH) -g -G
+NVOPTS= -Xcompiler=-O3 -DDEBUG -lineinfo $(ARCH)
 LIBS=-L. -lcblas -latlas -lcudnn -lcublas
 INC=-I.
 
