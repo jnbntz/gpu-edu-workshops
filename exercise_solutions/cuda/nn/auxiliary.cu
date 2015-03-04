@@ -226,7 +226,8 @@ void trainNetwork( floatType_t       *X,
                          sizeof(floatType_t)*theta2Rows*theta2Cols,
                          cudaMemcpyDeviceToHost ) );
 
-  printf("\nFinal cost value                      %.3e\n",cost);
+//  printf("\nFinal cost value                      %.3e\n",cost);
+  printf("\n");
   CUDA_CALL( cudaFree( d_tempMatrix ) );
   CUDA_CALL( cudaFree( d_X ) );
   CUDA_CALL( cudaFree( d_Y ) );

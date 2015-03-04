@@ -190,12 +190,6 @@ int main(int argc, char *argv[])
   CUDA_CALL( cudaEventElapsedTime( &elapsedTime, start, stop ) );
   fprintf(stdout, "Total time for training is            %.3e sec\n",
     elapsedTime/1000.0f );
-#if 0
-  costFunction( trainingMatrix, numTrainingExamples, numFeatures+1,
-                theta1, sizeHiddenLayer, numFeatures+1,
-                theta2, numClasses, sizeHiddenLayer+1,
-                trainingVector, &cost, theta1Grad, theta2Grad );
-#endif
 
 /* malloc predictVector */
 
@@ -216,7 +210,7 @@ int main(int argc, char *argv[])
     if( (int) trainingVector[i] == predictVector[i] )
       result += (floatType_t) 1.0;
   } /* end for i */
-  
+
   printf("Total correct on training set is      %d\n",(int)result);
   printf("Prediction rate of training set is    %.3f\n",
       100.0 * result/(floatType_t)numTrainingExamples);
