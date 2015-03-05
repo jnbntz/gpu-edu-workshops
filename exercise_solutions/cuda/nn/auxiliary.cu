@@ -159,7 +159,7 @@ void trainNetwork( floatType_t       *X,
                          cudaMemcpyHostToDevice ) );
 
   floatType_t *d_Y;
-  CUDA_CALL( cudaMalloc( &d_Y, sizeof(floatType_t)*Xexamples) )
+  CUDA_CALL( cudaMalloc( &d_Y, sizeof(floatType_t)*Xexamples) );
   CUDA_CALL( cudaMemcpy( d_Y, Y, 
                          sizeof(floatType_t)*Xexamples,
                          cudaMemcpyHostToDevice ) );
