@@ -148,12 +148,14 @@ void trainNetwork( floatType_t       *X,
                                  Xexamples * 11 ) ) );            //delta3
 
   for( int i = 0; i < Xexamples; i++ ) 
+  {
     X[INDX(0,i,Xfeatures)] = (floatType_t) 1.0;
+  } /* end for */
 
   floatType_t *d_X;
-  CUDA_CALL( cudaMalloc( &d_X, sizeof(floatType_t)*Xexamples*(Xfeatures+1)));
+  CUDA_CALL( cudaMalloc( &d_X, sizeof(floatType_t)*Xexamples*Xfeatures));
   CUDA_CALL( cudaMemcpy( d_X, X, 
-                         sizeof(floatType_t)*Xexamples*(Xfeatures+1),
+                         sizeof(floatType_t)*Xexamples*Xfeatures,
                          cudaMemcpyHostToDevice ) );
 
   floatType_t *d_Y;
