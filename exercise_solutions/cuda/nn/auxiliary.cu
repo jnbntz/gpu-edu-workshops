@@ -52,6 +52,13 @@ __global__ void k_updateDelta2( floatType_t       *delta2,
 
 } /* end k_updateDelta2 */
 
+__global__ void k_sigmoid_f( floatType_t  *array,
+                                     int    const size )
+{
+  int tid = blockDim.x * blockIdx.x + threadIdx.x;
+  if( tid < size )
+    array[tid] = sigmoid_f( array[tid] );
+} /* end sigmoidGradient */
 
 __global__ void k_sigmoidGradient_f( floatType_t  *array,
                                      int    const size )
@@ -139,6 +146,8 @@ void trainNetwork( floatType_t       *X,
   checkCUDNN( cudnnCreateTensorDescriptor( &destDiffTensorDesc ) );
   checkCUBLAS( cublasCreate( &cublasHandle ) );
 
+/* allocate large GPU space for temporary arrays */
+
   floatType_t *d_tempMatrix;
   CUDA_CALL( cudaMalloc( &d_tempMatrix, sizeof(floatType_t) *
                                ( Xexamples * (theta1Rows+1) + //z2 
@@ -147,10 +156,14 @@ void trainNetwork( floatType_t       *X,
                                  Xexamples * (theta1Rows+1) + //delta2
                                  Xexamples * 11 ) ) );            //delta3
 
+/* set the bias term to 1, sort of like the y-intercept */
+
   for( int i = 0; i < Xexamples; i++ ) 
   {
     X[INDX(0,i,Xfeatures)] = (floatType_t) 1.0;
   } /* end for */
+
+/* malloc all arrays I need on the device and copy data from the host */
 
   floatType_t *d_X;
   CUDA_CALL( cudaMalloc( &d_X, sizeof(floatType_t)*Xexamples*Xfeatures));
@@ -163,6 +176,8 @@ void trainNetwork( floatType_t       *X,
   CUDA_CALL( cudaMemcpy( d_Y, Y, 
                          sizeof(floatType_t)*Xexamples,
                          cudaMemcpyHostToDevice ) );
+
+/* theta1 and theta2 are the weights in the 1st and second layers */
 
   floatType_t *d_theta1;
   CUDA_CALL( cudaMalloc( &d_theta1, 
@@ -180,6 +195,8 @@ void trainNetwork( floatType_t       *X,
                          sizeof(floatType_t)*theta2Rows*theta2Cols,
                          cudaMemcpyHostToDevice ) );
 
+/* theta1Grad and theta2Grad are the gradients for theta1 and theta2 */
+
   floatType_t *d_theta1Grad, *d_theta2Grad;
   CUDA_CALL( cudaMalloc( &d_theta1Grad, 
                          sizeof(floatType_t)*theta1Rows*theta1Cols ) );
@@ -190,11 +207,20 @@ void trainNetwork( floatType_t       *X,
 /* stochastic gradient descent */
   int iter = 0;
 
+/* big while loop over the number of iterations to train */
+
   while(iter < iterations )
   {
+
+/* for loop over the batch size */
+
     for( int j = 0; j < Xexamples; j+=batchSize )
     {
+
       int tempBatchSize = min( batchSize, Xexamples - j );
+
+/* bulk of computation here */
+
       costFunction( &d_X[INDX(0,j,Xfeatures)], tempBatchSize, Xfeatures,
                     d_theta1, theta1Rows, theta1Cols, 
                     d_theta2, theta2Rows, theta2Cols,
@@ -202,24 +228,30 @@ void trainNetwork( floatType_t       *X,
                     &cost, d_theta1Grad, d_theta2Grad, 
                     d_tempMatrix );
 
-  floatType_t alpha = -lambda;
-  checkCUBLAS( cublasSaxpy( cublasHandle,
+      floatType_t alpha = -lambda;
+
+/* update the weights with the newly calculated gradients */
+
+      checkCUBLAS( cublasSaxpy( cublasHandle,
                             theta1Rows*theta1Cols,
                             &alpha,
                             d_theta1Grad, 1,
                             d_theta1, 1 ) ); 
 
-  checkCUBLAS( cublasSaxpy( cublasHandle,
+      checkCUBLAS( cublasSaxpy( cublasHandle,
                             theta2Rows*theta2Cols,
                             &alpha,
                             d_theta2Grad, 1,
                             d_theta2, 1 ) ); 
-    } 
-  iter++;
+    } /* end for */ 
+ 
+    iter++;
     printf("|");
     fflush(stdout);
     if( iter % 72 == 0 ) printf("\n");
   } /* end while */
+
+/* copy theta1 and theta2 back to the host to use for prediction later */
 
   CUDA_CALL( cudaMemcpy( theta1, d_theta1,
                          sizeof(floatType_t)*theta1Rows*theta1Cols,
@@ -258,6 +290,8 @@ void costFunction( floatType_t       *d_X,
 
   floatType_t *d_z2, *d_a2, *d_a3, *d_yTemp, *d_delta2;
 
+/* take tempMatrix and partition it up for use */
+
   d_z2     = d_tempMatrix;
   d_a2     = &d_z2[Xexamples*(theta1Rows+1)];
   d_a3     = &d_a2[Xexamples*(theta1Rows+1)];
@@ -292,16 +326,24 @@ void costFunction( floatType_t       *d_X,
 			      &alpha, d_X, Xfeatures,
                               d_theta1, theta1Rows, &beta,
                               &d_z2[INDX(0,1,Xexamples)], Xexamples ) );                              
-
-                                
-
+#if 0
     checkCUDNN( cudnnActivationForward( cudnnHandle,
                                         CUDNN_ACTIVATION_SIGMOID,
                                         &alpha,
                                         srcTensorDesc, d_z2,
                                         &beta,
                                         destTensorDesc, d_a2 ) );
-
+#else
+    CUDA_CALL( cudaMemcpy( d_a2, d_z2, 
+                           sizeof(floatType_t) * Xexamples * (theta1Rows+1),
+                           cudaMemcpyDeviceToDevice ) );
+    dim3 threads1(256,1,1);
+    dim3 blocks1( Xexamples*(theta1Rows+1)/threads1.x + 1, 1, 1);
+    k_sigmoid_f<<< blocks1, threads1 >>>( d_a2, Xexamples*(theta1Rows+1) );
+    CUDA_CHECK()
+    CUDA_CALL( cudaDeviceSynchronize() );
+#endif
+  
   } /* end if */
   else
   {
@@ -335,14 +377,20 @@ void costFunction( floatType_t       *d_X,
                                          Xexamples,
                                          theta2Rows,
                                          1,1) );
-
+#if 0
     checkCUDNN( cudnnActivationForward( cudnnHandle,
                                         CUDNN_ACTIVATION_SIGMOID,
                                         &alpha,
                                         srcTensorDesc, d_a3,
                                         &beta,
                                         destTensorDesc, d_a3 ) );
-
+#else
+    dim3 threads1(256,1,1);
+    dim3 blocks1( Xexamples*(theta2Rows+1)/threads1.x + 1, 1, 1);
+    k_sigmoid_f<<< blocks1, threads1 >>>( d_a3, Xexamples*(theta2Rows+1) );
+    CUDA_CHECK()
+    CUDA_CALL( cudaDeviceSynchronize() );
+#endif
 
   } /* end if */
   else
@@ -380,7 +428,6 @@ void costFunction( floatType_t       *d_X,
   setYVec<<< Xexamples/256+1, 256 >>>( d_delta3, d_Y, d_a3, Xexamples );
   CUDA_CHECK()
   CUDA_CALL( cudaDeviceSynchronize() );
-
 
   if( sizeof( floatType_t ) == 4 )
   {
@@ -445,34 +492,31 @@ void costFunction( floatType_t       *d_X,
    dim3 t1(256,256,1); 
    dim3 b1((theta1Rows+1)/t1.x + 1, Xexamples/t1.y + 1, 1 );
 
-   k_updateDelta2<<< blocks,threads >>>( d_delta2, d_z2, Xexamples, theta1Rows+1 );
+   k_updateDelta2<<< blocks,threads >>>( d_delta2, d_z2, Xexamples, 
+                                         theta1Rows+1 );
    CUDA_CHECK()
    CUDA_CALL( cudaDeviceSynchronize() );
 
-  } /* end if */
-  else
-  {
-  } /* end else */
+   floatType_t recip = (floatType_t) 1.0 / (floatType_t) Xexamples;
 
-  floatType_t recip = (floatType_t) 1.0 / (floatType_t) Xexamples;
-
-    checkCUBLAS( cublasSgemm( cublasHandle, 
+   checkCUBLAS( cublasSgemm( cublasHandle, 
                               CUBLAS_OP_N, CUBLAS_OP_T,
                               theta1Rows, theta1Cols, Xexamples,
 			      &recip, (float *)&d_delta2[1], theta1Rows+1,
                               (float *)d_X, Xfeatures, 
                               &beta, (float *)d_theta1Grad, theta1Rows ) );   
 
-    checkCUBLAS( cublasSgemm( cublasHandle, 
+   checkCUBLAS( cublasSgemm( cublasHandle, 
                               CUBLAS_OP_N, CUBLAS_OP_N,
                               theta2Rows, theta2Cols, Xexamples,
 			      &recip, (float *)&d_delta3[1], 11,
                               (float *)d_a2, Xexamples, 
                               &beta, (float *)d_theta2Grad, theta2Rows ) );   
 
-
-
-
+  } /* end if */
+  else
+  {
+  } /* end else */
 } /* end costFunction */
 
 void predict(floatType_t       *X, 
@@ -553,7 +597,7 @@ void predict(floatType_t       *X,
     predictVector[row] = idx;
   } /* end row */
 
- 
+  free(tempMatrix); 
 } /* end predict */ 
 
 void readCommandLineArgs( int    argc, 

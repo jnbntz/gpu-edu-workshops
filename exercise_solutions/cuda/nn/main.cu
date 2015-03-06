@@ -46,28 +46,24 @@ int main(int argc, char *argv[])
 
   float *trainingVector, *trainingMatrix;
   float *theta1, *theta2;
-  float *theta1Grad, *theta2Grad;
   float *testVector, *testMatrix;
   int *predictVector;
 
 
 
-  float learningRate;// = atof( argv[1] );
-  int batchSize;// = atoi( argv[2] );
-  int iterations;// = atoi( argv[3] );
-  int sizeHiddenLayer;// = atoi( argv[4] );
-
-
+  float learningRate;
+  int batchSize;
+  int iterations;
+  int sizeHiddenLayer;
 
   readCommandLineArgs( argc, argv, &learningRate, &batchSize, &iterations, 
                        &sizeHiddenLayer );
+
   printf("Number of training examples           %d\n",numTrainingExamples);
   printf("Number of features/pixels per example %d\n",numFeatures);
   printf("Number of test examples               %d\n",numTestExamples);
 
 /* malloc trainingVector */
-
-
 
   trainingVector = (float *) malloc( sizeof(float) * numTrainingExamples );
   if( trainingVector == NULL ) 
@@ -111,8 +107,7 @@ int main(int argc, char *argv[])
   for( int i = 0; i < (numFeatures+1)*numTrainingExamples; i++ )
     trainingMatrix[i] *= scale; 
 
-/* malloc the theta1 matrix.  each row is a different training
-   example
+/* malloc the theta1 matrix.
 */
   theta1 = (float *) malloc( sizeof(float) * sizeHiddenLayer * 
                            (numFeatures + 1 ) );
@@ -121,27 +116,16 @@ int main(int argc, char *argv[])
 
   memset( theta1, 0, sizeof(float)*sizeHiddenLayer*(numFeatures+1) );
 
-/* read theta1 from file as a matrix */
+/* init theta1 with random numbers */
 
-//  readMatrixFromFile( theta1Filename, theta1,
- //                     sizeHiddenLayer, numFeatures+1 );
   for( int i = 0; i < sizeHiddenLayer*(numFeatures+1); i++ )
   {
     theta1[i] = double(rand()) / (double(RAND_MAX) + 1.0);
     theta1[i] *= (2.0*eps);
     theta1[i] -= eps;
-//    printf("i %d theta2 %f\n",i,theta2[i]);
   } /* end for */
 
-  theta1Grad = (float *) malloc( sizeof(float) * sizeHiddenLayer * 
-                           (numFeatures + 1 ) );
-  if( theta1Grad == NULL ) 
-    fprintf(stderr,"Houston more problems\n");
-
-  memset( theta1Grad, 0, sizeof(float)*sizeHiddenLayer*(numFeatures+1) );
-
-/* malloc the theta2 matrix.  each row is a different training
-   example
+/* malloc the theta2 matrix. 
 */
 
   theta2 = (float *) malloc( sizeof(float) * numClasses * 
@@ -151,24 +135,14 @@ int main(int argc, char *argv[])
 
   memset( theta2, 0, sizeof(float)*numClasses*(sizeHiddenLayer+1) );
 
-/* read theta2 from file as a matrix */
+/* init theta2 from random numbers */
 
-//  readMatrixFromFile( theta2Filename, theta2,
- //                     numClasses, sizeHiddenLayer+1 );
   for( int i = 0; i < numClasses*(sizeHiddenLayer+1); i++ )
   {
     theta2[i] = double(rand()) / (double(RAND_MAX) + 1.0);
     theta2[i] *= (2.0*eps);
     theta2[i] -= eps;
-//    printf("i %d theta2 %f\n",i,theta2[i]);
   } /* end for */
-
-  theta2Grad = (float *) malloc( sizeof(float) * numClasses * 
-                           (sizeHiddenLayer + 1 ) );
-  if( theta2Grad == NULL ) 
-    fprintf(stderr,"Houston more problems\n");
-
-  memset( theta2Grad, 0, sizeof(float)*numClasses*(sizeHiddenLayer+1) );
 
 /* setup timers */
 
@@ -198,6 +172,8 @@ int main(int argc, char *argv[])
     fprintf(stderr,"Houston we have a problem\n");
 
   memset( predictVector, 0, sizeof(int)*numTrainingExamples );
+
+/* test prediction on the training examples */
 
   predict( trainingMatrix, numTrainingExamples, numFeatures+1,
                 theta1, sizeHiddenLayer, numFeatures+1,
@@ -257,6 +233,9 @@ int main(int argc, char *argv[])
 
   memset( predictVector, 0, sizeof(int)*numTestExamples );
 
+/* test the prediction of test examples which we haven't trained on 
+ */
+
   predict( testMatrix, numTestExamples, numFeatures+1,
                 theta1, sizeHiddenLayer, numFeatures+1,
                 theta2, numClasses, sizeHiddenLayer+1,
@@ -272,6 +251,14 @@ int main(int argc, char *argv[])
   printf("Total correct on test set is          %d\n",(int)result);
   printf("Prediction rate of test set is        %.3f\n",
       100.0 * result/(floatType_t)numTestExamples);
+
+  free(trainingVector);
+  free(trainingMatrix);
+  free(theta1);
+  free(theta2);
+  free(predictVector);
+  free(testVector);
+  free(testMatrix);
 
   return 0;
 } /* end main */
