@@ -49,12 +49,12 @@ int main(int argc, char *argv[])
   float *testVector, *testMatrix;
   int *predictVector;
 
-
-
   float learningRate;
   int batchSize;
   int iterations;
   int sizeHiddenLayer;
+
+/* read command line args if they're passed */
 
   readCommandLineArgs( argc, argv, &learningRate, &batchSize, &iterations, 
                        &sizeHiddenLayer );
@@ -63,7 +63,7 @@ int main(int argc, char *argv[])
   printf("Number of features/pixels per example %d\n",numFeatures);
   printf("Number of test examples               %d\n",numTestExamples);
 
-/* malloc trainingVector */
+/* malloc trainingVector, which are the labels of the trainin sets */
 
   trainingVector = (float *) malloc( sizeof(float) * numTrainingExamples );
   if( trainingVector == NULL ) 
@@ -78,7 +78,7 @@ int main(int argc, char *argv[])
 
 
 /* malloc the training matrix.  each column is a different training
-   example
+   example of 784 pixel values
 */
 
   trainingMatrix = (float *) malloc( sizeof(float) * numTrainingExamples * 
@@ -101,13 +101,15 @@ int main(int argc, char *argv[])
                       &trainingMatrix[1],
                       numFeatures, numTrainingExamples, numFeatures+1 );
 
-/* scale the training matrix to 0 to 1 */
+/* scale the training matrix to 0 to 1, essentially a normalization 
+   technique 
+*/
 
   floatType_t scale = 1.0 / 256.0;
   for( int i = 0; i < (numFeatures+1)*numTrainingExamples; i++ )
     trainingMatrix[i] *= scale; 
 
-/* malloc the theta1 matrix.
+/* malloc the theta1 matrix which are the weights for first layer
 */
   theta1 = (float *) malloc( sizeof(float) * sizeHiddenLayer * 
                            (numFeatures + 1 ) );
@@ -125,7 +127,7 @@ int main(int argc, char *argv[])
     theta1[i] -= eps;
   } /* end for */
 
-/* malloc the theta2 matrix. 
+/* malloc the theta2 matrix which are weights for second layer
 */
 
   theta2 = (float *) malloc( sizeof(float) * numClasses * 
@@ -144,13 +146,15 @@ int main(int argc, char *argv[])
     theta2[i] -= eps;
   } /* end for */
 
-/* setup timers */
+/* setup timers using CUDA events */
 
   cudaEvent_t start, stop;
   CUDA_CALL( cudaEventCreate( &start ) );
   CUDA_CALL( cudaEventCreate( &stop ) );
   CUDA_CALL( cudaEventRecord( start, 0 ) );
 #if 1
+/* call the training function.  This is a majority of the runtime */
+
   trainNetwork( trainingMatrix, numTrainingExamples, numFeatures+1,
                 theta1, sizeHiddenLayer, numFeatures+1,
                 theta2, numClasses, sizeHiddenLayer+1,
@@ -165,7 +169,9 @@ int main(int argc, char *argv[])
   fprintf(stdout, "Total time for training is            %.3e sec\n",
     elapsedTime/1000.0f );
 
-/* malloc predictVector */
+/* malloc predictVector this is a vector that will be populated by the 
+   predict function, i.e., it will take a set of pixel data and predict
+   which digit it is, and put those values into a vector */
 
   predictVector = (int *) malloc( sizeof(int) * numTrainingExamples );
   if( predictVector == NULL ) 
@@ -179,6 +185,10 @@ int main(int argc, char *argv[])
                 theta1, sizeHiddenLayer, numFeatures+1,
                 theta2, numClasses, sizeHiddenLayer+1,
                 predictVector );
+
+/* compare the predicted values versus the actual values, of the 
+   training set 
+*/
   
   floatType_t result = 0.0;
   for( int i = 0; i < numTrainingExamples; i++ )
@@ -191,7 +201,9 @@ int main(int argc, char *argv[])
   printf("Prediction rate of training set is    %.3f\n",
       100.0 * result/(floatType_t)numTrainingExamples);
 
-/* malloc testVector */
+/* malloc testVector. this is a test set of labels for data
+   we haven't seen yet.
+*/
 
   testVector = (float *) malloc( sizeof(float) * numTestExamples );
   if( testVector == NULL ) 
@@ -199,13 +211,13 @@ int main(int argc, char *argv[])
 
   memset( testVector, 0, sizeof(float)*numTestExamples );
 
-/* read trainingVector from file */
+/* read testVector from file */
  
   readMatrixFromFile( testLabelFilename, testVector, 
                       numTestExamples, 1, 1 );
 
-/* malloc the test matrix.  each column is a different training
-   example
+/* malloc the test matrix.  each column is a different test example of data
+   we haven't seen before.
 */
 
   testMatrix = (float *) malloc( sizeof(float) * numTestExamples * 
@@ -216,7 +228,7 @@ int main(int argc, char *argv[])
   memset( testMatrix, 0, sizeof(float)*
                numTestExamples*(numFeatures+1) );
 
-/* read training examples from file as a matrix 
+/* read test examples from file as a matrix 
    read first column of data into second column of array to leave room for
    bias unit of ones
 */
@@ -225,7 +237,7 @@ int main(int argc, char *argv[])
                       &testMatrix[1],
                       numFeatures, numTestExamples, numFeatures+1 );
 
-/* scale the training matrix to 0 to 1 */
+/* scale the test matrix to 0 to 1 */
 
   scale = 1.0 / 256.0;
   for( int i = 0; i < (numFeatures+1)*numTestExamples; i++ )
