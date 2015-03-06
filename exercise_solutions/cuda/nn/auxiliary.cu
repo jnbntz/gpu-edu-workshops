@@ -17,13 +17,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
-#include <cudnn.h>
 #include <cublas_v2.h>
 #include "headers.h"
 
-cudnnHandle_t cudnnHandle;
-cudnnTensorDescriptor_t srcTensorDesc, destTensorDesc;
-cudnnTensorDescriptor_t srcDiffTensorDesc, destDiffTensorDesc;
 cublasHandle_t cublasHandle;
 
 __global__ void k_updateDelta2( floatType_t       *delta2,
@@ -139,11 +135,6 @@ void trainNetwork( floatType_t       *X,
   floatType_t lambda = learningRate;
   floatType_t cost;
 
-  checkCUDNN( cudnnCreate( &cudnnHandle ) );
-  checkCUDNN( cudnnCreateTensorDescriptor( &srcTensorDesc ) );
-  checkCUDNN( cudnnCreateTensorDescriptor( &destTensorDesc ) );
-  checkCUDNN( cudnnCreateTensorDescriptor( &srcDiffTensorDesc ) );
-  checkCUDNN( cudnnCreateTensorDescriptor( &destDiffTensorDesc ) );
   checkCUBLAS( cublasCreate( &cublasHandle ) );
 
 /* allocate large GPU space for temporary arrays */
@@ -298,20 +289,6 @@ void costFunction( floatType_t       *d_X,
   d_delta2 = &d_a3[Xexamples*(theta2Rows+1)];
   d_yTemp  = &d_delta2[Xexamples*(theta1Rows+1)];
 
-  checkCUDNN( cudnnSetTensor4dDescriptor(srcTensorDesc,
-                                         CUDNN_TENSOR_NCHW,
-                                         CUDNN_DATA_FLOAT,
-                                         Xexamples,
-                                         theta1Rows+1,
-                                         1,1) );
-
-  checkCUDNN( cudnnSetTensor4dDescriptor(destTensorDesc,
-                                         CUDNN_TENSOR_NCHW,
-                                         CUDNN_DATA_FLOAT,
-                                         Xexamples,
-                                         theta1Rows+1,
-                                         1,1) );
-
   float alpha = 1.0;
   float beta  = 0.0;
 
@@ -326,14 +303,6 @@ void costFunction( floatType_t       *d_X,
 			      &alpha, d_X, Xfeatures,
                               d_theta1, theta1Rows, &beta,
                               &d_z2[INDX(0,1,Xexamples)], Xexamples ) );                              
-#if 0
-    checkCUDNN( cudnnActivationForward( cudnnHandle,
-                                        CUDNN_ACTIVATION_SIGMOID,
-                                        &alpha,
-                                        srcTensorDesc, d_z2,
-                                        &beta,
-                                        destTensorDesc, d_a2 ) );
-#else
     CUDA_CALL( cudaMemcpy( d_a2, d_z2, 
                            sizeof(floatType_t) * Xexamples * (theta1Rows+1),
                            cudaMemcpyDeviceToDevice ) );
@@ -342,7 +311,6 @@ void costFunction( floatType_t       *d_X,
     k_sigmoid_f<<< blocks1, threads1 >>>( d_a2, Xexamples*(theta1Rows+1) );
     CUDA_CHECK()
     CUDA_CALL( cudaDeviceSynchronize() );
-#endif
   
   } /* end if */
   else
@@ -364,33 +332,11 @@ void costFunction( floatType_t       *d_X,
                               d_theta2, theta2Rows, &beta,
                               d_a3, Xexamples ) );                              
 
-  checkCUDNN( cudnnSetTensor4dDescriptor(srcTensorDesc,
-                                         CUDNN_TENSOR_NCHW,
-                                         CUDNN_DATA_FLOAT,
-                                         Xexamples,
-                                         theta2Rows,
-                                         1,1) );
-
-  checkCUDNN( cudnnSetTensor4dDescriptor(destTensorDesc,
-                                         CUDNN_TENSOR_NCHW,
-                                         CUDNN_DATA_FLOAT,
-                                         Xexamples,
-                                         theta2Rows,
-                                         1,1) );
-#if 0
-    checkCUDNN( cudnnActivationForward( cudnnHandle,
-                                        CUDNN_ACTIVATION_SIGMOID,
-                                        &alpha,
-                                        srcTensorDesc, d_a3,
-                                        &beta,
-                                        destTensorDesc, d_a3 ) );
-#else
     dim3 threads1(256,1,1);
     dim3 blocks1( Xexamples*(theta2Rows+1)/threads1.x + 1, 1, 1);
     k_sigmoid_f<<< blocks1, threads1 >>>( d_a3, Xexamples*(theta2Rows+1) );
     CUDA_CHECK()
     CUDA_CALL( cudaDeviceSynchronize() );
-#endif
 
   } /* end if */
   else
@@ -438,50 +384,6 @@ void costFunction( floatType_t       *d_X,
 			      &alpha, (float *)d_theta2, theta2Rows,
                               (float *)&d_delta3[1], 11, &beta,
                               (float *)d_delta2, theta1Rows+1 ) );   
-
-
-#if 0
-  checkCUDNN( cudnnSetTensor4dDescriptor(srcTensorDesc,
-                                         CUDNN_TENSOR_NCHW,
-                                         CUDNN_DATA_FLOAT,
-                                         Xexamples,
-                                         theta1Rows+1,
-                                         1,1) );
-
-  checkCUDNN( cudnnSetTensor4dDescriptor(destTensorDesc,
-                                         CUDNN_TENSOR_NCHW,
-                                         CUDNN_DATA_FLOAT,
-                                         Xexamples,
-                                         theta1Rows+1,
-                                         1,1) );
-
-  checkCUDNN( cudnnSetTensor4dDescriptor(srcDiffTensorDesc,
-                                         CUDNN_TENSOR_NCHW,
-                                         CUDNN_DATA_FLOAT,
-                                         Xexamples,
-                                         theta1Rows+1,
-                                         1,1) );
-
-  checkCUDNN( cudnnSetTensor4dDescriptor(destDiffTensorDesc,
-                                         CUDNN_TENSOR_NCHW,
-                                         CUDNN_DATA_FLOAT,
-                                         Xexamples,
-                                         theta1Rows+1,
-                                         1,1) );
-
-  checkCUDNN( cudnnActivationBackward( cudnnHandle, 
-                                       CUDNN_ACTIVATION_SIGMOID,
-				       &alpha,
-                                       srcTensorDesc, d_z2,
-                                       srcDiffTensorDesc, d_delta2,
-                                       destTensorDesc, d_z2, 
-                                       &beta,
-                                       destDiffTensorDesc, d_delta2 ) );
-
-//   CUDA_CALL( cudaMemcpy( delta2, d_delta2,
- //                         sizeof(floatType_t) * Xexamples*(theta1Rows+1),
-  //                        cudaMemcpyDeviceToHost ) );
-#endif
 
    dim3 threads(256,1,1);
    dim3 blocks(Xexamples*(theta1Rows+1)+1/threads.x,1,1);
