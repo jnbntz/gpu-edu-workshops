@@ -17,7 +17,7 @@
 CC=gcc
 NVCC=nvcc
 NVOPTS= -Xcompiler=-O3 -lineinfo $(ARCH) -DDEBUG
-LIBS=-L. -lcblas -latlas -lcudnn -lcublas
+LIBS=-L. -lcblas -latlas -lcublas
 INC=-I.
 
 include ../make.common
