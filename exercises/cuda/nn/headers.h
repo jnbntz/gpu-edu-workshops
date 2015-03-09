@@ -57,7 +57,7 @@ else if( (val) > (max) ) val = (max);
 #define SIGMOID(z) ( (floatType_t) 1.0 ) / \
 ( ( (floatType_t) 1.0 ) + expf(-z) )
 
-inline float sigmoid_f( float z )
+__host__ __device__ inline float sigmoid_f( float z )
 {
   return 1.0f / ( 1.0f + expf( -z ) );
 } /* end sigmoid_f */
@@ -67,7 +67,7 @@ inline double sigmoid( double z )
   return 1.0 / ( 1.0 + exp( -z ) );
 } /* end sigmoid */
 
-inline float sigmoidGradient_f( float z )
+__host__ __device__ inline float sigmoidGradient_f( float z )
 {
   float temp = sigmoid_f( z );
   return temp * ( 1.0f - temp );
@@ -99,9 +99,17 @@ inline double sigmoidGradient( double z )
 #define CUDA_CHECK()  if( (cudaPeekAtLastError()) != cudaSuccess ) \
   {printf("Error %s at %s:%d\n", cudaGetErrorString(cudaGetLastError()), \
    __FILE__,__LINE__-1); exit(-1);}
+#define checkCUDNN(F)  if( (F) != CUDNN_STATUS_SUCCESS ) \
+  {printf("Error %d at %s:%d\n", F, \
+   __FILE__,__LINE__); exit(-1);}
+#define checkCUBLAS(F)  if( (F) != CUBLAS_STATUS_SUCCESS ) \
+  {printf("Error %d at %s:%d\n", F, \
+   __FILE__,__LINE__); exit(-1);}
 #else
 #define CUDA_CALL(F) (F)
 #define CUDA_CHECK()
+#define checkCUDNN(F) (F)
+#define checkCUBLAS(F) (F)
 #endif
 
 /* function defs */

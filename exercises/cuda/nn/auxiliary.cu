@@ -17,7 +17,117 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <cublas_v2.h>
 #include "headers.h"
+
+cublasHandle_t cublasHandle;
+
+/* kernel to update delta2 parameter */
+
+__global__ void k_updateDelta2( floatType_t       *delta2,
+                                floatType_t const *z2,
+                                int         const Xexamples,
+                                int         const size )
+{
+  int tidx = blockDim.x * blockIdx.x + threadIdx.x;
+  int tidy = blockDim.y * blockIdx.y + threadIdx.y;
+
+//  if( tidy < Xexamples && tidx < size )
+ //   delta2[INDX(tidx,tidy,size)] *= z2[INDX(tidy,tidx,Xexamples)];
+
+  if( tidy == 0 && tidx < size )
+  {
+   for( int row = 0; row < Xexamples; row++ )
+   {
+//     for( int j = 0; j < size; j++ )
+ //    {
+       int j = tidx;
+       delta2[INDX(j,row,size)] *= z2[INDX(row,j,Xexamples)];
+  //   } /* end for */
+   } /* end for */
+  }
+} /* end k_updateDelta2 */
+
+/* kernel for calculating the sigmoid of an array */
+
+__global__ void k_sigmoid_f( floatType_t  *array,
+                                     int    const size )
+{
+  int tid = blockDim.x * blockIdx.x + threadIdx.x;
+  if( tid < size )
+    array[tid] = sigmoid_f( array[tid] );
+} /* end sigmoidGradient */
+
+/* kernel for calculating the gradient of the sigmoid function */
+
+__global__ void k_sigmoidGradient_f( floatType_t  *array,
+                                     int    const size )
+{
+  int tid = blockDim.x * blockIdx.x + threadIdx.x;
+  if( tid < size )
+    array[tid] = sigmoidGradient_f( array[tid] );
+} /* end sigmoidGradient */
+
+/* kernel to set the delta3 vector from Y properly 
+   delta3 is just the different between the calculated value
+   a3 and the true value Y3
+*/
+
+__global__ void  setDelta3Vec( floatType_t       *delta3, 
+                               floatType_t const *Y, 
+                               floatType_t const *a3,
+                               int         const  Xexamples )
+{
+  int tid = blockDim.x * blockIdx.x + threadIdx.x;
+  if( tid < Xexamples )
+  {
+    delta3[INDX((int)Y[tid],tid,11)] = (floatType_t) 1.0;
+    for( int j = 0; j < 10; j++ )
+    {
+      delta3[INDX(j+1,tid,11)] = a3[INDX(tid,j,Xexamples)]
+                               - delta3[INDX(j+1,tid,11)];
+    } /* end for j */
+  }
+  return;
+} /* end setDelta3Vec */
+
+/* init the array to 1.0. used to set the bias term */
+
+__global__ void initOne( int size, floatType_t *array )
+{
+  int tid = blockDim.x * blockIdx.x + threadIdx.x;
+  if( tid < size )
+    array[tid] = (floatType_t) 1.0;
+  return;
+} /* end initOne */
+
+/* debugging kernel for printing values */
+
+__global__ void printKernel( int rows, int cols, floatType_t *array )
+{
+  for( int j = 0; j < cols; j++ )
+  {
+    for( int i = 0; i < rows; i++ )
+    {
+      printf("row %d col %d value %e\n",i,j,array[INDX(i,j,rows)] );
+    } /* end for */
+  } /* end for */
+} /* end print Kernel */
+
+/* debugging for printing on host */
+
+void printHost( int rows, int cols, floatType_t *array )
+{
+  for( int j = 0; j < cols; j++ )
+  {
+    for( int i = 0; i < rows; i++ )
+    {
+      printf("row %d col %d value %e\n",i,j,array[INDX(i,j,rows)] );
+    } /* end for */
+  } /* end for */
+} /* end print Kernel */
+
+/* main function to train the network */
 
 void trainNetwork( floatType_t       *X, 
                    int         const Xexamples, 
@@ -35,161 +145,231 @@ void trainNetwork( floatType_t       *X,
 {
   floatType_t lambda = learningRate;
   floatType_t cost;
-  floatType_t *theta1Grad, *theta2Grad, *tempMatrix;
 
-  theta1Grad = (floatType_t *) malloc( sizeof(floatType_t) * 
-                                theta1Rows * theta1Cols );
+  checkCUBLAS( cublasCreate( &cublasHandle ) );
 
-  theta2Grad = (floatType_t *) malloc( sizeof(floatType_t) * 
-                                theta2Rows * theta2Cols );
+/* allocate large GPU space for temporary arrays */
 
-  tempMatrix = (floatType_t *) malloc( sizeof(floatType_t) *
-                               ( Xexamples * (theta1Rows+1) + //z2
+  floatType_t *d_tempMatrix;
+  CUDA_CALL( cudaMalloc( &d_tempMatrix, sizeof(floatType_t) *
+                               ( Xexamples * (theta1Rows+1) + //z2 
                                  Xexamples * (theta1Rows+1) + //a2
                                  Xexamples * (theta2Rows+1) + //a3
                                  Xexamples * (theta1Rows+1) + //delta2
-                                 Xexamples * 11) );           //delta3
+                                 Xexamples * 11 ) ) );            //delta3
+
+/* set the bias term to 1, sort of like the y-intercept */
 
   for( int i = 0; i < Xexamples; i++ ) 
+  {
     X[INDX(0,i,Xfeatures)] = (floatType_t) 1.0;
+  } /* end for */
 
-#if 1
-/* stochastic gradient descent */
+/* malloc all arrays I need on the device and copy data from the host */
+
+  floatType_t *d_X;
+  CUDA_CALL( cudaMalloc( &d_X, sizeof(floatType_t)*Xexamples*Xfeatures));
+  CUDA_CALL( cudaMemcpy( d_X, X, 
+                         sizeof(floatType_t)*Xexamples*Xfeatures,
+                         cudaMemcpyHostToDevice ) );
+
+  floatType_t *d_Y;
+  CUDA_CALL( cudaMalloc( &d_Y, sizeof(floatType_t)*Xexamples) );
+  CUDA_CALL( cudaMemcpy( d_Y, Y, 
+                         sizeof(floatType_t)*Xexamples,
+                         cudaMemcpyHostToDevice ) );
+
+/* theta1 and theta2 are the weights in the 1st and second layers */
+
+  floatType_t *d_theta1;
+  CUDA_CALL( cudaMalloc( &d_theta1, 
+          sizeof(floatType_t) * theta1Rows * theta1Cols ) );
+
+  CUDA_CALL( cudaMemcpy( d_theta1, theta1,
+                         sizeof(floatType_t)*theta1Rows*theta1Cols,
+                         cudaMemcpyHostToDevice ) );
+
+  floatType_t *d_theta2;
+  CUDA_CALL( cudaMalloc( &d_theta2, 
+          sizeof(floatType_t) * theta2Rows * theta2Cols ) );
+
+  CUDA_CALL( cudaMemcpy( d_theta2, theta2,
+                         sizeof(floatType_t)*theta2Rows*theta2Cols,
+                         cudaMemcpyHostToDevice ) );
+
+/* theta1Grad and theta2Grad are the gradients for theta1 and theta2 */
+
+  floatType_t *d_theta1Grad, *d_theta2Grad;
+  CUDA_CALL( cudaMalloc( &d_theta1Grad, 
+                         sizeof(floatType_t)*theta1Rows*theta1Cols ) );
+
+  CUDA_CALL( cudaMalloc( &d_theta2Grad,
+                         sizeof(floatType_t)*theta2Rows*theta2Cols ) );
+
+/* stochastic gradient descent 
+   in our case stochastic because the data is already scrambled */
+
   int iter = 0;
+
+/* big while loop over the number of iterations to train */
 
   while(iter < iterations )
   {
+
+/* for loop over the batch size */
+
     for( int j = 0; j < Xexamples; j+=batchSize )
     {
-      int tempBatchSize = min( batchSize, Xexamples - j );      
-      costFunction( &X[INDX(0,j,Xfeatures)], tempBatchSize, Xfeatures,
-                    theta1, theta1Rows, theta1Cols, 
-                    theta2, theta2Rows, theta2Cols,
-                    &Y[j],
-                    &cost, theta1Grad, theta2Grad, 
-                    tempMatrix );
 
-      for( int i = 0; i < theta1Rows*theta1Cols; i++ )
-        theta1[i] -= lambda * theta1Grad[i];
+      int tempBatchSize = min( batchSize, Xexamples - j );
 
-      for( int i = 0; i < theta2Rows*theta2Cols; i++ )
-        theta2[i] -= lambda * theta2Grad[i];
-    } 
+/* bulk of computation here */
+
+      costFunction( &d_X[INDX(0,j,Xfeatures)], tempBatchSize, Xfeatures,
+                    d_theta1, theta1Rows, theta1Cols, 
+                    d_theta2, theta2Rows, theta2Cols,
+                    &d_Y[j],
+                    &cost, d_theta1Grad, d_theta2Grad, 
+                    d_tempMatrix );
+
+      floatType_t alpha = -lambda;
+
+/* update the weights with the newly calculated gradients */
+
+      checkCUBLAS( cublasSaxpy( cublasHandle,
+                            theta1Rows*theta1Cols,
+                            &alpha,
+                            d_theta1Grad, 1,
+                            d_theta1, 1 ) ); 
+
+      checkCUBLAS( cublasSaxpy( cublasHandle,
+                            theta2Rows*theta2Cols,
+                            &alpha,
+                            d_theta2Grad, 1,
+                            d_theta2, 1 ) ); 
+    } /* end for */ 
+ 
     iter++;
     printf("|");
     fflush(stdout);
     if( iter % 72 == 0 ) printf("\n");
   } /* end while */
-#endif
-#if 0
-/* gradient descent algorithm */
 
-  int iter = 0;
+/* copy theta1 and theta2 back to the host to use for prediction later */
 
-  while( iter < 20 )
-  {
+  CUDA_CALL( cudaMemcpy( theta1, d_theta1,
+                         sizeof(floatType_t)*theta1Rows*theta1Cols,
+                         cudaMemcpyDeviceToHost ) );
+  CUDA_CALL( cudaMemcpy( theta2, d_theta2,
+                         sizeof(floatType_t)*theta2Rows*theta2Cols,
+                         cudaMemcpyDeviceToHost ) );
 
-  costFunction( X, Xexamples, Xfeatures,
-                theta1, theta1Rows, theta1Cols, 
-                theta2, theta2Rows, theta2Cols,
-                Y,
-                &cost, theta1Grad, theta2Grad );
-
-  printf("iter %d cost is %.3e\n",iter,cost);
-
-  for( int i = 0; i < theta1Rows*theta1Cols; i++ )
-    theta1[i] -= lambda * theta1Grad[i];
-
-  for( int i = 0; i < theta2Rows*theta2Cols; i++ )
-    theta2[i] -= lambda * theta2Grad[i];
-
-    iter++;
-
-//    printf("|");
- //   fflush(stdout);
-  //  if( iter % 72 == 0 ) printf("\n");
-  } /* end while */
-#endif
-  printf("\nFinal cost value                      %.3e\n",cost);
-  free(tempMatrix);
-  free(theta1Grad);
-  free(theta2Grad);
+//  printf("\nFinal cost value                      %.3e\n",cost);
+  printf("\n");
+  CUDA_CALL( cudaFree( d_tempMatrix ) );
+  CUDA_CALL( cudaFree( d_X ) );
+  CUDA_CALL( cudaFree( d_Y ) );
+  CUDA_CALL( cudaFree( d_theta1 ) );
+  CUDA_CALL( cudaFree( d_theta2 ) );
+  CUDA_CALL( cudaFree( d_theta1Grad ) );
+  CUDA_CALL( cudaFree( d_theta2Grad ) );
 
 } /* end trainNetwork */
 
-void costFunction( floatType_t       *X, 
+void costFunction( floatType_t       *d_X, 
                    int         const Xexamples, 
                    int         const Xfeatures,
-                   floatType_t const *theta1, 
+                   floatType_t const *d_theta1, 
                    int         const theta1Rows,
                    int         const theta1Cols,
-                   floatType_t const *theta2, 
+                   floatType_t const *d_theta2, 
                    int         const theta2Rows,
                    int         const theta2Cols,
-                   floatType_t const *Y, 
+                   floatType_t const *d_Y, 
                    floatType_t       *cost,
-                   floatType_t       *theta1Grad,
-                   floatType_t       *theta2Grad,
-                   floatType_t       *tempMatrix )
+                   floatType_t       *d_theta1Grad,
+                   floatType_t       *d_theta2Grad,
+                   floatType_t       *d_tempMatrix )
 {
 
-  floatType_t *z2, *a2, *a3;
-  floatType_t *yTemp;
-  floatType_t *delta2;
+  floatType_t *d_z2, *d_a2, *d_a3, *d_delta3, *d_delta2;
 
-/* offset the pointers in the scratch memory */
+/* take tempMatrix and partition it up for use */
 
-#if 0
-  z2 = tempMatrix;
-  a2 = &z2[INDX(Xexamples,theta1Rows+1,Xexamples)];
-  a3 = &a2[INDX(Xexamples,theta1Rows+1,Xexamples)];
-  delta2 = &a3[INDX(Xexamples,theta2Rows+1,Xexamples)];
-  yTemp = &delta2[INDX(Xexamples,theta1Rows+1,Xexamples)];
-#endif
-  z2     = tempMatrix;
-  a2     = &z2[Xexamples*(theta1Rows+1)];
-  a3     = &a2[Xexamples*(theta1Rows+1)];
-  delta2 = &a3[Xexamples*(theta2Rows+1)];
-  yTemp  = &delta2[Xexamples*(theta1Rows+1)];
+  d_z2     = d_tempMatrix;
+  d_a2     = &d_z2[Xexamples*(theta1Rows+1)];
+  d_a3     = &d_a2[Xexamples*(theta1Rows+1)];
+  d_delta2 = &d_a3[Xexamples*(theta2Rows+1)];
+  d_delta3 = &d_delta2[Xexamples*(theta1Rows+1)];
 
+  float alpha = 1.0;
+  float beta  = 0.0;
 
-#if 1
   if( sizeof( floatType_t ) == 4 ) 
   {
-    cblas_sgemm( CblasColMajor, CblasTrans, CblasTrans,
-                 Xexamples, theta1Rows, theta1Cols,
-                 1.0f, (float *) X, Xfeatures,
-                 (float *) theta1, theta1Rows, 0.0f,
-                 (float *) &z2[INDX(0,1,Xexamples)], Xexamples );
 
-    for( int i = Xexamples; i < Xexamples*(theta1Rows+1); i++ )
-      a2[i] = sigmoid_f( z2[i] );
 
+/* calculate X * theta1 to give z2 */
+
+    checkCUBLAS( cublasSgemm( cublasHandle, 
+                              CUBLAS_OP_T, CUBLAS_OP_T,
+                              Xexamples, theta1Rows, theta1Cols,
+			      &alpha, d_X, Xfeatures,
+                              d_theta1, theta1Rows, &beta,
+                              &d_z2[INDX(0,1,Xexamples)], Xexamples ) );                              
+/* copy z2 into a2 */
+
+    CUDA_CALL( cudaMemcpy( d_a2, d_z2, 
+                           sizeof(floatType_t) * Xexamples * (theta1Rows+1),
+                           cudaMemcpyDeviceToDevice ) );
+
+/* calculate a2 = sigmoid(z2), the activation */
+
+    dim3 threads1(256,1,1);
+    dim3 blocks1( Xexamples*(theta1Rows+1)/threads1.x + 1, 1, 1);
+    k_sigmoid_f<<< blocks1, threads1 >>>( d_a2, Xexamples*(theta1Rows+1) );
+    CUDA_CHECK()
+    CUDA_CALL( cudaDeviceSynchronize() );
+  
   } /* end if */
   else
   {
   } /* end else */  
 
-  for( int i = 0; i < Xexamples; i++ ) 
-    a2[INDX(i,0,Xexamples)] = (floatType_t) 1.0;
+/* add a 1.0 to the beginning of each a2 vector for bias term */
+
+  initOne<<< Xexamples/256 + 1, 256 >>>( Xexamples, d_a2 );
+  CUDA_CHECK()
+  CUDA_CALL( cudaDeviceSynchronize() );
+
 
   if( sizeof( floatType_t ) == 4 )
   {
-    cblas_sgemm( CblasColMajor, CblasNoTrans, CblasTrans,
-                 Xexamples, theta2Rows, theta2Cols,
-                 1.0f, (float *) a2, Xexamples,
-                 (float *) theta2, theta2Rows, 0.0f,
-                 (float *) a3, Xexamples );
 
-      for( int i = 0; i < theta2Rows*Xexamples; i++ )
-        a3[i] = sigmoid_f( a3[i] );
+/* calculated z3 = a2 * theta2.  put in a3 array space since we don't 
+   need z3 for anything else */
+
+    checkCUBLAS( cublasSgemm( cublasHandle, 
+                              CUBLAS_OP_N, CUBLAS_OP_T,
+                              Xexamples, theta2Rows, theta2Cols,
+			      &alpha, d_a2, Xexamples,
+                              d_theta2, theta2Rows, &beta,
+                              d_a3, Xexamples ) );                              
+
+/* calculate a3 = sigmoid(z3), the activation */
+
+    dim3 threads1(256,1,1);
+    dim3 blocks1( Xexamples*(theta2Rows+1)/threads1.x + 1, 1, 1);
+    k_sigmoid_f<<< blocks1, threads1 >>>( d_a3, Xexamples*(theta2Rows+1) );
+    CUDA_CHECK()
+    CUDA_CALL( cudaDeviceSynchronize() );
 
   } /* end if */
   else
   { 
   } /* end else */
 
-/* enabled the following code if you wish to calculate the forward cost 
+/* enable the following code if you wish to calculate the forward cost 
    not strictly necessary to generate the gradients
 */
 #if 0
@@ -209,63 +389,72 @@ void costFunction( floatType_t       *X,
   jTemp /= (floatType_t) Xexamples;
   *cost = jTemp;
 #endif
-#endif
 
-  floatType_t *delta3;
-  delta3 = yTemp;
+  CUDA_CALL( cudaMemset( d_delta3, 0, sizeof(floatType_t)*11*Xexamples ) );
 
-#if 1
-  for( int row = 0; row < Xexamples; row++ )
-  { 
-    memset( &delta3[INDX(0,row,11)], 0, sizeof( floatType_t) * 11 );
-    delta3[INDX((int)Y[row],row,11)] = (floatType_t) 1.0;
-    for( int j = 0; j < 10; j++ ) 
-    {
-      delta3[INDX(j+1,row,11)] = a3[INDX(row,j,Xexamples)] 
-                               - delta3[INDX(j+1,row,11)];
-    } /* end for j */
-  } /* end for */
+/* set delta3 to be the difference between a3 and y, the calculated versus
+   the actual values 
+*/
+
+  setDelta3Vec<<< Xexamples/256+1, 256 >>>( d_delta3, d_Y, d_a3, Xexamples );
+  CUDA_CHECK()
+  CUDA_CALL( cudaDeviceSynchronize() );
 
   if( sizeof( floatType_t ) == 4 )
   {
 
-    cblas_sgemm( CblasColMajor, CblasTrans, CblasNoTrans,
-                 theta2Cols, Xexamples, theta2Rows,
-                 1.0f, theta2, theta2Rows,
-                 &delta3[1],11, 0.0f,
-                 delta2,theta1Rows+1);
+/* calculated delta2 = theta2 * delta3 */
 
-   for( int i = 0; i < Xexamples*(theta1Rows+1); i++ )
-     z2[i] = sigmoidGradient_f( z2[i] );
-   
-    for( int row = 0; row < Xexamples; row++ )
-    { 
-      for( int j = 0; j < theta1Rows+1; j++ )
-      {
-        delta2[INDX(j,row,theta1Rows+1)] *= z2[INDX(row,j,Xexamples)];
-      } /* end for */
-    } /* end for */
+    checkCUBLAS( cublasSgemm( cublasHandle, 
+                              CUBLAS_OP_T, CUBLAS_OP_N,
+                              theta2Cols, Xexamples, theta2Rows,
+			      &alpha, (float *)d_theta2, theta2Rows,
+                              (float *)&d_delta3[1], 11, &beta,
+                              (float *)d_delta2, theta1Rows+1 ) );   
+
+/* calculate the sigmoid gradient of z2 */
+
+   dim3 threads(256,1,1);
+   dim3 blocks(Xexamples*(theta1Rows+1)+1/threads.x,1,1);
+
+   k_sigmoidGradient_f<<< blocks, threads >>>( d_z2, Xexamples*(theta1Rows+1) );
+   CUDA_CHECK()
+   CUDA_CALL( cudaDeviceSynchronize() );
+
+/* update delta2 with the sigmoid gradient of z2 */
+
+   dim3 t1(256,256,1); 
+   dim3 b1((theta1Rows+1)/t1.x + 1, Xexamples/t1.y + 1, 1 );
+
+   k_updateDelta2<<< blocks,threads >>>( d_delta2, d_z2, Xexamples, 
+                                         theta1Rows+1 );
+   CUDA_CHECK()
+   CUDA_CALL( cudaDeviceSynchronize() );
+
+   floatType_t recip = (floatType_t) 1.0 / (floatType_t) Xexamples;
+
+/* calculate theta1Grad = delta2 * X */
+
+   checkCUBLAS( cublasSgemm( cublasHandle, 
+                              CUBLAS_OP_N, CUBLAS_OP_T,
+                              theta1Rows, theta1Cols, Xexamples,
+			      &recip, (float *)&d_delta2[1], theta1Rows+1,
+                              (float *)d_X, Xfeatures, 
+                              &beta, (float *)d_theta1Grad, theta1Rows ) );   
+
+/* calculate theta2Grad = delta3 * a2 */
+
+   checkCUBLAS( cublasSgemm( cublasHandle, 
+                              CUBLAS_OP_N, CUBLAS_OP_N,
+                              theta2Rows, theta2Cols, Xexamples,
+			      &recip, (float *)&d_delta3[1], 11,
+                              (float *)d_a2, Xexamples, 
+                              &beta, (float *)d_theta2Grad, theta2Rows ) );   
+
   } /* end if */
   else
-  { 
+  {
   } /* end else */
-
-  floatType_t recip = (floatType_t) 1.0 / (floatType_t) Xexamples;
-
-  cblas_sgemm( CblasColMajor, CblasNoTrans, CblasTrans,
-               theta1Rows, theta1Cols, Xexamples,
-               recip, (float *) &delta2[1], theta1Rows+1,
-               X, Xfeatures,
-               0.0f, (float *) theta1Grad, theta1Rows );
-
-  cblas_sgemm( CblasColMajor, CblasNoTrans, CblasNoTrans,
-               theta2Rows, theta2Cols, Xexamples,
-               recip, (float *) &delta3[1], 11,
-               (float *) a2, Xexamples, 0.0f,
-               (float *) theta2Grad, theta2Rows );
-
-
-#endif
 } /* end costFunction */
 
 void predict(floatType_t       *X, 
@@ -281,14 +470,20 @@ void predict(floatType_t       *X,
 {
 
   floatType_t *tempMatrix, *z2, *a2, *a3;
+
+/* add the bias term to the X training set data */
  
   for( int i = 0; i < Xexamples; i++ ) 
     X[INDX(0,i,Xfeatures)] = (floatType_t) 1.0;
+
+/* malloc the temp space */
 
   tempMatrix = (floatType_t *) malloc( sizeof(floatType_t) *
                                ( Xexamples * (theta1Rows+1) + 
                                  Xexamples * (theta1Rows+1) +
                                  Xexamples * (theta2Rows+1) ) );
+
+/* carve up the temp space */
 
   z2 = tempMatrix;
   a2 = &z2[INDX(Xexamples,theta1Rows,Xexamples)];
@@ -296,11 +491,17 @@ void predict(floatType_t       *X,
 
   if( sizeof( floatType_t ) == 4 ) 
   {
+
+/* calculate z2 */
+
     cblas_sgemm( CblasColMajor, CblasTrans, CblasTrans,
                  Xexamples, theta1Rows, theta1Cols,
                  1.0f, (float *) X, Xfeatures,
                  (float *) theta1, theta1Rows, 0.0f,
                  (float *) &z2[INDX(0,1,Xexamples)], Xexamples );
+
+/* calculate a2 */
+
     for( int j = 1; j < theta1Rows+1; j++ )
       for( int i = 0; i < Xexamples; i++ )
         a2[INDX(i,j,Xexamples)] = 
@@ -310,18 +511,24 @@ void predict(floatType_t       *X,
   {
   } /* end else */  
 
-
+/* add the bias term to a2 */
 
   for( int i = 0; i < Xexamples; i++ ) 
     a2[INDX(i,0,Xexamples)] = (floatType_t) 1.0;
 
   if( sizeof( floatType_t ) == 4 )
   {
+
+/* calculate z3 */
+
     cblas_sgemm( CblasColMajor, CblasNoTrans, CblasTrans,
                  Xexamples, theta2Rows, theta2Cols,
                  1.0f, (float *) a2, Xexamples,
                  (float *) theta2, theta2Rows, 0.0f,
                  (float *) a3, Xexamples );
+
+/* calculate a3 */
+
     for( int j = 0; j < theta2Rows; j++ )
       for( int i = 0; i < Xexamples; i++ )
         a3[INDX(i,j,Xexamples)] = 
@@ -330,6 +537,10 @@ void predict(floatType_t       *X,
   else
   { 
   } /* end else */
+
+/* use a3 to populate the prediction vector.  each element will be a 
+   digit between one and ten, which is the predicted value of the image
+*/
 
   for( int row = 0; row < Xexamples; row++ )
   {
@@ -346,7 +557,7 @@ void predict(floatType_t       *X,
     predictVector[row] = idx;
   } /* end row */
 
- 
+  free(tempMatrix); 
 } /* end predict */ 
 
 void readCommandLineArgs( int    argc, 
