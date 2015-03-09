@@ -37,11 +37,15 @@ void trainNetwork( floatType_t       *X,
   floatType_t cost;
   floatType_t *theta1Grad, *theta2Grad, *tempMatrix;
 
+/* malloc the gradient arrays */
+
   theta1Grad = (floatType_t *) malloc( sizeof(floatType_t) * 
                                 theta1Rows * theta1Cols );
 
   theta2Grad = (floatType_t *) malloc( sizeof(floatType_t) * 
                                 theta2Rows * theta2Cols );
+
+/* malloc the array for temp space */
 
   tempMatrix = (floatType_t *) malloc( sizeof(floatType_t) *
                                ( Xexamples * (theta1Rows+1) + //z2
@@ -53,15 +57,22 @@ void trainNetwork( floatType_t       *X,
   for( int i = 0; i < Xexamples; i++ ) 
     X[INDX(0,i,Xfeatures)] = (floatType_t) 1.0;
 
-#if 1
-/* stochastic gradient descent */
+/* stochastic gradient descent
+   in our case stochastic because the data is already scrambled */
+
   int iter = 0;
 
   while(iter < iterations )
   {
+
+/* for loop over the batch size */
+
     for( int j = 0; j < Xexamples; j+=batchSize )
     {
       int tempBatchSize = min( batchSize, Xexamples - j );      
+
+/* bulk of computation here */
+
       calcGradient( &X[INDX(0,j,Xfeatures)], tempBatchSize, Xfeatures,
                     theta1, theta1Rows, theta1Cols, 
                     theta2, theta2Rows, theta2Cols,
@@ -69,48 +80,21 @@ void trainNetwork( floatType_t       *X,
                     &cost, theta1Grad, theta2Grad, 
                     tempMatrix );
 
+/* update the weights with the newly calculated gradients */
+
       for( int i = 0; i < theta1Rows*theta1Cols; i++ )
         theta1[i] -= lambda * theta1Grad[i];
 
       for( int i = 0; i < theta2Rows*theta2Cols; i++ )
         theta2[i] -= lambda * theta2Grad[i];
-    } 
+    } /* end for */
+
     iter++;
     printf("|");
     fflush(stdout);
     if( iter % 72 == 0 ) printf("\n");
   } /* end while */
-#endif
-#if 0
-/* gradient descent algorithm */
-
-  int iter = 0;
-
-  while( iter < 20 )
-  {
-
-  calcGradient( X, Xexamples, Xfeatures,
-                theta1, theta1Rows, theta1Cols, 
-                theta2, theta2Rows, theta2Cols,
-                Y,
-                &cost, theta1Grad, theta2Grad );
-
-  printf("iter %d cost is %.3e\n",iter,cost);
-
-  for( int i = 0; i < theta1Rows*theta1Cols; i++ )
-    theta1[i] -= lambda * theta1Grad[i];
-
-  for( int i = 0; i < theta2Rows*theta2Cols; i++ )
-    theta2[i] -= lambda * theta2Grad[i];
-
-    iter++;
-
-//    printf("|");
- //   fflush(stdout);
-  //  if( iter % 72 == 0 ) printf("\n");
-  } /* end while */
-#endif
-  printf("\nFinal cost value                      %.3e\n",cost);
+  printf("\n");
   free(tempMatrix);
   free(theta1Grad);
   free(theta2Grad);
@@ -134,33 +118,29 @@ void calcGradient( floatType_t       *X,
 {
 
   floatType_t *z2, *a2, *a3;
-  floatType_t *yTemp;
+  floatType_t *delta3;
   floatType_t *delta2;
 
-/* offset the pointers in the scratch memory */
+/* take tempMatrix and partition it up for use */
 
-#if 0
-  z2 = tempMatrix;
-  a2 = &z2[INDX(Xexamples,theta1Rows+1,Xexamples)];
-  a3 = &a2[INDX(Xexamples,theta1Rows+1,Xexamples)];
-  delta2 = &a3[INDX(Xexamples,theta2Rows+1,Xexamples)];
-  yTemp = &delta2[INDX(Xexamples,theta1Rows+1,Xexamples)];
-#endif
   z2     = tempMatrix;
   a2     = &z2[Xexamples*(theta1Rows+1)];
   a3     = &a2[Xexamples*(theta1Rows+1)];
   delta2 = &a3[Xexamples*(theta2Rows+1)];
-  yTemp  = &delta2[Xexamples*(theta1Rows+1)];
+  delta3  = &delta2[Xexamples*(theta1Rows+1)];
 
-
-#if 1
   if( sizeof( floatType_t ) == 4 ) 
   {
+
+/* calculate X * theta1 to give z2 */
+
     cblas_sgemm( CblasColMajor, CblasTrans, CblasTrans,
                  Xexamples, theta1Rows, theta1Cols,
                  1.0f, (float *) X, Xfeatures,
                  (float *) theta1, theta1Rows, 0.0f,
                  (float *) &z2[INDX(0,1,Xexamples)], Xexamples );
+
+/* calculate a2 = sigmoid(z2), the activation */
 
     for( int i = Xexamples; i < Xexamples*(theta1Rows+1); i++ )
       a2[i] = sigmoid_f( z2[i] );
@@ -170,16 +150,24 @@ void calcGradient( floatType_t       *X,
   {
   } /* end else */  
 
+/* add a 1.0 to the beginning of each a2 vector for bias term */
+
   for( int i = 0; i < Xexamples; i++ ) 
     a2[INDX(i,0,Xexamples)] = (floatType_t) 1.0;
 
   if( sizeof( floatType_t ) == 4 )
   {
+
+/* calculated z3 = a2 * theta2.  put in a3 array space since we don't
+   need z3 for anything else */
+
     cblas_sgemm( CblasColMajor, CblasNoTrans, CblasTrans,
                  Xexamples, theta2Rows, theta2Cols,
                  1.0f, (float *) a2, Xexamples,
                  (float *) theta2, theta2Rows, 0.0f,
                  (float *) a3, Xexamples );
+
+/* calculate a3 = sigmoid(z3), the activation */
 
       for( int i = 0; i < theta2Rows*Xexamples; i++ )
         a3[i] = sigmoid_f( a3[i] );
@@ -209,15 +197,16 @@ void calcGradient( floatType_t       *X,
   jTemp /= (floatType_t) Xexamples;
   *cost = jTemp;
 #endif
-#endif
-
-  floatType_t *delta3;
-  delta3 = yTemp;
 
 #if 1
   for( int row = 0; row < Xexamples; row++ )
   { 
     memset( &delta3[INDX(0,row,11)], 0, sizeof( floatType_t) * 11 );
+
+/* set delta3 to be the difference between a3 and y, the calculated versus
+   the actual values
+*/
+
     delta3[INDX((int)Y[row],row,11)] = (floatType_t) 1.0;
     for( int j = 0; j < 10; j++ ) 
     {
@@ -229,15 +218,21 @@ void calcGradient( floatType_t       *X,
   if( sizeof( floatType_t ) == 4 )
   {
 
+/* calculated delta2 = theta2 * delta3 */
+
     cblas_sgemm( CblasColMajor, CblasTrans, CblasNoTrans,
                  theta2Cols, Xexamples, theta2Rows,
                  1.0f, theta2, theta2Rows,
                  &delta3[1],11, 0.0f,
                  delta2,theta1Rows+1);
 
+/* calculate the sigmoid gradient of z2 */
+
    for( int i = 0; i < Xexamples*(theta1Rows+1); i++ )
      z2[i] = sigmoidGradient_f( z2[i] );
    
+/* update delta2 with the sigmoid gradient of z2 */
+
     for( int row = 0; row < Xexamples; row++ )
     { 
       for( int j = 0; j < theta1Rows+1; j++ )
@@ -252,11 +247,15 @@ void calcGradient( floatType_t       *X,
 
   floatType_t recip = (floatType_t) 1.0 / (floatType_t) Xexamples;
 
+/* calculate theta1Grad = delta2 * X */
+
   cblas_sgemm( CblasColMajor, CblasNoTrans, CblasTrans,
                theta1Rows, theta1Cols, Xexamples,
                recip, (float *) &delta2[1], theta1Rows+1,
                X, Xfeatures,
                0.0f, (float *) theta1Grad, theta1Rows );
+
+/* calculate theta2Grad = delta3 * a2 */
 
   cblas_sgemm( CblasColMajor, CblasNoTrans, CblasNoTrans,
                theta2Rows, theta2Cols, Xexamples,
@@ -346,6 +345,7 @@ void predict(floatType_t       *X,
     predictVector[row] = idx;
   } /* end row */
 
+  free(tempMatrix);
  
 } /* end predict */ 
 

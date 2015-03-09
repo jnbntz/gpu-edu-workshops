@@ -184,6 +184,8 @@ int main(int argc, char *argv[])
 
   memset( predictVector, 0, sizeof(int)*numTrainingExamples );
 
+/* test prediction of the training examples */
+
   predict( trainingMatrix, numTrainingExamples, numFeatures+1,
                 theta1, sizeHiddenLayer, numFeatures+1,
                 theta2, numClasses, sizeHiddenLayer+1,
@@ -241,6 +243,8 @@ int main(int argc, char *argv[])
     testMatrix[i] *= scale; 
 
   memset( predictVector, 0, sizeof(int)*numTestExamples );
+
+/* test the prediction of the test examples which we haven't trained on */
 
   predict( testMatrix, numTestExamples, numFeatures+1,
                 theta1, sizeHiddenLayer, numFeatures+1,
