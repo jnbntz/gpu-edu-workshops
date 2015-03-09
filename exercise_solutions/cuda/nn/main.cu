@@ -149,9 +149,9 @@ int main(int argc, char *argv[])
 /* setup timers using CUDA events */
 
   cudaEvent_t start, stop;
-  CUDA_CALL( cudaEventCreate( &start ) );
-  CUDA_CALL( cudaEventCreate( &stop ) );
-  CUDA_CALL( cudaEventRecord( start, 0 ) );
+  checkCUDA( cudaEventCreate( &start ) );
+  checkCUDA( cudaEventCreate( &stop ) );
+  checkCUDA( cudaEventRecord( start, 0 ) );
 #if 1
 /* call the training function.  This is a majority of the runtime */
 
@@ -162,10 +162,10 @@ int main(int argc, char *argv[])
 #endif
 /* report time of training */
 
-  CUDA_CALL( cudaEventRecord( stop, 0 ) );
-  CUDA_CALL( cudaEventSynchronize( stop ) );
+  checkCUDA( cudaEventRecord( stop, 0 ) );
+  checkCUDA( cudaEventSynchronize( stop ) );
   float elapsedTime;
-  CUDA_CALL( cudaEventElapsedTime( &elapsedTime, start, stop ) );
+  checkCUDA( cudaEventElapsedTime( &elapsedTime, start, stop ) );
   fprintf(stdout, "Total time for training is            %.3e sec\n",
     elapsedTime/1000.0f );
 

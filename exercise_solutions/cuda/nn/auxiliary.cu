@@ -32,20 +32,8 @@ __global__ void k_updateDelta2( floatType_t       *delta2,
   int tidx = blockDim.x * blockIdx.x + threadIdx.x;
   int tidy = blockDim.y * blockIdx.y + threadIdx.y;
 
-//  if( tidy < Xexamples && tidx < size )
- //   delta2[INDX(tidx,tidy,size)] *= z2[INDX(tidy,tidx,Xexamples)];
-
-  if( tidy == 0 && tidx < size )
-  {
-   for( int row = 0; row < Xexamples; row++ )
-   {
-//     for( int j = 0; j < size; j++ )
- //    {
-       int j = tidx;
-       delta2[INDX(j,row,size)] *= z2[INDX(row,j,Xexamples)];
-  //   } /* end for */
-   } /* end for */
-  }
+  if( tidy < Xexamples && tidx < size )
+    delta2[INDX(tidx,tidy,size)] *= z2[INDX(tidy,tidx,Xexamples)];
 } /* end k_updateDelta2 */
 
 /* kernel for calculating the sigmoid of an array */
@@ -151,7 +139,7 @@ void trainNetwork( floatType_t       *X,
 /* allocate large GPU space for temporary arrays */
 
   floatType_t *d_tempMatrix;
-  CUDA_CALL( cudaMalloc( &d_tempMatrix, sizeof(floatType_t) *
+  checkCUDA( cudaMalloc( &d_tempMatrix, sizeof(floatType_t) *
                                ( Xexamples * (theta1Rows+1) + //z2 
                                  Xexamples * (theta1Rows+1) + //a2
                                  Xexamples * (theta2Rows+1) + //a3
@@ -168,42 +156,42 @@ void trainNetwork( floatType_t       *X,
 /* malloc all arrays I need on the device and copy data from the host */
 
   floatType_t *d_X;
-  CUDA_CALL( cudaMalloc( &d_X, sizeof(floatType_t)*Xexamples*Xfeatures));
-  CUDA_CALL( cudaMemcpy( d_X, X, 
+  checkCUDA( cudaMalloc( &d_X, sizeof(floatType_t)*Xexamples*Xfeatures));
+  checkCUDA( cudaMemcpy( d_X, X, 
                          sizeof(floatType_t)*Xexamples*Xfeatures,
                          cudaMemcpyHostToDevice ) );
 
   floatType_t *d_Y;
-  CUDA_CALL( cudaMalloc( &d_Y, sizeof(floatType_t)*Xexamples) );
-  CUDA_CALL( cudaMemcpy( d_Y, Y, 
+  checkCUDA( cudaMalloc( &d_Y, sizeof(floatType_t)*Xexamples) );
+  checkCUDA( cudaMemcpy( d_Y, Y, 
                          sizeof(floatType_t)*Xexamples,
                          cudaMemcpyHostToDevice ) );
 
 /* theta1 and theta2 are the weights in the 1st and second layers */
 
   floatType_t *d_theta1;
-  CUDA_CALL( cudaMalloc( &d_theta1, 
+  checkCUDA( cudaMalloc( &d_theta1, 
           sizeof(floatType_t) * theta1Rows * theta1Cols ) );
 
-  CUDA_CALL( cudaMemcpy( d_theta1, theta1,
+  checkCUDA( cudaMemcpy( d_theta1, theta1,
                          sizeof(floatType_t)*theta1Rows*theta1Cols,
                          cudaMemcpyHostToDevice ) );
 
   floatType_t *d_theta2;
-  CUDA_CALL( cudaMalloc( &d_theta2, 
+  checkCUDA( cudaMalloc( &d_theta2, 
           sizeof(floatType_t) * theta2Rows * theta2Cols ) );
 
-  CUDA_CALL( cudaMemcpy( d_theta2, theta2,
+  checkCUDA( cudaMemcpy( d_theta2, theta2,
                          sizeof(floatType_t)*theta2Rows*theta2Cols,
                          cudaMemcpyHostToDevice ) );
 
 /* theta1Grad and theta2Grad are the gradients for theta1 and theta2 */
 
   floatType_t *d_theta1Grad, *d_theta2Grad;
-  CUDA_CALL( cudaMalloc( &d_theta1Grad, 
+  checkCUDA( cudaMalloc( &d_theta1Grad, 
                          sizeof(floatType_t)*theta1Rows*theta1Cols ) );
 
-  CUDA_CALL( cudaMalloc( &d_theta2Grad,
+  checkCUDA( cudaMalloc( &d_theta2Grad,
                          sizeof(floatType_t)*theta2Rows*theta2Cols ) );
 
 /* stochastic gradient descent 
@@ -257,22 +245,22 @@ void trainNetwork( floatType_t       *X,
 
 /* copy theta1 and theta2 back to the host to use for prediction later */
 
-  CUDA_CALL( cudaMemcpy( theta1, d_theta1,
+  checkCUDA( cudaMemcpy( theta1, d_theta1,
                          sizeof(floatType_t)*theta1Rows*theta1Cols,
                          cudaMemcpyDeviceToHost ) );
-  CUDA_CALL( cudaMemcpy( theta2, d_theta2,
+  checkCUDA( cudaMemcpy( theta2, d_theta2,
                          sizeof(floatType_t)*theta2Rows*theta2Cols,
                          cudaMemcpyDeviceToHost ) );
 
 //  printf("\nFinal cost value                      %.3e\n",cost);
   printf("\n");
-  CUDA_CALL( cudaFree( d_tempMatrix ) );
-  CUDA_CALL( cudaFree( d_X ) );
-  CUDA_CALL( cudaFree( d_Y ) );
-  CUDA_CALL( cudaFree( d_theta1 ) );
-  CUDA_CALL( cudaFree( d_theta2 ) );
-  CUDA_CALL( cudaFree( d_theta1Grad ) );
-  CUDA_CALL( cudaFree( d_theta2Grad ) );
+  checkCUDA( cudaFree( d_tempMatrix ) );
+  checkCUDA( cudaFree( d_X ) );
+  checkCUDA( cudaFree( d_Y ) );
+  checkCUDA( cudaFree( d_theta1 ) );
+  checkCUDA( cudaFree( d_theta2 ) );
+  checkCUDA( cudaFree( d_theta1Grad ) );
+  checkCUDA( cudaFree( d_theta2Grad ) );
 
 } /* end trainNetwork */
 
@@ -319,7 +307,7 @@ void calcGradient( floatType_t       *d_X,
                               &d_z2[INDX(0,1,Xexamples)], Xexamples ) );                              
 /* copy z2 into a2 */
 
-    CUDA_CALL( cudaMemcpy( d_a2, d_z2, 
+    checkCUDA( cudaMemcpy( d_a2, d_z2, 
                            sizeof(floatType_t) * Xexamples * (theta1Rows+1),
                            cudaMemcpyDeviceToDevice ) );
 
@@ -328,8 +316,7 @@ void calcGradient( floatType_t       *d_X,
     dim3 threads1(256,1,1);
     dim3 blocks1( Xexamples*(theta1Rows+1)/threads1.x + 1, 1, 1);
     k_sigmoid_f<<< blocks1, threads1 >>>( d_a2, Xexamples*(theta1Rows+1) );
-    CUDA_CHECK()
-    CUDA_CALL( cudaDeviceSynchronize() );
+    checkKERNEL()
   
   } /* end if */
   else
@@ -339,8 +326,7 @@ void calcGradient( floatType_t       *d_X,
 /* add a 1.0 to the beginning of each a2 vector for bias term */
 
   initOne<<< Xexamples/256 + 1, 256 >>>( Xexamples, d_a2 );
-  CUDA_CHECK()
-  CUDA_CALL( cudaDeviceSynchronize() );
+  checkKERNEL()
 
 
   if( sizeof( floatType_t ) == 4 )
@@ -361,8 +347,7 @@ void calcGradient( floatType_t       *d_X,
     dim3 threads1(256,1,1);
     dim3 blocks1( Xexamples*(theta2Rows+1)/threads1.x + 1, 1, 1);
     k_sigmoid_f<<< blocks1, threads1 >>>( d_a3, Xexamples*(theta2Rows+1) );
-    CUDA_CHECK()
-    CUDA_CALL( cudaDeviceSynchronize() );
+    checkKERNEL()
 
   } /* end if */
   else
@@ -371,6 +356,7 @@ void calcGradient( floatType_t       *d_X,
 
 /* enable the following code if you wish to calculate the forward cost 
    not strictly necessary to generate the gradients
+   WARNING THIS IS BROKEN RIGHT NOW ON THE GPU!!!
 */
 #if 0
   floatType_t jTemp = 0.0;
@@ -390,15 +376,14 @@ void calcGradient( floatType_t       *d_X,
   *cost = jTemp;
 #endif
 
-  CUDA_CALL( cudaMemset( d_delta3, 0, sizeof(floatType_t)*11*Xexamples ) );
+  checkCUDA( cudaMemset( d_delta3, 0, sizeof(floatType_t)*11*Xexamples ) );
 
 /* set delta3 to be the difference between a3 and y, the calculated versus
    the actual values 
 */
 
   setDelta3Vec<<< Xexamples/256+1, 256 >>>( d_delta3, d_Y, d_a3, Xexamples );
-  CUDA_CHECK()
-  CUDA_CALL( cudaDeviceSynchronize() );
+  checkKERNEL()
 
   if( sizeof( floatType_t ) == 4 )
   {
@@ -418,18 +403,16 @@ void calcGradient( floatType_t       *d_X,
    dim3 blocks(Xexamples*(theta1Rows+1)+1/threads.x,1,1);
 
    k_sigmoidGradient_f<<< blocks, threads >>>( d_z2, Xexamples*(theta1Rows+1) );
-   CUDA_CHECK()
-   CUDA_CALL( cudaDeviceSynchronize() );
+   checkKERNEL()
 
 /* update delta2 with the sigmoid gradient of z2 */
 
-   dim3 t1(256,256,1); 
+   dim3 t1(32,32,1); 
    dim3 b1((theta1Rows+1)/t1.x + 1, Xexamples/t1.y + 1, 1 );
 
-   k_updateDelta2<<< blocks,threads >>>( d_delta2, d_z2, Xexamples, 
+   k_updateDelta2<<< b1, t1 >>>( d_delta2, d_z2, Xexamples, 
                                          theta1Rows+1 );
-   CUDA_CHECK()
-   CUDA_CALL( cudaDeviceSynchronize() );
+   checkKERNEL()
 
    floatType_t recip = (floatType_t) 1.0 / (floatType_t) Xexamples;
 
