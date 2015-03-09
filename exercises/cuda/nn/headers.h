@@ -31,32 +31,6 @@ typedef float floatType_t;
 
 #define INDX(row,col,ld) (((col) * (ld)) + (row))
 
-/* macros for max/min to combine with argmin */
-
-#define MYMAX(val,array,i,index) \
-if( array[i] > val ) \
-{ \
-  val = array[i]; \
-  index = i; \
-} \
-
-#define MYMIN(val,array,i,index) \
-if( array[i] < val ) \
-{ \
-  val = array[i]; \
-  index = i; \
-} \
-
-/* macro to clip values from min to max */
-
-#define CLIP(val,min,max) \
-if( (val) < (min) ) val = (min); \
-else if( (val) > (max) ) val = (max);
-
-/* macro for sigmoid calculation */
-#define SIGMOID(z) ( (floatType_t) 1.0 ) / \
-( ( (floatType_t) 1.0 ) + expf(-z) )
-
 __host__ __device__ inline float sigmoid_f( float z )
 {
   return 1.0f / ( 1.0f + expf( -z ) );
@@ -93,23 +67,28 @@ inline double sigmoidGradient( double z )
 /* CUDA debugging */
 
 #ifdef DEBUG
-#define CUDA_CALL(F)  if( (F) != cudaSuccess ) \
+#define checkCUDA(F)  if( (F) != cudaSuccess ) \
   {printf("Error %s at %s:%d\n", cudaGetErrorString(cudaGetLastError()), \
    __FILE__,__LINE__); exit(-1);}
-#define CUDA_CHECK()  if( (cudaPeekAtLastError()) != cudaSuccess ) \
+
+#define checkKERNEL()  if( (cudaPeekAtLastError()) != cudaSuccess ) \
   {printf("Error %s at %s:%d\n", cudaGetErrorString(cudaGetLastError()), \
-   __FILE__,__LINE__-1); exit(-1);}
-#define checkCUDNN(F)  if( (F) != CUDNN_STATUS_SUCCESS ) \
-  {printf("Error %d at %s:%d\n", F, \
+   __FILE__,__LINE__-1); exit(-1);} \
+  if( (cudaDeviceSynchronize()) != cudaSuccess ) \
+  {printf("Error %s at %s:%d\n", cudaGetErrorString(cudaGetLastError()), \
    __FILE__,__LINE__); exit(-1);}
+
 #define checkCUBLAS(F)  if( (F) != CUBLAS_STATUS_SUCCESS ) \
   {printf("Error %d at %s:%d\n", F, \
    __FILE__,__LINE__); exit(-1);}
+
 #else
-#define CUDA_CALL(F) (F)
-#define CUDA_CHECK()
+
+#define checkCUDA(F) (F)
+#define checkKERNEL()
 #define checkCUDNN(F) (F)
 #define checkCUBLAS(F) (F)
+
 #endif
 
 /* function defs */
