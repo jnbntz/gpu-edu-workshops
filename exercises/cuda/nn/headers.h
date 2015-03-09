@@ -117,7 +117,7 @@ inline double sigmoidGradient( double z )
 void readMatrixFromFile( char *, float *, const int, const int, const int );
 void readCommandLineArgs( int, char *[], float *, int *, int *, int *);
 
-void costFunction( floatType_t *X,
+void calcGradient( floatType_t *X,
                    int const XRows,
                    int const XCols,
                    floatType_t const *theta1,

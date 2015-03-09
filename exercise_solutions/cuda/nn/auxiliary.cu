@@ -225,7 +225,7 @@ void trainNetwork( floatType_t       *X,
 
 /* bulk of computation here */
 
-      costFunction( &d_X[INDX(0,j,Xfeatures)], tempBatchSize, Xfeatures,
+      calcGradient( &d_X[INDX(0,j,Xfeatures)], tempBatchSize, Xfeatures,
                     d_theta1, theta1Rows, theta1Cols, 
                     d_theta2, theta2Rows, theta2Cols,
                     &d_Y[j],
@@ -276,7 +276,7 @@ void trainNetwork( floatType_t       *X,
 
 } /* end trainNetwork */
 
-void costFunction( floatType_t       *d_X, 
+void calcGradient( floatType_t       *d_X, 
                    int         const Xexamples, 
                    int         const Xfeatures,
                    floatType_t const *d_theta1, 
@@ -455,7 +455,7 @@ void costFunction( floatType_t       *d_X,
   else
   {
   } /* end else */
-} /* end costFunction */
+} /* end calcGradient */
 
 void predict(floatType_t       *X, 
              int         const Xexamples, 
