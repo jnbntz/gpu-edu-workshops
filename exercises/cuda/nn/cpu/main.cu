@@ -46,7 +46,6 @@ int main(int argc, char *argv[])
 
   float *trainingVector, *trainingMatrix;
   float *theta1, *theta2;
-  float *theta1Grad, *theta2Grad;
   float *testVector, *testMatrix;
   int *predictVector;
 
@@ -133,13 +132,6 @@ int main(int argc, char *argv[])
 //    printf("i %d theta2 %f\n",i,theta2[i]);
   } /* end for */
 
-  theta1Grad = (float *) malloc( sizeof(float) * sizeHiddenLayer * 
-                           (numFeatures + 1 ) );
-  if( theta1Grad == NULL ) 
-    fprintf(stderr,"Houston more problems\n");
-
-  memset( theta1Grad, 0, sizeof(float)*sizeHiddenLayer*(numFeatures+1) );
-
 /* malloc the theta2 matrix.  each row is a different training
    example
 */
@@ -163,13 +155,6 @@ int main(int argc, char *argv[])
 //    printf("i %d theta2 %f\n",i,theta2[i]);
   } /* end for */
 
-  theta2Grad = (float *) malloc( sizeof(float) * numClasses * 
-                           (sizeHiddenLayer + 1 ) );
-  if( theta2Grad == NULL ) 
-    fprintf(stderr,"Houston more problems\n");
-
-  memset( theta2Grad, 0, sizeof(float)*numClasses*(sizeHiddenLayer+1) );
-
 /* setup timers */
 
   cudaEvent_t start, stop;
@@ -190,12 +175,6 @@ int main(int argc, char *argv[])
   CUDA_CALL( cudaEventElapsedTime( &elapsedTime, start, stop ) );
   fprintf(stdout, "Total time for training is            %.3e sec\n",
     elapsedTime/1000.0f );
-#if 0
-  costFunction( trainingMatrix, numTrainingExamples, numFeatures+1,
-                theta1, sizeHiddenLayer, numFeatures+1,
-                theta2, numClasses, sizeHiddenLayer+1,
-                trainingVector, &cost, theta1Grad, theta2Grad );
-#endif
 
 /* malloc predictVector */
 
@@ -229,7 +208,7 @@ int main(int argc, char *argv[])
 
   memset( testVector, 0, sizeof(float)*numTestExamples );
 
-/* read trainingVector from file */
+/* read testVector from file */
  
   readMatrixFromFile( testLabelFilename, testVector, 
                       numTestExamples, 1, 1 );
@@ -246,7 +225,7 @@ int main(int argc, char *argv[])
   memset( testMatrix, 0, sizeof(float)*
                numTestExamples*(numFeatures+1) );
 
-/* read training examples from file as a matrix 
+/* read test examples from file as a matrix 
    read first column of data into second column of array to leave room for
    bias unit of ones
 */
@@ -255,7 +234,7 @@ int main(int argc, char *argv[])
                       &testMatrix[1],
                       numFeatures, numTestExamples, numFeatures+1 );
 
-/* scale the training matrix to 0 to 1 */
+/* scale the test matrix to 0 to 1 */
 
   scale = 1.0 / 256.0;
   for( int i = 0; i < (numFeatures+1)*numTestExamples; i++ )
@@ -278,6 +257,14 @@ int main(int argc, char *argv[])
   printf("Total correct on test set is          %d\n",(int)result);
   printf("Prediction rate of test set is        %.3f\n",
       100.0 * result/(floatType_t)numTestExamples);
+
+  free(trainingVector);
+  free(trainingMatrix);
+  free(theta1);
+  free(theta2);
+  free(predictVector);
+  free(testVector);
+  free(testMatrix);
 
   return 0;
 } /* end main */

@@ -31,32 +31,6 @@ typedef float floatType_t;
 
 #define INDX(row,col,ld) (((col) * (ld)) + (row))
 
-/* macros for max/min to combine with argmin */
-
-#define MYMAX(val,array,i,index) \
-if( array[i] > val ) \
-{ \
-  val = array[i]; \
-  index = i; \
-} \
-
-#define MYMIN(val,array,i,index) \
-if( array[i] < val ) \
-{ \
-  val = array[i]; \
-  index = i; \
-} \
-
-/* macro to clip values from min to max */
-
-#define CLIP(val,min,max) \
-if( (val) < (min) ) val = (min); \
-else if( (val) > (max) ) val = (max);
-
-/* macro for sigmoid calculation */
-#define SIGMOID(z) ( (floatType_t) 1.0 ) / \
-( ( (floatType_t) 1.0 ) + expf(-z) )
-
 inline float sigmoid_f( float z )
 {
   return 1.0f / ( 1.0f + expf( -z ) );
@@ -109,7 +83,7 @@ inline double sigmoidGradient( double z )
 void readMatrixFromFile( char *, float *, const int, const int, const int );
 void readCommandLineArgs( int, char *[], float *, int *, int *, int *);
 
-void costFunction( floatType_t *X,
+void calcGradient( floatType_t *X,
                    int const XRows,
                    int const XCols,
                    floatType_t const *theta1,
