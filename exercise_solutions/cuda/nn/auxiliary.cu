@@ -29,11 +29,20 @@ __global__ void k_updateDelta2( floatType_t       *delta2,
                                 int         const Xexamples,
                                 int         const size )
 {
+
+/* setup global threadID in X and Y directions */
+
   int tidx = blockDim.x * blockIdx.x + threadIdx.x;
   int tidy = blockDim.y * blockIdx.y + threadIdx.y;
 
   if( tidy < Xexamples && tidx < size )
+  {
+
+/* calculate the offset properly */
+
     delta2[INDX(tidx,tidy,size)] *= z2[INDX(tidy,tidx,Xexamples)];
+
+  } /* end if */
 } /* end k_updateDelta2 */
 
 /* kernel for calculating the sigmoid of an array */
@@ -41,9 +50,19 @@ __global__ void k_updateDelta2( floatType_t       *delta2,
 __global__ void k_sigmoid_f( floatType_t  *array,
                                      int    const size )
 {
+
+/* setup global threadID in X direction */
+
   int tid = blockDim.x * blockIdx.x + threadIdx.x;
+
   if( tid < size )
+  {
+
+/* use the sigmoid_f function to complete this loop */
+
     array[tid] = sigmoid_f( array[tid] );
+
+  } /* end if */
 } /* end sigmoidGradient */
 
 /* kernel for calculating the gradient of the sigmoid function */
@@ -51,9 +70,19 @@ __global__ void k_sigmoid_f( floatType_t  *array,
 __global__ void k_sigmoidGradient_f( floatType_t  *array,
                                      int    const size )
 {
+
+/* setup global threadID in X direction */
+
   int tid = blockDim.x * blockIdx.x + threadIdx.x;
+
   if( tid < size )
+  {
+
+/* use the sigmoidGradient_f function to complete this loop */
+
     array[tid] = sigmoidGradient_f( array[tid] );
+
+  } /* end if */
 } /* end sigmoidGradient */
 
 /* kernel to set the delta3 vector from Y properly 
@@ -66,7 +95,11 @@ __global__ void  setDelta3Vec( floatType_t       *delta3,
                                floatType_t const *a3,
                                int         const  Xexamples )
 {
+
+/* setup global threadID in X direction */
+
   int tid = blockDim.x * blockIdx.x + threadIdx.x;
+
   if( tid < Xexamples )
   {
     delta3[INDX((int)Y[tid],tid,11)] = (floatType_t) 1.0;
@@ -83,7 +116,11 @@ __global__ void  setDelta3Vec( floatType_t       *delta3,
 
 __global__ void initOne( int size, floatType_t *array )
 {
+
+/* setup global threadID in X direction */
+
   int tid = blockDim.x * blockIdx.x + threadIdx.x;
+
   if( tid < size )
     array[tid] = (floatType_t) 1.0;
   return;
