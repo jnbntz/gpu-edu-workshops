@@ -29,11 +29,20 @@ __global__ void k_updateDelta2( floatType_t       *delta2,
                                 int         const Xexamples,
                                 int         const size )
 {
-  int tidx = blockDim.x * blockIdx.x + threadIdx.x;
-  int tidy = blockDim.y * blockIdx.y + threadIdx.y;
+
+/* setup global threadID in X and Y directions */
+
+  int tidx = FIXME
+  int tidy = FIXME
 
   if( tidy < Xexamples && tidx < size )
-    delta2[INDX(tidx,tidy,size)] *= z2[INDX(tidy,tidx,Xexamples)];
+  {
+
+/* calculate the offset properly */
+
+    delta2[FIXME] *= z2[FIXME];
+
+  } /* end if */
 } /* end k_updateDelta2 */
 
 /* kernel for calculating the sigmoid of an array */
@@ -41,9 +50,19 @@ __global__ void k_updateDelta2( floatType_t       *delta2,
 __global__ void k_sigmoid_f( floatType_t  *array,
                                      int    const size )
 {
-  int tid = blockDim.x * blockIdx.x + threadIdx.x;
+
+/* setup global threadID in X direction */
+
+  int tid = FIXME
+
   if( tid < size )
-    array[tid] = sigmoid_f( array[tid] );
+  {
+
+/* use the sigmoid_f function to complete this loop */
+
+    array[tid] = FIXME
+
+  } /* end if */
 } /* end sigmoidGradient */
 
 /* kernel for calculating the gradient of the sigmoid function */
@@ -51,9 +70,19 @@ __global__ void k_sigmoid_f( floatType_t  *array,
 __global__ void k_sigmoidGradient_f( floatType_t  *array,
                                      int    const size )
 {
-  int tid = blockDim.x * blockIdx.x + threadIdx.x;
+
+/* setup global threadID in X direction */
+
+  int tid = FIXME
+
   if( tid < size )
-    array[tid] = sigmoidGradient_f( array[tid] );
+  {
+
+/* use the sigmoidGradient_f function to complete this loop */
+
+    array[tid] = FIXME
+
+  } /* end if */
 } /* end sigmoidGradient */
 
 /* kernel to set the delta3 vector from Y properly 
@@ -66,7 +95,11 @@ __global__ void  setDelta3Vec( floatType_t       *delta3,
                                floatType_t const *a3,
                                int         const  Xexamples )
 {
-  int tid = blockDim.x * blockIdx.x + threadIdx.x;
+
+/* setup global threadID in X direction */
+
+  int tid = FIXME
+
   if( tid < Xexamples )
   {
     delta3[INDX((int)Y[tid],tid,11)] = (floatType_t) 1.0;
@@ -83,7 +116,11 @@ __global__ void  setDelta3Vec( floatType_t       *delta3,
 
 __global__ void initOne( int size, floatType_t *array )
 {
-  int tid = blockDim.x * blockIdx.x + threadIdx.x;
+
+/* setup global threadID in X direction */
+
+  int tid = FIXME;
+
   if( tid < size )
     array[tid] = (floatType_t) 1.0;
   return;
@@ -301,7 +338,7 @@ void calcGradient( floatType_t       *d_X,
 
     checkCUBLAS( cublasSgemm( cublasHandle, 
                               CUBLAS_OP_T, CUBLAS_OP_T,
-                              Xexamples, theta1Rows, theta1Cols,
+                              FIXME, FIXME, FIXME,
 			      &alpha, d_X, Xfeatures,
                               d_theta1, theta1Rows, &beta,
                               &d_z2[INDX(0,1,Xexamples)], Xexamples ) );                              
@@ -337,7 +374,7 @@ void calcGradient( floatType_t       *d_X,
 
     checkCUBLAS( cublasSgemm( cublasHandle, 
                               CUBLAS_OP_N, CUBLAS_OP_T,
-                              Xexamples, theta2Rows, theta2Cols,
+                              FIXME, FIXME, FIXME,
 			      &alpha, d_a2, Xexamples,
                               d_theta2, theta2Rows, &beta,
                               d_a3, Xexamples ) );                              
@@ -392,7 +429,7 @@ void calcGradient( floatType_t       *d_X,
 
     checkCUBLAS( cublasSgemm( cublasHandle, 
                               CUBLAS_OP_T, CUBLAS_OP_N,
-                              theta2Cols, Xexamples, theta2Rows,
+                              FIXME, FIXME, FIXME,
 			      &alpha, (float *)d_theta2, theta2Rows,
                               (float *)&d_delta3[1], 11, &beta,
                               (float *)d_delta2, theta1Rows+1 ) );   
@@ -420,7 +457,7 @@ void calcGradient( floatType_t       *d_X,
 
    checkCUBLAS( cublasSgemm( cublasHandle, 
                               CUBLAS_OP_N, CUBLAS_OP_T,
-                              theta1Rows, theta1Cols, Xexamples,
+                              FIXME, FIXME, FIXME,
 			      &recip, (float *)&d_delta2[1], theta1Rows+1,
                               (float *)d_X, Xfeatures, 
                               &beta, (float *)d_theta1Grad, theta1Rows ) );   
@@ -429,7 +466,7 @@ void calcGradient( floatType_t       *d_X,
 
    checkCUBLAS( cublasSgemm( cublasHandle, 
                               CUBLAS_OP_N, CUBLAS_OP_N,
-                              theta2Rows, theta2Cols, Xexamples,
+                              FIXME, FIXME, FIXME,
 			      &recip, (float *)&d_delta3[1], 11,
                               (float *)d_a2, Xexamples, 
                               &beta, (float *)d_theta2Grad, theta2Rows ) );   
