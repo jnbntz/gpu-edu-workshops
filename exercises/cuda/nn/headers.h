@@ -86,7 +86,6 @@ inline double sigmoidGradient( double z )
 
 #define checkCUDA(F) (F)
 #define checkKERNEL()
-#define checkCUDNN(F) (F)
 #define checkCUBLAS(F) (F)
 
 #endif
