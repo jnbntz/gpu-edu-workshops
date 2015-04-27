@@ -15,18 +15,7 @@
  */
 
 #include <stdio.h>
-
-#ifdef DEBUG
-#define CUDA_CALL(F)  if( (F) != cudaSuccess ) \
-  {printf("Error %s at %s:%d\n", cudaGetErrorString(cudaGetLastError()), \
-   __FILE__,__LINE__); exit(-1);} 
-#define CUDA_CHECK()  if( (cudaPeekAtLastError()) != cudaSuccess ) \
-  {printf("Error %s at %s:%d\n", cudaGetErrorString(cudaGetLastError()), \
-   __FILE__,__LINE__-1); exit(-1);} 
-#else
-#define CUDA_CALL(F) (F)
-#define CUDA_CHECK() 
-#endif
+#include "../debug.h"
 
 __global__ void add(int *a, int *b, int *c)
 {
@@ -41,7 +30,7 @@ int main()
 
 /* allocate space for device copies of a, b, c */
 
-  CUDA_CALL( cudaMalloc( (void **) &d_a, size ) );
+  checkCUDA( cudaMalloc( (void **) &d_a, size ) );
 /* enter code here to malloc d_b and d_c */
   FIXME
 
@@ -53,19 +42,18 @@ int main()
 
 /* copy inputs to device */
 
-  CUDA_CALL( cudaMemcpy( d_a, &a, size, cudaMemcpyHostToDevice ) );
+  checkCUDA( cudaMemcpy( d_a, &a, size, cudaMemcpyHostToDevice ) );
 /* enter code here to copy d_b to device */
   FIXME
 
 /* enter code here to launch the kernel on the GPU */
   FIXME
 
-  CUDA_CHECK()
-  CUDA_CALL( cudaDeviceSynchronize() );
+  checkKERNEL()
 
 /* copy result back to host */
 
-  CUDA_CALL( cudaMemcpy( &c, d_c, size, cudaMemcpyDeviceToHost ) );
+  checkCUDA( cudaMemcpy( &c, d_c, size, cudaMemcpyDeviceToHost ) );
 
   printf("value of c after kernel is %d\n",c);
   if( c == ( a + b ) ) printf("PASS\n");
@@ -73,12 +61,12 @@ int main()
 
 /* clean up */
 
-  CUDA_CALL( cudaFree( d_a ) );
+  checkCUDA( cudaFree( d_a ) );
   FIXME
 /* enter code here to cudaFree the d_b and d_c pointers */
 
 /* calling reset to check errors */
-  CUDA_CALL( cudaDeviceReset() );
+  checkCUDA( cudaDeviceReset() );
 	
   return 0;
 } /* end main */

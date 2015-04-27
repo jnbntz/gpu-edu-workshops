@@ -15,18 +15,7 @@
  */
 
 #include <stdio.h>
-
-#ifdef DEBUG
-#define CUDA_CALL(F)  if( (F) != cudaSuccess ) \
-  {printf("Error %s at %s:%d\n", cudaGetErrorString(cudaGetLastError()), \
-   __FILE__,__LINE__); exit(-1);} 
-#define CUDA_CHECK()  if( (cudaPeekAtLastError()) != cudaSuccess ) \
-  {printf("Error %s at %s:%d\n", cudaGetErrorString(cudaGetLastError()), \
-   __FILE__,__LINE__-1); exit(-1);} 
-#else
-#define CUDA_CALL(F) (F)
-#define CUDA_CHECK() 
-#endif
+#include "../debug.h"
 
 #define N ( 1024 * 1024 )
 #define RADIUS 5
@@ -88,8 +77,8 @@ int main()
 
 /* allocate space for device copies of in, out */
 
-  CUDA_CALL( cudaMalloc( (void **) &d_in, size ) );
-  CUDA_CALL( cudaMalloc( (void **) &d_out, size ) );
+  checkCUDA( cudaMalloc( (void **) &d_in, size ) );
+  checkCUDA( cudaMalloc( (void **) &d_out, size ) );
 
 /* allocate space for host copies of in, out and setup input values */
 
@@ -104,8 +93,8 @@ int main()
 
 /* copy inputs to device */
 
-  CUDA_CALL( cudaMemcpy( d_in, in, size, cudaMemcpyHostToDevice ) );
-  CUDA_CALL( cudaMemset( d_out, 0, size ) );
+  checkCUDA( cudaMemcpy( d_in, in, size, cudaMemcpyHostToDevice ) );
+  checkCUDA( cudaMemset( d_out, 0, size ) );
 
 /* calculate block and grid sizes */
 
@@ -115,28 +104,27 @@ int main()
 /* start the timers */
 
   cudaEvent_t start, stop;
-  CUDA_CALL( cudaEventCreate( &start ) );
-  CUDA_CALL( cudaEventCreate( &stop ) );
-  CUDA_CALL( cudaEventRecord( start, 0 ) );
+  checkCUDA( cudaEventCreate( &start ) );
+  checkCUDA( cudaEventCreate( &stop ) );
+  checkCUDA( cudaEventRecord( start, 0 ) );
 
 /* launch the kernel on the GPU */
 
   stencil_1d<<< blocks, threads >>>( N, d_in, d_out );
-  CUDA_CHECK();
-  CUDA_CALL( cudaDeviceSynchronize() );
+  checkKERNEL()
 
 /* stop the timers */
 
-  CUDA_CALL( cudaEventRecord( stop, 0 ) );
-  CUDA_CALL( cudaEventSynchronize( stop ) );
+  checkCUDA( cudaEventRecord( stop, 0 ) );
+  checkCUDA( cudaEventSynchronize( stop ) );
   float elapsedTime;
-  CUDA_CALL( cudaEventElapsedTime( &elapsedTime, start, stop ) );
+  checkCUDA( cudaEventElapsedTime( &elapsedTime, start, stop ) );
 
   printf("Total time for %d elements was %f ms\n", N, elapsedTime );
 
 /* copy result back to host */
 
-  CUDA_CALL( cudaMemcpy( out, d_out, size, cudaMemcpyDeviceToHost ) );
+  checkCUDA( cudaMemcpy( out, d_out, size, cudaMemcpyDeviceToHost ) );
 
   for( int i = 0; i < N; i++ )
   {
@@ -155,10 +143,10 @@ int main()
 
   free(in);
   free(out);
-  CUDA_CALL( cudaFree( d_in ) );
-  CUDA_CALL( cudaFree( d_out ) );
+  checkCUDA( cudaFree( d_in ) );
+  checkCUDA( cudaFree( d_out ) );
 
-  CUDA_CALL( cudaDeviceSynchronize() );
+  checkCUDA( cudaDeviceSynchronize() );
 	
   return 0;
 } /* end main */

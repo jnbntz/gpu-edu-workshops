@@ -17,7 +17,7 @@
 include ../make.common
 BIN=x.matmul_streams
 NVCC=nvcc
-NVOPTS=-O3 $(ARCH) #-DDEBUG
+NVOPTS=-O3 $(ARCH) -DDEBUG
 
 $(BIN): kernel.o
 	$(NVCC) $(NVOPTS) -o $(BIN) kernel.o -lcublas

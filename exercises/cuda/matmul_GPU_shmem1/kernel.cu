@@ -14,10 +14,9 @@
  *  limitations under the License.
  */
 
-#include "cuda_runtime.h"
-#include "cublas_v2.h"
-
 #include <stdio.h>
+#include "cublas_v2.h"
+#include "../debug.h"
 
 /* macro for index calculations */
 
@@ -48,18 +47,20 @@ __global__ void GPU_shmem2(const int m, double const * const a, double const * c
 	const int ibx = blockIdx.x * TBX;
 
 /* shared memory arrays for A and B */
-	/* insert code for shared mem array sizes */
+
+       /* insert code for shared mem array sizes */
 	__shared__ double as[ FIXME ][ FIXME ];
 	__shared__ double bs[ FIXME ][ FIXME ];
 	
 /* space for C to be held in registers */
-/* insert code for c_tmp size */
+
+       /* insert code for c_tmp size */
 	double c_tmp[ FIXME ][ FIXME ] ;
 
 	/* zero the temp C array */
 
 #pragma unroll
-	/* complete the upper limit of the for loops */
+        /* complete the upper limit of the for loops */
 	for ( int i = 0 ; i < FIXME ; i++) { 
 		for ( int j = 0 ; j < FIXME ; j++) {
 			c_tmp[i][j] = 0.0;
@@ -81,7 +82,7 @@ __global__ void GPU_shmem2(const int m, double const * const a, double const * c
 #pragma unroll
 		for ( int i = 0; i < NX ; i ++ ) 
 		{
-			/* complete the index into the arrays */
+                        /* complete the index into the arrays */
 			as[ FIXME ][ FIXME ] = a[ (aoff + FIXME) ];
 		}
 
@@ -90,11 +91,10 @@ __global__ void GPU_shmem2(const int m, double const * const a, double const * c
 #pragma unroll
 		for ( int i = 0; i < NY ; i ++ ) 
 		{
-			/* complete the index into the arrays */
+                        /* complete the index into the arrays */
 			bs[ FIXME ][ FIXME ] = b[ (boff + FIXME) ];
 		}
 
-	
 
 		/* increment A and B offsets  for next round of data reads */
 
@@ -104,26 +104,26 @@ __global__ void GPU_shmem2(const int m, double const * const a, double const * c
 		/* triply nested loop to perform the matmult on the blocks */
 
 #pragma unroll
+                /* insert code to complete the loop bounds for j and i */
 		for( int k = 0 ; k < BK ; k++ )
 		{
 #pragma unroll
-			/* insert code to complete loop bounds for j and i */
 			for (int j = 0 ; j < FIXME ; j++ )
 			{
 #pragma unroll
 				for (int i = 0 ; i < FIXME ; i++ )
 				{
-					/* insert code to complete the matrix multiply if the block */
-					c_tmp[ FIXME ][ FIXME ] += as[ FIXME ][ FIXME ] * bs[ FIXME ][ FIXME ];
+                                        /* insert code to complete the matrix multiply */
+					c_tmp[ i ][ j ] += as[ tx + TX*i ][ k ] * bs[ k ][ ty + j*TY ];
 				}
 			}
 		}
 
-
 	} /* end for Kblock */
 
 	/* set coff to its proper index int the C matrix */
-	/* insert code to set coff to its proper location in the C matrix */
+
+        /* insert code to set coff to its proper location in the C matrix */
 	int coff = INDX( FIXME, FIXME, m );
   
 	/* write results to the C matrix */
@@ -134,7 +134,7 @@ __global__ void GPU_shmem2(const int m, double const * const a, double const * c
 #pragma unroll
 		for ( int i = 0 ; i < FIXME ; i++ )
 		{      
-			/* insert code to write c_tmp elements to the global matrix C */
+                        /* insert code to write c_tmp elements to the global C matrix */
 			c[ coff + INDX( FIXME, FIXME, m )] = c_tmp[FIXME][FIXME];
 		}
 	}
@@ -199,17 +199,17 @@ int main( int argc, char *argv[] )
 
 	/* allocate a, b, c in gpu memory */
 
-    cudaMalloc( (void **)&d_a, numbytes );
-    cudaMalloc( (void **)&d_b, numbytes );
-    cudaMalloc( (void **)&d_c, numbytes );
+    checkCUDA( cudaMalloc( (void **)&d_a, numbytes ) );
+    checkCUDA( cudaMalloc( (void **)&d_b, numbytes ) );
+    checkCUDA( cudaMalloc( (void **)&d_c, numbytes ) );
 	
 	/* copy a and b to device */
 
-	cudaMemcpy( d_a, h_a, numbytes, cudaMemcpyHostToDevice );
-    cudaMemcpy( d_b, h_b, numbytes, cudaMemcpyHostToDevice );
+    checkCUDA( cudaMemcpy( d_a, h_a, numbytes, cudaMemcpyHostToDevice ) );
+    checkCUDA( cudaMemcpy( d_b, h_b, numbytes, cudaMemcpyHostToDevice ) );
 
     cublasHandle_t handle;
-    cublasStatus_t stat = cublasCreate( &handle );
+    checkCUBLAS( cublasCreate( &handle ) );
 
     double alpha = 1.0;
     double beta  = 0.0;
@@ -217,26 +217,28 @@ int main( int argc, char *argv[] )
 	/* start timers */
 
     cudaEvent_t start, stop;
-    cudaEventCreate( &start );
-    cudaEventCreate( &stop );
-    cudaEventRecord( start, 0 );
+    checkCUDA( cudaEventCreate( &start ) );
+    checkCUDA( cudaEventCreate( &stop ) );
+    checkCUDA( cudaEventRecord( start, 0 ) );
 
 	/* call CUBLAS dgemm */
 
+checkCUBLAS( 
 cublasDgemm( handle, CUBLAS_OP_N, CUBLAS_OP_N,
                  size, size, size,
                  &alpha, 
                  d_a, size,
                  d_b, size,
                  &beta,
-                 d_c, size );
+                 d_c, size )
+            );
 
 	/* stop timers */
 
-    cudaEventRecord( stop, 0 );
-    cudaEventSynchronize( stop );
+    checkCUDA( cudaEventRecord( stop, 0 ) );
+    checkCUDA( cudaEventSynchronize( stop ) );
     float elapsedTime;
-    cudaEventElapsedTime( &elapsedTime, start, stop );
+    checkCUDA( cudaEventElapsedTime( &elapsedTime, start, stop ) );
 
 	/* print GPU CUBLAS timing information */
 
@@ -247,11 +249,11 @@ cublasDgemm( handle, CUBLAS_OP_N, CUBLAS_OP_N,
     
 	/* copy C from device to host for error checking */
 
-    cudaMemcpy( h_c, d_c, numbytes, cudaMemcpyDeviceToHost );
+    checkCUDA( cudaMemcpy( h_c, d_c, numbytes, cudaMemcpyDeviceToHost ) );
 
 	/* reset C on device to zero */
 
-	cudaMemset( d_c, 0, numbytes );
+	checkCUDA( cudaMemset( d_c, 0, numbytes ) );
 
 	/* setup grid and block sizes */
 
@@ -265,18 +267,19 @@ cublasDgemm( handle, CUBLAS_OP_N, CUBLAS_OP_N,
     
 /* start timers */
 
-	cudaEventRecord( start, 0 );
+	checkCUDA( cudaEventRecord( start, 0 ) );
 
 /* call the kernel */
 
 	GPU_shmem2<<< blocks, threads >>> ( size, d_a, d_b, d_c );
+        checkKERNEL()
 
 	/* stop timers */
 
-    cudaEventRecord( stop, 0 );
-    cudaEventSynchronize( stop );
+    checkCUDA( cudaEventRecord( stop, 0 ) );
+    checkCUDA( cudaEventSynchronize( stop ) );
 	elapsedTime = 0.0f;
-    cudaEventElapsedTime( &elapsedTime, start, stop );
+    checkCUDA( cudaEventElapsedTime( &elapsedTime, start, stop ) );
 
 	/* print data for GPU naive */
 
@@ -287,42 +290,37 @@ cublasDgemm( handle, CUBLAS_OP_N, CUBLAS_OP_N,
                   
 	/* copy C back to host */
 	
-	cudaMemcpy( h_c1, d_c, numbytes, cudaMemcpyDeviceToHost );
+	checkCUDA( cudaMemcpy( h_c1, d_c, numbytes, cudaMemcpyDeviceToHost ) );
 
-    cublasDestroy( handle );
-    cudaEventDestroy( start );
-    cudaEventDestroy( stop );
+    checkCUBLAS( cublasDestroy( handle ) );
+    checkCUDA( cudaEventDestroy( start ) );
+    checkCUDA( cudaEventDestroy( stop ) );
 
 	/* check CUBLAS versus GPU NAIVE numerical results */
 
-    double temp = 0.0;
+	double temp = 0.0;
 
-    for( int i = 0; i < size * size; i++ )
-    {
-      temp += ( h_c[i] - h_c1[i] ) * ( h_c[i] - h_c1[i] );
-      //  printf("i %d h_c %f h_c1 %f\n",i,h_c[i],h_c1[i] );
-    } /* end for */
+	for( int i = 0; i < size * size; i++ )
+	{
+		temp += ( h_c[i] - h_c1[i] ) * ( h_c[i] - h_c1[i] );
+	} /* end for */
 
-    printf("error is %f\n",temp);
-    if( temp > 10 ) printf("FAIL\n");
-    else printf("PASS\n");
+	printf("error is %f\n",temp);
+	if( temp > 10 ) printf("FAIL\n");
+        else printf("PASS\n");
 
 	/* cleanup */
 
-    cudaFree( d_a );
-    cudaFree( d_b );
-    cudaFree( d_c );
+    checkCUDA( cudaFree( d_a ) );
+    checkCUDA( cudaFree( d_b ) );
+    checkCUDA( cudaFree( d_c ) );
 
     free( h_a );
     free( h_b );
     free( h_c );
     free( h_c1 );
 
-    cudaError_t cudaStatus = cudaDeviceReset();
-    if (cudaStatus != cudaSuccess) {
-        fprintf(stderr, "cudaDeviceReset failed!");
-        return 1;
-    }
+    checkCUDA( cudaDeviceReset() );
 
     return 0;
 }

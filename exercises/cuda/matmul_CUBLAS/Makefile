@@ -17,7 +17,7 @@
 include ../make.common
 BIN=x.matmul_CUBLAS
 NVCC=nvcc
-NVOPTS=-O3 $(ARCH)
+NVOPTS=-O3 $(ARCH) -DDEBUG
 
 $(BIN): kernel.o
 	$(NVCC) $(NVOPTS) -o $(BIN) kernel.o -lcublas

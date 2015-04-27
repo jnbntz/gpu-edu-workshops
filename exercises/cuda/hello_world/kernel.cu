@@ -14,13 +14,8 @@
  *  limitations under the License.
  */
 
-#define CUDA_CALL(F)  if( (F) != cudaSuccess ) \
-  {printf("Error %s at %s:%d\n", cudaGetErrorString(cudaGetLastError()), __FILE__,__LINE__); exit(-1);} 
-
-#define CUDA_CHECK()  if( (cudaPeekAtLastError()) != cudaSuccess ) \
-  {printf("Error %s at %s:%d\n", cudaGetErrorString(cudaGetLastError()), __FILE__,__LINE__-1); exit(-1);} 
-
 #include <stdio.h>
+#include "../debug.h"
 
 __global__ void mykernel(){
   printf("Hello world from device!\n");
@@ -29,8 +24,7 @@ __global__ void mykernel(){
 int main(void) 
 {
   mykernel<<<1,1>>>();
-  cudaDeviceSynchronize();
+  checkKERNEL()
   printf("Hello World from Host\n");
-  CUDA_CALL( cudaDeviceSynchronize() );
   return 0;
 } /* end main */
