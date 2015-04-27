@@ -17,7 +17,7 @@
 include ../make.common
 BIN=x.simple_add
 NVCC=nvcc
-NVOPTS=$(ARCH)
+NVOPTS=$(ARCH) -DDEBUG
 
 $(BIN): kernel.o
 	$(NVCC) $(NVOPTS) -o $(BIN) kernel.o

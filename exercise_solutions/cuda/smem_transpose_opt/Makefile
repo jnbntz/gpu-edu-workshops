@@ -17,7 +17,7 @@
 include ../make.common
 BIN=x.smem_transpose_opt
 NVCC=nvcc
-NVOPTS=-O3 $(ARCH) -lineinfo
+NVOPTS=-O3 $(ARCH) -lineinfo -DDEBUG
 
 $(BIN): kernel.o
 	$(NVCC) $(NVOPTS) -o $(BIN) kernel.o

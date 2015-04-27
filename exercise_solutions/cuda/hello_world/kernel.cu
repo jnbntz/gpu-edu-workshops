@@ -15,15 +15,7 @@
  */
 
 #include <stdio.h>
-
-#define CUDA_CALL(F)  if( (F) != cudaSuccess ) \
-  {printf("Error %s at %s:%d\n", cudaGetErrorString(cudaGetLastError()), \
-   __FILE__,__LINE__); exit(-1);} 
-
-#define CUDA_CHECK()  if( (cudaPeekAtLastError()) != cudaSuccess ) \
-  {printf("Error %s at %s:%d\n", cudaGetErrorString(cudaGetLastError()), \
-   __FILE__,__LINE__-1); exit(-1);} 
-
+#include "../debug.h"
 
 __global__ void mykernel(){
 	printf("Hello world from device!\n");
@@ -32,8 +24,7 @@ __global__ void mykernel(){
 int main(void) 
 {
   mykernel<<<1,1>>>();
-  CUDA_CHECK()
-  CUDA_CALL( cudaDeviceSynchronize() );
+  checkKERNEL()
   printf("Hello World from Host\n");
   return 0;
 } /* end main */

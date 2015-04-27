@@ -21,6 +21,8 @@ extern "C"
 #include <cblas.h>
 }
 
+#include "../debug.h"
+
 /* choose precision to train and classify.  Only float and double are 
  * currently suppored
  */
@@ -61,35 +63,14 @@ else if( (val) > (max) ) val = (max);
 #define TRAINING_SET_SIZE (4000)
 #define TEST_SET_SIZE (1000)
 
-/* CUDA debugging */
-
-#ifdef DEBUG
-#define CUDA_CALL(F)  if( (F) != cudaSuccess ) \
-  {printf("Error %s at %s:%d\n", cudaGetErrorString(cudaGetLastError()), \
-   __FILE__,__LINE__); exit(-1);}
-#define CUDA_CHECK()  if( (cudaPeekAtLastError()) != cudaSuccess ) \
-  {printf("Error %s at %s:%d\n", cudaGetErrorString(cudaGetLastError()), \
-   __FILE__,__LINE__-1); exit(-1);}
-#else
-#define CUDA_CALL(F) (F)
-#define CUDA_CHECK()
-#endif
-
 /* function defs */
 
 void readMatrixFromFile( char *, int *, const int, const int );
 
-void calculateBI( floatType_t const *,
-                  floatType_t const *,
-                  floatType_t const *,
-                  int ,
-                  floatType_t *, floatType_t *,
-                  int *, int *,
-                  floatType_t const );
-
 void svmTrain( floatType_t const *, floatType_t const *, floatType_t const,
                const int, const int,
-               const floatType_t, floatType_t * );
+               const floatType_t , const int,
+               floatType_t * );
 
-void svmPredict( floatType_t const *, floatType_t const *,
+void svmPredict( floatType_t const *, floatType_t const *,  
                  int const, int const, int * );

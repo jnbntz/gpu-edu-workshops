@@ -51,28 +51,28 @@ void svmTrain( floatType_t const *d_X,
 
 /* malloc alphas */
 
-  CUDA_CALL( cudaMalloc( (void**) &d_alphas, 
+  checkCUDA( cudaMalloc( (void**) &d_alphas, 
                sizeof(floatType_t) * numTrainingExamples ) );
 
 /* zero alphas */
 
-  CUDA_CALL( cudaMemset( d_alphas, 0, 
+  checkCUDA( cudaMemset( d_alphas, 0, 
                sizeof(floatType_t)*numTrainingExamples ) );
 
 /* malloc f */
 
-  CUDA_CALL( cudaMalloc( (void**) &d_f,
+  checkCUDA( cudaMalloc( (void**) &d_f,
                sizeof(floatType_t) * numTrainingExamples ) );
 
   int threads_per_block = 256;
   k_initF<<<TRAINING_SET_SIZE/threads_per_block+1,threads_per_block>>>
                       ( d_f, d_y, numTrainingExamples );
-
+  checkKERNEL()
 /* malloc K, the kernel matrix */
 
-  CUDA_CALL( cudaMalloc( (void**) &d_K,
+  checkCUDA( cudaMalloc( (void**) &d_K,
            sizeof(floatType_t) * numTrainingExamples * numTrainingExamples ) );
-  CUDA_CALL( cudaMemset( d_K, 0, 
+  checkCUDA( cudaMemset( d_K, 0, 
            sizeof(floatType_t)*numTrainingExamples*numTrainingExamples ));
 
 /* compute the Kernel on every pair of examples.
@@ -103,10 +103,10 @@ void svmTrain( floatType_t const *d_X,
                (double *)d_K, numTrainingExamples );
   }
 
-  CUDA_CALL( cudaMalloc( (void**)&d_bLow, sizeof(floatType_t) ) );
-  CUDA_CALL( cudaMalloc( (void**)&d_bHigh, sizeof(floatType_t) ) );
-  CUDA_CALL( cudaMalloc( (void**)&d_ILow, sizeof(int) ) );
-  CUDA_CALL( cudaMalloc( (void**)&d_IHigh, sizeof(int) ) );
+  checkCUDA( cudaMalloc( (void**)&d_bLow, sizeof(floatType_t) ) );
+  checkCUDA( cudaMalloc( (void**)&d_bHigh, sizeof(floatType_t) ) );
+  checkCUDA( cudaMalloc( (void**)&d_ILow, sizeof(int) ) );
+  checkCUDA( cudaMalloc( (void**)&d_IHigh, sizeof(int) ) );
 
   while( true )
   {
@@ -118,16 +118,15 @@ void svmTrain( floatType_t const *d_X,
 
     k_calculateBI<<<1,128>>>( d_f, d_alphas, d_y, numTrainingExamples,
                             d_bLow, d_bHigh, d_ILow, d_IHigh, C );
-    CUDA_CHECK()
-    CUDA_CALL( cudaDeviceSynchronize() );
+    checkKERNEL()
 
-    CUDA_CALL( cudaMemcpy( &bLow, d_bLow, sizeof(floatType_t),
+    checkCUDA( cudaMemcpy( &bLow, d_bLow, sizeof(floatType_t),
                            cudaMemcpyDeviceToHost ) );
-    CUDA_CALL( cudaMemcpy( &bHigh, d_bHigh, sizeof(floatType_t),
+    checkCUDA( cudaMemcpy( &bHigh, d_bHigh, sizeof(floatType_t),
                            cudaMemcpyDeviceToHost ) );
-    CUDA_CALL( cudaMemcpy( &ILow, d_ILow, sizeof(int),
+    checkCUDA( cudaMemcpy( &ILow, d_ILow, sizeof(int),
                            cudaMemcpyDeviceToHost ) );
-    CUDA_CALL( cudaMemcpy( &IHigh, d_IHigh, sizeof(int),
+    checkCUDA( cudaMemcpy( &IHigh, d_IHigh, sizeof(int),
                            cudaMemcpyDeviceToHost ) );
 
 /* exit loop once we are below tolerance level */     
@@ -142,15 +141,13 @@ void svmTrain( floatType_t const *d_X,
                            ILow,
                            d_K, numTrainingExamples, d_y, C, 
                            bLow, bHigh );
-    CUDA_CHECK()
-    CUDA_CALL( cudaDeviceSynchronize() );
+   checkKERNEL()
 
   } /* end while */
 
   k_scaleAlpha<<<TRAINING_SET_SIZE/threads_per_block + 1,threads_per_block>>>
                    ( d_alphas, d_y, numTrainingExamples );
-  CUDA_CHECK()
-  CUDA_CALL( cudaDeviceSynchronize() );
+  checkKERNEL()
 
 /* calculate W from alphas */
 
@@ -171,13 +168,13 @@ void svmTrain( floatType_t const *d_X,
                (double *)d_W, 1 );
   }
   
-  CUDA_CALL( cudaFree( d_alphas ) );
-  CUDA_CALL( cudaFree( d_f ) );
-  CUDA_CALL( cudaFree( d_K ) );
-  CUDA_CALL( cudaFree( d_ILow ) );
-  CUDA_CALL( cudaFree( d_IHigh ) );
-  CUDA_CALL( cudaFree( d_bLow ) );
-  CUDA_CALL( cudaFree( d_bHigh ) );
+  checkCUDA( cudaFree( d_alphas ) );
+  checkCUDA( cudaFree( d_f ) );
+  checkCUDA( cudaFree( d_K ) );
+  checkCUDA( cudaFree( d_ILow ) );
+  checkCUDA( cudaFree( d_IHigh ) );
+  checkCUDA( cudaFree( d_bLow ) );
+  checkCUDA( cudaFree( d_bHigh ) );
 
 } /* end svmTrain */
 

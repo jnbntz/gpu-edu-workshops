@@ -17,7 +17,7 @@
 include ../make.common
 BIN=x.matmul_GPU_shmem1
 NVCC=nvcc
-NVOPTS=-O3 $(ARCH) -lineinfo
+NVOPTS=-O3 $(ARCH) -lineinfo -DDEBUG
 
 $(BIN): kernel.o
 	$(NVCC) $(NVOPTS) -o $(BIN) kernel.o -lcublas

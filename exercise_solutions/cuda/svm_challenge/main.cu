@@ -75,9 +75,9 @@ int main(int argc, char **argv)
     if( Y[i] == 0.0 ) Y[i] = -1.0;
   } /* end for */
 
-  CUDA_CALL( cudaMalloc( (void**)&d_Y, 
+  checkCUDA( cudaMalloc( (void**)&d_Y, 
                sizeof(floatType_t) * numTrainingExamples ) );
-  CUDA_CALL( cudaMemcpy( d_Y, Y, sizeof(floatType_t) * numTrainingExamples, 
+  checkCUDA( cudaMemcpy( d_Y, Y, sizeof(floatType_t) * numTrainingExamples, 
                cudaMemcpyHostToDevice ) );
 
 /* malloc the training matrix.  each row is a different training
@@ -106,9 +106,9 @@ int main(int argc, char **argv)
   for( int i = 0; i < numTrainingExamples * numFeatures; i++ )
     X[i] = (floatType_t) trainingMatrix[i];
 
-  CUDA_CALL( cudaMalloc( (void**) &d_X, 
+  checkCUDA( cudaMalloc( (void**) &d_X, 
                sizeof(floatType_t) * numFeatures * numTrainingExamples ) );
-  CUDA_CALL( cudaMemcpy( d_X, X, 
+  checkCUDA( cudaMemcpy( d_X, X, 
                sizeof(floatType_t) * numFeatures * numTrainingExamples,  
                cudaMemcpyHostToDevice ) );
 
@@ -117,15 +117,15 @@ int main(int argc, char **argv)
   W = (floatType_t *) malloc( sizeof(floatType_t) * numFeatures );
   if( W == NULL ) fprintf(stderr,"error malloc yW\n");
 
-  CUDA_CALL( cudaMalloc( (void**) &d_W, sizeof(floatType_t) * numFeatures ) );
-  CUDA_CALL( cudaMemset( d_W, 0, sizeof(floatType_t) * numFeatures ) );
+  checkCUDA( cudaMalloc( (void**) &d_W, sizeof(floatType_t) * numFeatures ) );
+  checkCUDA( cudaMemset( d_W, 0, sizeof(floatType_t) * numFeatures ) );
 
 /* setup timers */
 
   cudaEvent_t start, stop;
-  CUDA_CALL( cudaEventCreate( &start ) );
-  CUDA_CALL( cudaEventCreate( &stop ) );
-  CUDA_CALL( cudaEventRecord( start, 0 ) );
+  checkCUDA( cudaEventCreate( &start ) );
+  checkCUDA( cudaEventCreate( &stop ) );
+  checkCUDA( cudaEventRecord( start, 0 ) );
 
 /* call the training function */
 
@@ -136,15 +136,15 @@ int main(int argc, char **argv)
 
 /* report time of svmTrain */
 
-  CUDA_CALL( cudaEventRecord( stop, 0 ) );
-  CUDA_CALL( cudaEventSynchronize( stop ) );
+  checkCUDA( cudaEventRecord( stop, 0 ) );
+  checkCUDA( cudaEventSynchronize( stop ) );
   float elapsedTime;
-  CUDA_CALL( cudaEventElapsedTime( &elapsedTime, start, stop ) );
+  checkCUDA( cudaEventElapsedTime( &elapsedTime, start, stop ) );
   fprintf(stdout, "Total time for svmTrain is %f sec\n",elapsedTime/1000.0f );
 
 /* copy W matrix back to host for test of prediction */
 
-  CUDA_CALL( cudaMemcpy( W, d_W, sizeof(floatType_t) * numFeatures,
+  checkCUDA( cudaMemcpy( W, d_W, sizeof(floatType_t) * numFeatures,
                cudaMemcpyDeviceToHost ) );
 
 /* malloc a prediction vector which will be the predicted values of the 
@@ -156,7 +156,7 @@ int main(int argc, char **argv)
 
 /* start timer for svmTrain */
 
-  CUDA_CALL( cudaEventRecord( start, 0 ) );
+  checkCUDA( cudaEventRecord( start, 0 ) );
 
 /* call the predict function to populate the pred vector */
 
@@ -164,9 +164,9 @@ int main(int argc, char **argv)
 
 /* report time of svmTrain */
 
-  CUDA_CALL( cudaEventRecord( stop, 0 ) );
-  CUDA_CALL( cudaEventSynchronize( stop ) );
-  CUDA_CALL( cudaEventElapsedTime( &elapsedTime, start, stop ) );
+  checkCUDA( cudaEventRecord( stop, 0 ) );
+  checkCUDA( cudaEventSynchronize( stop ) );
+  checkCUDA( cudaEventElapsedTime( &elapsedTime, start, stop ) );
   fprintf(stdout, "Total time for svmPredict is %f sec\n",elapsedTime/1000.0f );
   
 /* calculate how well the predictions matched the actual values */
@@ -258,11 +258,11 @@ int main(int argc, char **argv)
   free(trainingVector);
   free(trainingMatrix);
 
-  CUDA_CALL( cudaFree( d_Y ) );
-  CUDA_CALL( cudaFree( d_X ) );
-  CUDA_CALL( cudaFree( d_W ) );
+  checkCUDA( cudaFree( d_Y ) );
+  checkCUDA( cudaFree( d_X ) );
+  checkCUDA( cudaFree( d_W ) );
   
-  cudaDeviceReset();
+  checkCUDA( cudaDeviceReset() );
 
   return 0;
 } /* end main */

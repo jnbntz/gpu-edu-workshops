@@ -16,18 +16,7 @@
 
 #include <stdio.h>
 #include <math.h>
-
-#ifdef DEBUG
-#define CUDA_CALL(F)  if( (F) != cudaSuccess ) \
-  {printf("Error %s at %s:%d\n", cudaGetErrorString(cudaGetLastError()), \
-   __FILE__,__LINE__); exit(-1);} 
-#define CUDA_CHECK()  if( (cudaPeekAtLastError()) != cudaSuccess ) \
-  {printf("Error %s at %s:%d\n", cudaGetErrorString(cudaGetLastError()), \
-   __FILE__,__LINE__-1); exit(-1);} 
-#else
-#define CUDA_CALL(F) (F)
-#define CUDA_CHECK() 
-#endif
+#include "../debug.h"
 
 /* definitions of threadblock size in X and Y directions */
 
@@ -128,13 +117,13 @@ int main( int argc, char *argv[] )
 
 /* allocating device memory */
 
-  CUDA_CALL( cudaMalloc( (void**) &d_a, numbytes ) );
-  CUDA_CALL( cudaMalloc( (void**) &d_c, numbytes ) );
+  checkCUDA( cudaMalloc( (void**) &d_a, numbytes ) );
+  checkCUDA( cudaMalloc( (void**) &d_c, numbytes ) );
 
 /* set result matrices to zero */
 
   memset( h_c, 0, numbytes );
-  CUDA_CALL( cudaMemset( d_c, 0, numbytes ) );
+  checkCUDA( cudaMemset( d_c, 0, numbytes ) );
 
   fprintf( stdout, "Total memory required per matrix is %lf MB\n", 
      (double) numbytes / 1000000.0 );
@@ -149,14 +138,14 @@ int main( int argc, char *argv[] )
 
 /* copy input matrix from host to device */
 
-  CUDA_CALL( cudaMemcpy( d_a, h_a, numbytes, cudaMemcpyHostToDevice ) );
+  checkCUDA( cudaMemcpy( d_a, h_a, numbytes, cudaMemcpyHostToDevice ) );
 
 /* create and start timer */
 
   cudaEvent_t start, stop;
-  CUDA_CALL( cudaEventCreate( &start ) );
-  CUDA_CALL( cudaEventCreate( &stop ) );
-  CUDA_CALL( cudaEventRecord( start, 0 ) );
+  checkCUDA( cudaEventCreate( &start ) );
+  checkCUDA( cudaEventCreate( &stop ) );
+  checkCUDA( cudaEventRecord( start, 0 ) );
 
 /* call naive cpu transpose function */
 
@@ -164,10 +153,10 @@ int main( int argc, char *argv[] )
 
 /* stop CPU timer */
 
-  CUDA_CALL( cudaEventRecord( stop, 0 ) );
-  CUDA_CALL( cudaEventSynchronize( stop ) );
+  checkCUDA( cudaEventRecord( stop, 0 ) );
+  checkCUDA( cudaEventSynchronize( stop ) );
   float elapsedTime;
-  CUDA_CALL( cudaEventElapsedTime( &elapsedTime, start, stop ) );
+  checkCUDA( cudaEventElapsedTime( &elapsedTime, start, stop ) );
 
 /* print CPU timing information */
 
@@ -182,22 +171,21 @@ int main( int argc, char *argv[] )
   dim3 blocks( ( size / THREADS_PER_BLOCK_X ) , 
                ( size / ( THREADS_PER_BLOCK_Y * ELEMENTS_PER_THREAD ) ) , 1 );
 
-  CUDA_CALL( cudaDeviceSetSharedMemConfig( cudaSharedMemBankSizeEightByte ) );
+  checkCUDA( cudaDeviceSetSharedMemConfig( cudaSharedMemBankSizeEightByte ) );
 
 /* start timers */
-  CUDA_CALL( cudaEventRecord( start, 0 ) );
+  checkCUDA( cudaEventRecord( start, 0 ) );
 
 /* call naive GPU transpose kernel */
 
   smem_cuda_transpose_opt<<< blocks, threads >>>( size, d_a, d_c );
-  CUDA_CHECK();
-  CUDA_CALL( cudaDeviceSynchronize() );
+  checkKERNEL()
 
 /* stop the timers */
 
-  CUDA_CALL( cudaEventRecord( stop, 0 ) );
-  CUDA_CALL( cudaEventSynchronize( stop ) );
-  CUDA_CALL( cudaEventElapsedTime( &elapsedTime, start, stop ) );
+  checkCUDA( cudaEventRecord( stop, 0 ) );
+  checkCUDA( cudaEventSynchronize( stop ) );
+  checkCUDA( cudaEventElapsedTime( &elapsedTime, start, stop ) );
 
 /* print GPU timing information */
 
@@ -208,8 +196,8 @@ int main( int argc, char *argv[] )
 
 /* copy data from device to host */
 
-  CUDA_CALL( cudaMemset( d_a, 0, numbytes ) );
-  CUDA_CALL( cudaMemcpy( h_a, d_c, numbytes, cudaMemcpyDeviceToHost ) );
+  checkCUDA( cudaMemset( d_a, 0, numbytes ) );
+  checkCUDA( cudaMemcpy( h_a, d_c, numbytes, cudaMemcpyDeviceToHost ) );
 
 /* compare GPU to CPU for correctness */
 
@@ -230,10 +218,10 @@ int main( int argc, char *argv[] )
 
   free( h_a );
   free( h_c );
-  CUDA_CALL( cudaFree( d_a ) );
-  CUDA_CALL( cudaFree( d_c ) );
+  checkCUDA( cudaFree( d_a ) );
+  checkCUDA( cudaFree( d_c ) );
 
-  CUDA_CALL( cudaDeviceReset() );
+  checkCUDA( cudaDeviceReset() );
 
   return 0;
 }

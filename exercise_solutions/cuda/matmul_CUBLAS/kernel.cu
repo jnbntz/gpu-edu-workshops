@@ -14,16 +14,9 @@
  *  limitations under the License.
  */
 
-#define CUDA_CALL(F)  if( (F) != cudaSuccess ) \
-  {printf("Error %s at %s:%d\n", cudaGetErrorString(cudaGetLastError()), \
-   __FILE__,__LINE__); exit(-1);} 
-
-#define CUDA_CHECK()  if( (cudaPeekAtLastError()) != cudaSuccess ) \
-  {printf("Error %s at %s:%d\n", cudaGetErrorString(cudaGetLastError()), \
-   __FILE__,__LINE__-1); exit(-1);} 
-
 #include <stdio.h>
 #include "cublas_v2.h"
+#include "../debug.h"
 
 #define INDX( row, col, ld ) ( ( (col) * (ld) ) + (row) )
 
@@ -97,23 +90,23 @@ int main( int argc, char *argv[] )
       h_b[i] = double( rand() ) / ( double(RAND_MAX) + 1.0 );
     }
 
-    CUDA_CALL( cudaMalloc( (void **)&d_a, numbytes ) );
-    CUDA_CALL( cudaMalloc( (void **)&d_b, numbytes ) );
-    CUDA_CALL( cudaMalloc( (void **)&d_c, numbytes ) );
+    checkCUDA( cudaMalloc( (void **)&d_a, numbytes ) );
+    checkCUDA( cudaMalloc( (void **)&d_b, numbytes ) );
+    checkCUDA( cudaMalloc( (void **)&d_c, numbytes ) );
 
     cudaEvent_t start, stop;
-    CUDA_CALL( cudaEventCreate( &start ) );
-    CUDA_CALL( cudaEventCreate( &stop ) );
+    checkCUDA( cudaEventCreate( &start ) );
+    checkCUDA( cudaEventCreate( &stop ) );
 
 
-    CUDA_CALL( cudaEventRecord( start, 0 ) );
+    checkCUDA( cudaEventRecord( start, 0 ) );
 
     host_dgemm( size, size, size, h_a, h_b, h_cdef );
 
-    CUDA_CALL( cudaEventRecord( stop, 0 ) );
-    CUDA_CALL( cudaEventSynchronize( stop ) );
+    checkCUDA( cudaEventRecord( stop, 0 ) );
+    checkCUDA( cudaEventSynchronize( stop ) );
     float elapsedTime;
-    CUDA_CALL( cudaEventElapsedTime( &elapsedTime, start, stop ) );
+    checkCUDA( cudaEventElapsedTime( &elapsedTime, start, stop ) );
 
     fprintf(stdout, "Total time CPU is %f sec\n", elapsedTime / 1000.0f );
     fprintf(stdout, "Performance is %f GFlop/s\n", 
@@ -121,31 +114,33 @@ int main( int argc, char *argv[] )
       ( (double) elapsedTime / 1000.0 ) * 1.e-9 );
 
 
-    CUDA_CALL( cudaMemcpy( d_a, h_a, numbytes, cudaMemcpyHostToDevice ) );
-    CUDA_CALL( cudaMemcpy( d_b, h_b, numbytes, cudaMemcpyHostToDevice ) );
+    checkCUDA( cudaMemcpy( d_a, h_a, numbytes, cudaMemcpyHostToDevice ) );
+    checkCUDA( cudaMemcpy( d_b, h_b, numbytes, cudaMemcpyHostToDevice ) );
 
     cublasHandle_t handle;
-    cublasStatus_t stat = cublasCreate( &handle );
+    checkCUBLAS( cublasCreate( &handle ) );
 
     double alpha = 1.0;
     double beta  = 0.0;
 
-    CUDA_CALL( cudaEventRecord( start, 0 ) );
+    checkCUDA( cudaEventRecord( start, 0 ) );
 
-    cublasSetStream( handle, 0 );
+    checkCUBLAS( cublasSetStream( handle, 0 ) );
 
+    checkCUBLAS( 
     cublasDgemm( handle, CUBLAS_OP_N, CUBLAS_OP_N,
                  size, size, size,
                  &alpha, 
                  d_a, size,
                  d_b, size,
                  &beta,
-                 d_c, size );
+                 d_c, size )
+               );
 
 
-    CUDA_CALL( cudaEventRecord( stop, 0 ) );
-    CUDA_CALL( cudaEventSynchronize( stop ) );
-    CUDA_CALL( cudaEventElapsedTime( &elapsedTime, start, stop ) );
+    checkCUDA( cudaEventRecord( stop, 0 ) );
+    checkCUDA( cudaEventSynchronize( stop ) );
+    checkCUDA( cudaEventElapsedTime( &elapsedTime, start, stop ) );
 
     fprintf(stdout, "Total time GPU CUBLAS is %f sec\n", 
             elapsedTime / 1000.0f );
@@ -153,11 +148,11 @@ int main( int argc, char *argv[] )
       2.0 * (double) size * (double) size * (double) size / 
       ( (double) elapsedTime / 1000.0 ) * 1.e-9 );
                   
-    CUDA_CALL( cudaMemcpy( h_c, d_c, numbytes, cudaMemcpyDeviceToHost ) );
+    checkCUDA( cudaMemcpy( h_c, d_c, numbytes, cudaMemcpyDeviceToHost ) );
 
-    cublasDestroy( handle );
-    CUDA_CALL( cudaEventDestroy( start ) );
-    CUDA_CALL( cudaEventDestroy( stop ) );
+    checkCUBLAS( cublasDestroy( handle ) );
+    checkCUDA( cudaEventDestroy( start ) );
+    checkCUDA( cudaEventDestroy( stop ) );
 
     double temp = 0.0;
 
@@ -169,15 +164,15 @@ int main( int argc, char *argv[] )
     if( temp > 10 ) printf("FAIL\n");
     else printf("PASS\n");
 
-    CUDA_CALL( cudaFree( d_a ) );
-    CUDA_CALL( cudaFree( d_b ) );
-    CUDA_CALL( cudaFree( d_c ) );
+    checkCUDA( cudaFree( d_a ) );
+    checkCUDA( cudaFree( d_b ) );
+    checkCUDA( cudaFree( d_c ) );
 
     free( h_a );
     free( h_b );
     free( h_c );
     free( h_cdef );
 
-    CUDA_CALL( cudaDeviceReset() );
+    checkCUDA( cudaDeviceReset() );
     return 0;
 }
