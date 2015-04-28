@@ -71,6 +71,14 @@ __global__ void stencil_1d(int n, double *in, double *out)
 
 int main()
 {
+/* get GPU device number and name */
+
+  int dev;
+  cudaDeviceProp deviceProp;
+  checkCUDA( cudaGetDevice( &dev ) );
+  checkCUDA( cudaGetDeviceProperties( &deviceProp, dev ) );
+  printf("Using GPU %d: %s\n", dev, deviceProp.name );
+
   double *in, *out;
   double *d_in, *d_out;
   int size = N * sizeof( double );

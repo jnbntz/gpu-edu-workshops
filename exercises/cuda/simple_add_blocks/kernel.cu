@@ -32,6 +32,14 @@ int main()
   int *d_a, *d_b, *d_c;
   int size = N * sizeof( int );
 
+/* get GPU device number and name */
+
+  int dev;
+  cudaDeviceProp deviceProp;
+  checkCUDA( cudaGetDevice( &dev ) );
+  checkCUDA( cudaGetDeviceProperties( &deviceProp, dev ) );
+  printf("Using GPU %d: %s\n", dev, deviceProp.name );
+
 /* allocate space for device copies of a, b, c */
 
   checkCUDA( cudaMalloc( (void **) &d_a, size ) );

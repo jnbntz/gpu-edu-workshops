@@ -143,6 +143,13 @@ __global__ void GPU_shmem2(const int m, double const * const a, double const * c
 
 int main( int argc, char *argv[] )
 {
+/* get GPU device number and name */
+
+  int dev;
+  cudaDeviceProp deviceProp;
+  checkCUDA( cudaGetDevice( &dev ) );
+  checkCUDA( cudaGetDeviceProperties( &deviceProp, dev ) );
+  printf("Using GPU %d: %s\n", dev, deviceProp.name );
 
     const int size = SIZE;
 

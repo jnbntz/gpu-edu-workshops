@@ -87,6 +87,13 @@ void host_transpose( const int m, double const * const a, double *c )
 
 int main( int argc, char *argv[] )
 {
+/* get GPU device number and name */
+
+  int dev;
+  cudaDeviceProp deviceProp;
+  checkCUDA( cudaGetDevice( &dev ) );
+  checkCUDA( cudaGetDeviceProperties( &deviceProp, dev ) );
+  printf("Using GPU %d: %s\n", dev, deviceProp.name );
 
   int size = SIZE;
 
