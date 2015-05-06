@@ -63,8 +63,6 @@ __global__ void smem_cuda_transpose( const int m,
       a[FIXME];
   } /* end if */
 
-/* synchronize */
-  __syncthreads();
 		
   if( myRow < m && myCol < m )
   {
