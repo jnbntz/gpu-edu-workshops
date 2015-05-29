@@ -70,18 +70,20 @@ int main()
 
   checkCUDA( cudaMemcpy( c, d_c, size, cudaMemcpyDeviceToHost ) );
 
+  int success = 1;
+
   for( int i = 0; i < N; i++ )
   {
     printf("c[%d] = %d\n",i,c[i]);
     if( c[i] != a[i] + b[i] )
     {
-      printf("FAIL\n");
-      goto end;
+      success = 0;
+      break;
     } /* end if */
   } /* end for */
 
-  printf("PASS\n");
-  end:
+  if( success == 1 ) printf("PASS\n");
+  else               printf("FAIL\n");
 
 /* clean up */
 

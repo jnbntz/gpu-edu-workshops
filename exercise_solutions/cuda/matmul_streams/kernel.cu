@@ -23,8 +23,8 @@ typedef float floatType_t;
 #define INDX( row, col, ld ) ( ( (col) * (ld) ) + (row) )
 
 #define TILESIZE 2048
-#define SIZE ( TILESIZE * 4 )
-#define NUM_STREAMS 3
+#define SIZE ( TILESIZE * 8 )
+#define NUM_STREAMS 8
 
 __global__ void printMat( const floatType_t *A, int size )
 {

@@ -134,18 +134,20 @@ int main()
 
   checkCUDA( cudaMemcpy( out, d_out, size, cudaMemcpyDeviceToHost ) );
 
+  int success = 1;
+
   for( int i = 0; i < N; i++ )
   {
-    if( in[i]*( (double)RADIUS*2+1 ) != out[i] ) 
+    if( in[i]*( (double)RADIUS*2+1 ) != out[i] )
     {
       printf("error in element %d in = %f out %f\n",i,in[i],out[i] );
-      printf("FAIL\n");
-      goto end;
+      success = 0;
+      break;
     } /* end if */
   } /* end for */
 
-  printf("PASS\n");
-  end:
+  if( success == 1 ) printf("PASS\n");
+  else               printf("FAIL\n");
 
 /* clean up */
 

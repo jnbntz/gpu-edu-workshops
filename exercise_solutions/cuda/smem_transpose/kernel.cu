@@ -214,6 +214,8 @@ int main( int argc, char *argv[] )
 
 /* compare GPU to CPU for correctness */
 
+  int success = 1;
+  
   for( int j = 0; j < size; j++ )
   {
     for( int i = 0; i < size; i++ )
@@ -223,16 +225,17 @@ int main( int argc, char *argv[] )
         printf("Error in element %d,%d\n", i,j );
         printf("Host %f, device %f\n",h_c[INDX(i,j,size)],
                                       h_a[INDX(i,j,size)]);
-        printf("FAIL\n");
-        goto end;
+        success = 0;
+        break;
       }
     } /* end for i */
   } /* end for j */
 
-/* free the memory */
-  printf("PASS\n");
+  if( success == 1 ) printf("PASS\n");
+  else               printf("FAIL\n");
 
-  end:
+/* free the memory */
+
   free( h_a );
   free( h_c );
   checkCUDA( cudaFree( d_a ) );
