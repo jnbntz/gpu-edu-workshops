@@ -30,14 +30,15 @@ __global__ void sumReduction(int n, floatType_t *in, floatType_t *out)
 /* return if my global index is larger than the array size */
   if( globalIndex >= n ) return;
 
-  floatType_t result = 0.0;
+/* grid stride handling case where array is larger than number of threads
+ * launched
+ */
 
-  for( int i = 0; i < N; i++ ) 
-  { 
-    result += in[i];
+  for( int i = globalIndex; i < n; i += blockDim.x * gridDim.x )
+  {
+    atomicAdd( out, in[i] );
   } /* end for */
 
-  *out = result;
   return;
 
 }
@@ -82,7 +83,11 @@ int main()
 /* calculate block and grid sizes */
 
   dim3 threads( THREADS_PER_BLOCK, 1, 1);
-  dim3 blocks( (size / threads.x) + 1, 1, 1);
+  
+  int blk = min( (size / threads.x) + 1, deviceProp.maxGridSize[0] );
+  dim3 blocks( blk, 1, 1);
+
+  printf("block x is %d\n", blocks.x );
 
 /* start the timers */
 
@@ -93,7 +98,7 @@ int main()
 
 /* launch the kernel on the GPU */
 
-  sumReduction<<< 1, 1 >>>( size, d_in, d_out );
+  sumReduction<<< blocks, threads >>>( size, d_in, d_out );
   checkKERNEL()
 
 /* stop the timers */
@@ -127,6 +132,7 @@ int main()
   printf("CPU total time is %f ms, bandwidth %f GB/s\n", elapsedTime,
     sizeof(floatType_t) * (double) size /
     ( (double) elapsedTime / 1000.0 ) * 1.e-9);
+
 
   floatType_t diff = abs( good_out - h_out );
 
