@@ -17,7 +17,7 @@
 #include <stdio.h>
 #include "../debug.h"
 
-#define N ( 8192 * 8192 )
+#define N ( 1 << 26 )
 #define THREADS_PER_BLOCK 128
 
 typedef float floatType_t;
