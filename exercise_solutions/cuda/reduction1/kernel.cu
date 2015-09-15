@@ -18,7 +18,7 @@
 #include "../debug.h"
 
 #define N ( 8192 * 8192 )
-#define THREADS_PER_BLOCK 512
+#define THREADS_PER_BLOCK 128
 
 typedef float floatType_t;
 
@@ -108,7 +108,6 @@ int main()
     ( (double) elapsedTime / 1000.0 ) * 1.e-9,
     sizeof(floatType_t) * (double) N * 1.e-9 );
 
-
 /* copy result back to host */
 
   checkCUDA( cudaMemcpy( &h_out, d_out, sizeof(floatType_t), 
@@ -121,11 +120,12 @@ int main()
 
   floatType_t diff = abs( good_out - h_out );
 
-//  printf("diff is %e\n",diff);
-//  printf("Sum is %e\n", h_out);
-
   if( diff / h_out < 0.001 ) printf("PASS\n");
-  else                       printf("FAIL\n");
+  else
+  {                       
+    printf("FAIL\n");
+    printf("Error is %f\n", diff / h_out );
+  } /* end else */
 
 /* clean up */
 
