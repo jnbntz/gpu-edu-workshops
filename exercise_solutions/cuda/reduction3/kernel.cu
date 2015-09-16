@@ -17,10 +17,10 @@
 #include <stdio.h>
 #include "../debug.h"
 
-#define N ( 1 << 3 )
-#define THREADS_PER_BLOCK 4
+#define N ( 1 << 26 )
+#define THREADS_PER_BLOCK 128
 
-typedef float floatType_t;
+typedef double floatType_t;
 
 __global__ void sumReduction(int n, floatType_t *in, floatType_t *out)
 {
@@ -30,11 +30,8 @@ __global__ void sumReduction(int n, floatType_t *in, floatType_t *out)
 /* calculate global index in the array */
   int globalIndex = blockIdx.x * blockDim.x + threadIdx.x;
 	
-/* return if my global index is larger than the array size */
-  if( globalIndex >= n ) return;
-
 /* zero out the smem array */
-  sArray[threadIdx.x] = 0;
+  sArray[threadIdx.x] = 0.0;
 
 /* grid stride handling case where array is larger than number of threads
  * launched
@@ -49,22 +46,22 @@ __global__ void sumReduction(int n, floatType_t *in, floatType_t *out)
   
   __syncthreads();
 
-  printf("tid %d blockId %d value %f\n",threadIdx.x, blockIdx.x, 
-    sArray[threadIdx.x] );
+//  printf("tid %d blockId %d value %f\n",threadIdx.x, blockIdx.x, 
+ //   sArray[threadIdx.x] );
 /* do the final reduction in SMEM */
-
+  //printf("blockDim is %d\n",blockDim.x);
   for( int i = blockDim.x/2; i > 0; i = i / 2 )
   {
     if( threadIdx.x < i )
     {
       sArray[threadIdx.x] += sArray[threadIdx.x + i];
-      printf("tid %d, sArray %f\n",threadIdx.x, sArray[threadIdx.x] );
+   //   printf("tid %d, i %d, sArray %f\n",threadIdx.x, i,sArray[threadIdx.x] );
     } /* end if */
     __syncthreads();
   } /* end for */
 
   if( threadIdx.x == 0 ) out[blockIdx.x] = sArray[0]; 
-  if( threadIdx.x == 0 ) printf("out is %f\n",out[blockIdx.x]);
+  //if( threadIdx.x == 0 ) printf("out is %f\n",out[blockIdx.x]);
 
   return;
 
@@ -98,7 +95,7 @@ int main()
 
   for( int i = 0; i < size; i++ )
   {
-   h_in[i] = i;//floatType_t( rand() ) / ( floatType_t (RAND_MAX) + 1.0 );
+   h_in[i] = floatType_t( rand() ) / ( floatType_t (RAND_MAX) + 1.0 );
   }
 
   h_out      = 0.0;
@@ -113,12 +110,12 @@ int main()
 
 /* calculate block and grid sizes */
 
-  dim3 threads( THREADS_PER_BLOCK, 1, 1);
+  dim3 threads1( THREADS_PER_BLOCK, 1, 1 );
   
-  int blk = min( (size / threads.x), tempArraySize );
+  int blk = min( (size / threads1.x), tempArraySize );
   dim3 blocks( blk, 1, 1);
 
-  printf("block x is %d\n", blocks.x );
+  dim3 threads2( min(blocks.x,threads1.x), 1, 1 );
 
 /* start the timers */
 
@@ -129,9 +126,9 @@ int main()
 
 /* launch the kernel on the GPU */
 
-  sumReduction<<< blocks, threads >>>( size, d_in,  d_tempArray );
+  sumReduction<<< blocks, threads1 >>>( size, d_in,  d_tempArray );
   checkKERNEL()
-  sumReduction<<<      1, threads >>>( blocks.x, d_tempArray, d_out );
+  sumReduction<<<      1, threads2 >>>( blocks.x, d_tempArray, d_out );
   checkKERNEL()
 
 /* stop the timers */
