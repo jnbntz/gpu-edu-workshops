@@ -43,9 +43,85 @@ __global__ void sumReduction(int n, floatType_t *in, floatType_t *out)
   {
     sArray[threadIdx.x] += in[i];
   } /* end for */
+
   
   __syncthreads();
 
+#if 1
+  if( blockDim.x >= 512 ) 
+  {
+    if( threadIdx.x < 256 )
+    {
+      sArray[threadIdx.x] += sArray[threadIdx.x+256];
+    } /* end if */
+    __syncthreads();
+  } /* end if */
+  if( blockDim.x >= 256 ) 
+  {
+    if( threadIdx.x < 128 )
+    {
+      sArray[threadIdx.x] += sArray[threadIdx.x+128];
+    } /* end if */
+    __syncthreads();
+  } /* end if */
+  if( blockDim.x >= 128 ) 
+  {
+    if( threadIdx.x < 64 )
+    {
+      sArray[threadIdx.x] += sArray[threadIdx.x+64];
+    } /* end if */
+    __syncthreads();
+  } /* end if */
+  if( blockDim.x >= 64 ) 
+  {
+    if( threadIdx.x < 32 )
+    {
+      sArray[threadIdx.x] += sArray[threadIdx.x+32];
+    } /* end if */
+    __syncthreads();
+  } /* end if */
+  if( blockDim.x >= 32 ) 
+  {
+    if( threadIdx.x < 16 )
+    {
+      sArray[threadIdx.x] += sArray[threadIdx.x+16];
+    } /* end if */
+    __syncthreads();
+  } /* end if */
+  if( blockDim.x >= 16 ) 
+  {
+    if( threadIdx.x < 8 )
+    {
+      sArray[threadIdx.x] += sArray[threadIdx.x+8];
+    } /* end if */
+    __syncthreads();
+  } /* end if */
+  if( blockDim.x >= 8 ) 
+  {
+    if( threadIdx.x < 4 )
+    {
+      sArray[threadIdx.x] += sArray[threadIdx.x+4];
+    } /* end if */
+    __syncthreads();
+  } /* end if */
+  if( blockDim.x >= 4 ) 
+  {
+    if( threadIdx.x < 2 )
+    {
+      sArray[threadIdx.x] += sArray[threadIdx.x+2];
+    } /* end if */
+    __syncthreads();
+  } /* end if */
+  if( blockDim.x >= 2 ) 
+  {
+    if( threadIdx.x < 1 )
+    {
+      sArray[threadIdx.x] += sArray[threadIdx.x+1];
+    } /* end if */
+    __syncthreads();
+  } /* end if */
+
+#else
 //  printf("tid %d blockId %d value %f\n",threadIdx.x, blockIdx.x, 
  //   sArray[threadIdx.x] );
 /* do the final reduction in SMEM */
@@ -60,9 +136,11 @@ __global__ void sumReduction(int n, floatType_t *in, floatType_t *out)
     __syncthreads();
   } /* end for */
 
-  if( threadIdx.x == 0 ) out[blockIdx.x] = sArray[0]; 
+//  if( threadIdx.x == 0 ) out[blockIdx.x] = sArray[0]; 
   //if( threadIdx.x == 0 ) printf("out is %f\n",out[blockIdx.x]);
 
+#endif
+  if( threadIdx.x == 0 ) out[blockIdx.x] = sArray[0]; 
   return;
 
 }

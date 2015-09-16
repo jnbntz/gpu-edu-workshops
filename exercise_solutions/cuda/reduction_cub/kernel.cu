@@ -15,10 +15,11 @@
  */
 
 #include <stdio.h>
+#include <cub/cub.cuh>
 #include "../debug.h"
 
 #define N ( 1 << 26 )
-#define THREADS_PER_BLOCK 256
+#define THREADS_PER_BLOCK 128
 
 typedef double floatType_t;
 
