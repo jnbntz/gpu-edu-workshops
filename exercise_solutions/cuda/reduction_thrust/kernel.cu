@@ -14,69 +14,20 @@
  *  limitations under the License.
  */
 
-#include <stdio.h>
-#include "../debug.h"
-#include <thrust/device_ptr.h>
+#include <thrust/host_vector.h>
 #include <thrust/device_vector.h>
-#include <thrust/reduce.h>
+#include <thrust/generate.h>
+#include <thrust/sort.h>
+#include <thrust/copy.h>
+#include <cstdlib>
+#include "../debug.h"
 
 #define N ( 1 << 26 )
-#define THREADS_PER_BLOCK 128
+#define FLOATTYPE_T double
 
-#define floatType_t double
-
-__global__ void sumReduction(int n, floatType_t *in, floatType_t *out)
+int main(void)
 {
-
-  __shared__ floatType_t sArray[THREADS_PER_BLOCK];
-
-/* calculate global index in the array */
-  int globalIndex = blockIdx.x * blockDim.x + threadIdx.x;
-	
-/* zero out the smem array */
-  sArray[threadIdx.x] = 0.0;
-
-/* grid stride handling case where array is larger than number of threads
- * launched
- * Loop over the grid stride so that each thread adds up its relevant 
- * elements of the array and saves them to SMEM
- */
-
-  for( int i = globalIndex; i < n; i += blockDim.x * gridDim.x )
-  {
-    sArray[threadIdx.x] += in[i];
-  } /* end for */
-  
-  __syncthreads();
-
-//  printf("tid %d blockId %d value %f\n",threadIdx.x, blockIdx.x, 
- //   sArray[threadIdx.x] );
-/* do the final reduction in SMEM */
-  //printf("blockDim is %d\n",blockDim.x);
-  for( int i = blockDim.x/2; i > 0; i = i / 2 )
-  {
-    if( threadIdx.x < i )
-    {
-      sArray[threadIdx.x] += sArray[threadIdx.x + i];
-   //   printf("tid %d, i %d, sArray %f\n",threadIdx.x, i,sArray[threadIdx.x] );
-    } /* end if */
-    __syncthreads();
-  } /* end for */
-
-  if( threadIdx.x == 0 ) out[blockIdx.x] = sArray[0]; 
-  //if( threadIdx.x == 0 ) printf("out is %f\n",out[blockIdx.x]);
-
-  return;
-
-}
-
-int main()
-{
-  floatType_t *h_in, h_out, good_out;
-  floatType_t *d_in, *d_out, *d_tempArray;
   int size = N;
-  int memBytes = size * sizeof( floatType_t );
-  int tempArraySize = 32768;
 
 /* get GPU device number and name */
 
@@ -86,110 +37,75 @@ int main()
   checkCUDA( cudaGetDeviceProperties( &deviceProp, dev ) );
   printf("Using GPU %d: %s\n", dev, deviceProp.name );
 
-/* allocate space for device copies of in, out */
+  // generate random numbers on the host
+  thrust::host_vector<FLOATTYPE_T> h_vec( size );
+  thrust::generate( h_vec.begin(), h_vec.end(), rand );
 
-  checkCUDA( cudaMalloc( &d_in, memBytes ) );
-  checkCUDA( cudaMalloc( &d_out, sizeof(floatType_t) ) );
-  checkCUDA( cudaMalloc( &d_tempArray, tempArraySize * sizeof(floatType_t) ) );
+  //transfer data to the device
+  thrust::device_vector<FLOATTYPE_T> d_vec = h_vec;
 
-/* allocate space for host copies of in, out and setup input values */
-
-  h_in = (floatType_t *)malloc( memBytes );
-
-  for( int i = 0; i < size; i++ )
-  {
-   h_in[i] = floatType_t( rand() ) / ( floatType_t (RAND_MAX) + 1.0 );
-  }
-
-  h_out      = 0.0;
-  good_out   = 0.0;
-
-/* copy inputs to device */
-
-  checkCUDA( cudaMemcpy( d_in, h_in, memBytes, cudaMemcpyHostToDevice ) );
-  checkCUDA( cudaMemset( d_out, 0, sizeof(floatType_t) ) );
-  checkCUDA( cudaMemset( d_tempArray, 0, 
-    tempArraySize * sizeof(floatType_t) ) );
-
-  thrust::device_ptr<floatType_t> dev_ptr = thrust::device_pointer_cast( d_in );
-//  thrust::copy(
-  double result = thrust::reduce(dev_ptr.begin(), dev_ptr.end(), (double)0,
-    thrust::plus<double> );
-
-/* calculate block and grid sizes */
-
-  dim3 threads1( THREADS_PER_BLOCK, 1, 1 );
-  
-  int blk = min( (size / threads1.x), tempArraySize );
-  dim3 blocks( blk, 1, 1);
-
-  dim3 threads2( min(blocks.x,threads1.x), 1, 1 );
-
-/* start the timers */
-
+  //create timers
   cudaEvent_t start, stop;
-  checkCUDA( cudaEventCreate( &start ) );
-  checkCUDA( cudaEventCreate( &stop ) );
-  checkCUDA( cudaEventRecord( start, 0 ) );
+  cudaEventCreate(&start);
+  cudaEventCreate(&stop);
 
-/* launch the kernel on the GPU */
+  cudaEventRecord( start, 0 );
 
-  sumReduction<<< blocks, threads1 >>>( size, d_in,  d_tempArray );
-  checkKERNEL()
-  sumReduction<<<      1, threads2 >>>( blocks.x, d_tempArray, d_out );
-  checkKERNEL()
+  //reduce data on the device
+  double devResult = thrust::reduce( d_vec.begin(), d_vec.end() );
 
-/* stop the timers */
+/* stop timers */
+  cudaEventRecord( stop, 0 );
+  cudaEventSynchronize( stop );
 
-  checkCUDA( cudaEventRecord( stop, 0 ) );
-  checkCUDA( cudaEventSynchronize( stop ) );
-  float elapsedTime;
-  checkCUDA( cudaEventElapsedTime( &elapsedTime, start, stop ) );
+  float GPUelapsedTime;
+  cudaEventElapsedTime( &GPUelapsedTime, start, stop );
 
-  printf("Total elements is %d, %f GB\n", size, sizeof(floatType_t)*
-    (double)size * 1.e-9 );
-  printf("GPU total time is %f ms, bandwidth %f GB/s\n", elapsedTime,
-    sizeof(floatType_t) * (double) size /
-    ( (double) elapsedTime / 1000.0 ) * 1.e-9);
+  GPUelapsedTime /= 1000.0;
 
-/* copy result back to host */
-
-  checkCUDA( cudaMemcpy( &h_out, d_out, sizeof(floatType_t), 
-    cudaMemcpyDeviceToHost ) );
-
-  checkCUDA( cudaEventRecord( start, 0 ) );
-
-  for( int i = 0; i < size; i++ )
-  {
-    good_out += h_in[i];
-  } /* end for */
-
-  checkCUDA( cudaEventRecord( stop, 0 ) );
-  checkCUDA( cudaEventSynchronize( stop ) );
-  checkCUDA( cudaEventElapsedTime( &elapsedTime, start, stop ) );
-  printf("CPU total time is %f ms, bandwidth %f GB/s\n", elapsedTime,
-    sizeof(floatType_t) * (double) size /
-    ( (double) elapsedTime / 1000.0 ) * 1.e-9);
+  printf("Total elements is %d, %f GB\n", size, sizeof(double) * 
+    (double)size * 1.e-9);
+  printf("GPU total time is %f ms, bandwidth %f GB/s\n", GPUelapsedTime,
+    sizeof(double)*(double)size / 
+    ( (double)GPUelapsedTime ) * 1.e-9 );
 
 
-  floatType_t diff = abs( good_out - h_out );
+  cudaEventRecord( start, 0 );
 
-  if( diff / h_out < 0.001 ) printf("PASS\n");
+  //reduce data on host
+  double hostResult = thrust::reduce(h_vec.begin(), h_vec.end() );
+
+  cudaEventRecord( stop, 0 );
+  cudaEventSynchronize( stop );
+
+  float CPUelapsedTime;
+  cudaEventElapsedTime( &CPUelapsedTime, start, stop );
+  CPUelapsedTime /= 1000.0;
+
+  printf("Total elements is %d, %f GB\n", size, sizeof(double) * 
+    (double)size * 1.e-9);
+  printf("CPU total time is %f ms, bandwidth %f GB/s\n", CPUelapsedTime,
+    sizeof(double)*(double)size / 
+    ( (double)CPUelapsedTime ) * 1.e-9 );
+
+
+  cudaEventDestroy(start);
+  cudaEventDestroy(stop);
+
+/* verify the results */
+
+  double diff = abs( devResult - hostResult );
+
+  if( diff / hostResult < 0.001 ) printf("PASS\n");
   else
-  {                       
+  {
     printf("FAIL\n");
-    printf("Error is %f\n", diff / h_out );
-    printf("GPU result is %f, CPU result is %f\n",h_out, good_out );
+    printf("Error is %f\n", diff / hostResult );
+    printf("GPU result is %f, CPU result is %f\n",devResult, hostResult );
   } /* end else */
+ 
 
-/* clean up */
 
-  free(h_in);
-  checkCUDA( cudaFree( d_in ) );
-  checkCUDA( cudaFree( d_out ) );
-  checkCUDA( cudaFree( d_tempArray ) );
-
-  checkCUDA( cudaDeviceReset() );
-	
   return 0;
 } /* end main */
+
