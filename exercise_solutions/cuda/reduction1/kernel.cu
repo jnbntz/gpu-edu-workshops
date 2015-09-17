@@ -17,7 +17,7 @@
 #include <stdio.h>
 #include "../debug.h"
 
-#define N ( 1 << 26 )
+#define N ( 1 << 27 )
 #define THREADS_PER_BLOCK 256
 
 #define FLOATTYPE_T float
@@ -72,7 +72,8 @@ int main()
 
   for( int i = 0; i < size; i++ )
   {
-   h_in[i] = FLOATTYPE_T( rand() ) / ( FLOATTYPE_T (RAND_MAX) + 1.0 );
+    h_in[i] = FLOATTYPE_T( rand() ) / ( FLOATTYPE_T (RAND_MAX) + 1.0 );
+    if( i % 2 == 0 ) h_in[i] = -h_in[i]; 
   }
 
   h_sum      = 0.0;

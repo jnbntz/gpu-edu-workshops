@@ -22,8 +22,8 @@
 #include <cstdlib>
 #include "../debug.h"
 
-#define N ( 1 << 26 )
-#define FLOATTYPE_T double
+#define N ( 1 << 27 )
+#define FLOATTYPE_T float 
 
 int main(void)
 {
@@ -37,21 +37,27 @@ int main(void)
   checkCUDA( cudaGetDeviceProperties( &deviceProp, dev ) );
   printf("Using GPU %d: %s\n", dev, deviceProp.name );
 
-  // generate random numbers on the host
+/* create the host array */  
   thrust::host_vector<FLOATTYPE_T> h_vec( size );
-  thrust::generate( h_vec.begin(), h_vec.end(), rand );
 
-  //transfer data to the device
+/* generate random numbers on the host */
+  for( int i = 0; i < size; i++ )
+  {
+    h_vec[i] = FLOATTYPE_T( rand() ) / ( FLOATTYPE_T (RAND_MAX) + 1.0 );
+    if( i % 2 == 0 ) h_vec[i] = -h_vec[i];
+  }
+
+/* transfer data to the device */
   thrust::device_vector<FLOATTYPE_T> d_vec = h_vec;
 
-  //create timers
+/* create timers */
   cudaEvent_t start, stop;
   cudaEventCreate(&start);
   cudaEventCreate(&stop);
 
   cudaEventRecord( start, 0 );
 
-  //reduce data on the device
+/* reduce data on the device */
   double devResult = thrust::reduce( d_vec.begin(), d_vec.end() );
 
 /* stop timers */
@@ -63,18 +69,21 @@ int main(void)
 
   GPUelapsedTime /= 1000.0;
 
-  printf("Total elements is %d, %f GB\n", size, sizeof(double) * 
+/* print GPU timing data */
+
+  printf("Total elements is %d, %f GB\n", size, sizeof(FLOATTYPE_T) * 
     (double)size * 1.e-9);
   printf("GPU total time is %f ms, bandwidth %f GB/s\n", GPUelapsedTime,
-    sizeof(double)*(double)size / 
+    sizeof(FLOATTYPE_T)*(double)size / 
     ( (double)GPUelapsedTime ) * 1.e-9 );
 
-
+/* start CPU timer */
   cudaEventRecord( start, 0 );
 
-  //reduce data on host
+/* reduce data on host */
   double hostResult = thrust::reduce(h_vec.begin(), h_vec.end() );
 
+/* stop timers */
   cudaEventRecord( stop, 0 );
   cudaEventSynchronize( stop );
 
@@ -82,10 +91,12 @@ int main(void)
   cudaEventElapsedTime( &CPUelapsedTime, start, stop );
   CPUelapsedTime /= 1000.0;
 
-  printf("Total elements is %d, %f GB\n", size, sizeof(double) * 
+/* print CPU timer */
+
+  printf("Total elements is %d, %f GB\n", size, sizeof(FLOATTYPE_T) * 
     (double)size * 1.e-9);
   printf("CPU total time is %f ms, bandwidth %f GB/s\n", CPUelapsedTime,
-    sizeof(double)*(double)size / 
+    sizeof(FLOATTYPE_T)*(double)size / 
     ( (double)CPUelapsedTime ) * 1.e-9 );
 
 
@@ -103,8 +114,6 @@ int main(void)
     printf("Error is %f\n", diff / hostResult );
     printf("GPU result is %f, CPU result is %f\n",devResult, hostResult );
   } /* end else */
- 
-
 
   return 0;
 } /* end main */
