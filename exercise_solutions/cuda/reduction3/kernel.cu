@@ -47,9 +47,9 @@ __global__ void sumReduction(int n, FLOATTYPE_T *in, FLOATTYPE_T *out)
   __syncthreads();
 
 /* do the final reduction in SMEM */
-  for( int i = blockDim.x/2; i > 0; i = i / 2 )
+  for( int i = 1; i < blockDim.x; i = 2*i )
   {
-    if( threadIdx.x < i )
+    if( threadIdx.x % (2*i) == 0 )
     {
       sArray[threadIdx.x] += sArray[threadIdx.x + i];
     } /* end if */
