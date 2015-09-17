@@ -17,15 +17,15 @@
 #include <stdio.h>
 #include "../debug.h"
 
-#define N ( 1 << 26 )
-#define THREADS_PER_BLOCK 256
+#define N ( 1 << 27 )
+#define THREADS_PER_BLOCK 128
 
-typedef double floatType_t;
+#define FLOATTYPE_T float
 
-__global__ void sumReduction(int n, floatType_t *in, floatType_t *out)
+__global__ void sumReduction(int n, FLOATTYPE_T *in, FLOATTYPE_T *out)
 {
 
-  __shared__ floatType_t sArray[THREADS_PER_BLOCK];
+  __shared__ FLOATTYPE_T sArray[THREADS_PER_BLOCK];
 
 /* calculate global index in the array */
   int globalIndex = blockIdx.x * blockDim.x + threadIdx.x;
@@ -43,114 +43,31 @@ __global__ void sumReduction(int n, floatType_t *in, floatType_t *out)
   {
     sArray[threadIdx.x] += in[i];
   } /* end for */
-
   
   __syncthreads();
 
-#if 1
-  if( blockDim.x >= 512 ) 
-  {
-    if( threadIdx.x < 256 )
-    {
-      sArray[threadIdx.x] += sArray[threadIdx.x+256];
-    } /* end if */
-    __syncthreads();
-  } /* end if */
-  if( blockDim.x >= 256 ) 
-  {
-    if( threadIdx.x < 128 )
-    {
-      sArray[threadIdx.x] += sArray[threadIdx.x+128];
-    } /* end if */
-    __syncthreads();
-  } /* end if */
-  if( blockDim.x >= 128 ) 
-  {
-    if( threadIdx.x < 64 )
-    {
-      sArray[threadIdx.x] += sArray[threadIdx.x+64];
-    } /* end if */
-    __syncthreads();
-  } /* end if */
-  if( blockDim.x >= 64 ) 
-  {
-    if( threadIdx.x < 32 )
-    {
-      sArray[threadIdx.x] += sArray[threadIdx.x+32];
-    } /* end if */
-    __syncthreads();
-  } /* end if */
-  if( blockDim.x >= 32 ) 
-  {
-    if( threadIdx.x < 16 )
-    {
-      sArray[threadIdx.x] += sArray[threadIdx.x+16];
-    } /* end if */
-    __syncthreads();
-  } /* end if */
-  if( blockDim.x >= 16 ) 
-  {
-    if( threadIdx.x < 8 )
-    {
-      sArray[threadIdx.x] += sArray[threadIdx.x+8];
-    } /* end if */
-    __syncthreads();
-  } /* end if */
-  if( blockDim.x >= 8 ) 
-  {
-    if( threadIdx.x < 4 )
-    {
-      sArray[threadIdx.x] += sArray[threadIdx.x+4];
-    } /* end if */
-    __syncthreads();
-  } /* end if */
-  if( blockDim.x >= 4 ) 
-  {
-    if( threadIdx.x < 2 )
-    {
-      sArray[threadIdx.x] += sArray[threadIdx.x+2];
-    } /* end if */
-    __syncthreads();
-  } /* end if */
-  if( blockDim.x >= 2 ) 
-  {
-    if( threadIdx.x < 1 )
-    {
-      sArray[threadIdx.x] += sArray[threadIdx.x+1];
-    } /* end if */
-    __syncthreads();
-  } /* end if */
-
-#else
-//  printf("tid %d blockId %d value %f\n",threadIdx.x, blockIdx.x, 
- //   sArray[threadIdx.x] );
 /* do the final reduction in SMEM */
-  //printf("blockDim is %d\n",blockDim.x);
   for( int i = blockDim.x/2; i > 0; i = i / 2 )
   {
     if( threadIdx.x < i )
     {
       sArray[threadIdx.x] += sArray[threadIdx.x + i];
-   //   printf("tid %d, i %d, sArray %f\n",threadIdx.x, i,sArray[threadIdx.x] );
     } /* end if */
     __syncthreads();
   } /* end for */
 
-//  if( threadIdx.x == 0 ) out[blockIdx.x] = sArray[0]; 
-  //if( threadIdx.x == 0 ) printf("out is %f\n",out[blockIdx.x]);
-
-#endif
   if( threadIdx.x == 0 ) out[blockIdx.x] = sArray[0]; 
+
   return;
 
 }
 
 int main()
 {
-  floatType_t *h_in, h_out, good_out;
-  floatType_t *d_in, *d_out, *d_tempArray;
+  FLOATTYPE_T *h_in, h_sum, cpu_sum;
+  FLOATTYPE_T *d_in, *d_sum, *d_tempArray;
   int size = N;
-  int memBytes = size * sizeof( floatType_t );
+  int memBytes = size * sizeof( FLOATTYPE_T );
   int tempArraySize = 32768;
 
 /* get GPU device number and name */
@@ -164,27 +81,28 @@ int main()
 /* allocate space for device copies of in, out */
 
   checkCUDA( cudaMalloc( &d_in, memBytes ) );
-  checkCUDA( cudaMalloc( &d_out, sizeof(floatType_t) ) );
-  checkCUDA( cudaMalloc( &d_tempArray, tempArraySize * sizeof(floatType_t) ) );
+  checkCUDA( cudaMalloc( &d_sum, sizeof(FLOATTYPE_T) ) );
+  checkCUDA( cudaMalloc( &d_tempArray, tempArraySize * sizeof(FLOATTYPE_T) ) );
 
 /* allocate space for host copies of in, out and setup input values */
 
-  h_in = (floatType_t *)malloc( memBytes );
+  h_in = (FLOATTYPE_T *)malloc( memBytes );
 
   for( int i = 0; i < size; i++ )
   {
-   h_in[i] = floatType_t( rand() ) / ( floatType_t (RAND_MAX) + 1.0 );
+    h_in[i] = FLOATTYPE_T( rand() ) / ( FLOATTYPE_T (RAND_MAX) + 1.0 );
+    if( i % 2 == 0 ) h_in[i] = -h_in[i];
   }
 
-  h_out      = 0.0;
-  good_out   = 0.0;
+  h_sum      = 0.0;
+  cpu_sum   = 0.0;
 
 /* copy inputs to device */
 
   checkCUDA( cudaMemcpy( d_in, h_in, memBytes, cudaMemcpyHostToDevice ) );
-  checkCUDA( cudaMemset( d_out, 0, sizeof(floatType_t) ) );
+  checkCUDA( cudaMemset( d_sum, 0, sizeof(FLOATTYPE_T) ) );
   checkCUDA( cudaMemset( d_tempArray, 0, 
-    tempArraySize * sizeof(floatType_t) ) );
+    tempArraySize * sizeof(FLOATTYPE_T) ) );
 
 /* calculate block and grid sizes */
 
@@ -206,7 +124,7 @@ int main()
 
   sumReduction<<< blocks, threads1 >>>( size, d_in,  d_tempArray );
   checkKERNEL()
-  sumReduction<<<      1, threads2 >>>( blocks.x, d_tempArray, d_out );
+  sumReduction<<<      1, threads2 >>>( blocks.x, d_tempArray, d_sum );
   checkKERNEL()
 
 /* stop the timers */
@@ -216,47 +134,47 @@ int main()
   float elapsedTime;
   checkCUDA( cudaEventElapsedTime( &elapsedTime, start, stop ) );
 
-  printf("Total elements is %d, %f GB\n", size, sizeof(floatType_t)*
+  printf("Total elements is %d, %f GB\n", size, sizeof(FLOATTYPE_T)*
     (double)size * 1.e-9 );
   printf("GPU total time is %f ms, bandwidth %f GB/s\n", elapsedTime,
-    sizeof(floatType_t) * (double) size /
+    sizeof(FLOATTYPE_T) * (double) size /
     ( (double) elapsedTime / 1000.0 ) * 1.e-9);
 
 /* copy result back to host */
 
-  checkCUDA( cudaMemcpy( &h_out, d_out, sizeof(floatType_t), 
+  checkCUDA( cudaMemcpy( &h_sum, d_sum, sizeof(FLOATTYPE_T), 
     cudaMemcpyDeviceToHost ) );
 
   checkCUDA( cudaEventRecord( start, 0 ) );
 
   for( int i = 0; i < size; i++ )
   {
-    good_out += h_in[i];
+    cpu_sum += h_in[i];
   } /* end for */
 
   checkCUDA( cudaEventRecord( stop, 0 ) );
   checkCUDA( cudaEventSynchronize( stop ) );
   checkCUDA( cudaEventElapsedTime( &elapsedTime, start, stop ) );
   printf("CPU total time is %f ms, bandwidth %f GB/s\n", elapsedTime,
-    sizeof(floatType_t) * (double) size /
+    sizeof(FLOATTYPE_T) * (double) size /
     ( (double) elapsedTime / 1000.0 ) * 1.e-9);
 
 
-  floatType_t diff = abs( good_out - h_out );
+  FLOATTYPE_T diff = abs( cpu_sum - h_sum );
 
-  if( diff / h_out < 0.001 ) printf("PASS\n");
+  if( diff / h_sum < 0.001 ) printf("PASS\n");
   else
   {                       
     printf("FAIL\n");
-    printf("Error is %f\n", diff / h_out );
-    printf("GPU result is %f, CPU result is %f\n",h_out, good_out );
+    printf("Error is %f\n", diff / h_sum );
+    printf("GPU result is %f, CPU result is %f\n",h_sum, cpu_sum );
   } /* end else */
 
 /* clean up */
 
   free(h_in);
   checkCUDA( cudaFree( d_in ) );
-  checkCUDA( cudaFree( d_out ) );
+  checkCUDA( cudaFree( d_sum ) );
   checkCUDA( cudaFree( d_tempArray ) );
 
   checkCUDA( cudaDeviceReset() );
