@@ -20,7 +20,7 @@
 #define N ( 1 << 26 )
 #define THREADS_PER_BLOCK 256
 
-#define FLOATTYPE_T double
+#define FLOATTYPE_T float
 
 __global__ void sumReduction(int n, FLOATTYPE_T *in, FLOATTYPE_T *sum)
 {
