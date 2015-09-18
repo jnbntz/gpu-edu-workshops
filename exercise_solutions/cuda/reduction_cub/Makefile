@@ -23,7 +23,7 @@ $(BIN): kernel.o
 	$(NVCC) $(NVOPTS) -o $(BIN) kernel.o
 
 kernel.o: kernel.cu
-	$(NVCC) $(NVOPTS) -c kernel.cu 
+	$(NVCC) $(NVOPTS) -c kernel.cu -I$(CUB_INCLUDE)
 
 clean:
 	rm -rf kernel.o $(BIN)
