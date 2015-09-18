@@ -2,4 +2,4 @@
 
 #BATCHARGS
 
-./x.reduction2
+./x.reduction_atomic

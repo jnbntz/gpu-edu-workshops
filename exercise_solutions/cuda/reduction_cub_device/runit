@@ -2,4 +2,4 @@
 
 #BATCHARGS
 
-./x.reduction_cub
+./x.reduction_cub_device

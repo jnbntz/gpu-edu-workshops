@@ -2,4 +2,4 @@
 
 #BATCHARGS
 
-./x.reduction1
+./x.reduction_naive

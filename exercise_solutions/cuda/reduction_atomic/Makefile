@@ -15,7 +15,7 @@
 #
 
 include ../make.common
-BIN=x.reduction2
+BIN=x.reduction_atomic
 NVCC=nvcc
 NVOPTS=-O3 $(ARCH) -DDEBUG
 
