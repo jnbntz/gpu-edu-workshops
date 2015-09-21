@@ -15,16 +15,52 @@
  */
 
 #include <stdio.h>
-#include <cub/cub.cuh>
+#include <cub/block/block_reduce.cuh>
 #include "../debug.h"
 
 #define N ( 1 << 27 )
+#define THREADS_PER_BLOCK 128
+
 #define FLOATTYPE_T float
+
+__global__ void sumReduction(int n, FLOATTYPE_T *in, FLOATTYPE_T *out)
+{
+
+/* Allocate shared memory for cub::BlockReduce */
+   __shared__ typename cub::BlockReduce<FLOATTYPE_T,
+                THREADS_PER_BLOCK>::TempStorage sArray;
+
+/* calculate global index in the array */
+  int globalIndex = blockIdx.x * blockDim.x + threadIdx.x;
+
+/* grid stride handling case where array is larger than number of threads
+ * launched
+ * Loop over the grid stride so that each thread adds up its relevant 
+ * elements of the array and saves them to a register.
+ */
+
+  FLOATTYPE_T tempResult = 0.0;
+
+  for( int i = globalIndex; i < n; i += blockDim.x * gridDim.x )
+  {
+    tempResult += in[i];
+  } /* end for */
+
+/* Compute the block-wide sum for thread0 */
+   FLOATTYPE_T blockSum = cub::BlockReduce<FLOATTYPE_T,
+                 THREADS_PER_BLOCK>(sArray).Sum(tempResult);
+
+/* write the result back to global memory */
+  if( threadIdx.x == 0 ) out[blockIdx.x] = blockSum;
+
+  return;
+
+}
 
 int main()
 {
-  FLOATTYPE_T *h_in, h_out, good_out;
-  FLOATTYPE_T *d_in, *d_out, *d_tempArray;
+  FLOATTYPE_T *h_in, h_sum, cpu_sum;
+  FLOATTYPE_T *d_in, *d_sum, *d_tempArray;
   int size = N;
   int memBytes = size * sizeof( FLOATTYPE_T );
   int tempArraySize = 32768;
@@ -40,7 +76,7 @@ int main()
 /* allocate space for device copies of in, out */
 
   checkCUDA( cudaMalloc( &d_in, memBytes ) );
-  checkCUDA( cudaMalloc( &d_out, sizeof(FLOATTYPE_T) ) );
+  checkCUDA( cudaMalloc( &d_sum, sizeof(FLOATTYPE_T) ) );
   checkCUDA( cudaMalloc( &d_tempArray, tempArraySize * sizeof(FLOATTYPE_T) ) );
 
 /* allocate space for host copies of in, out and setup input values */
@@ -53,24 +89,24 @@ int main()
     if( i % 2 == 0 ) h_in[i] = -h_in[i];
   }
 
-  h_out      = 0.0;
-  good_out   = 0.0;
+  h_sum      = 0.0;
+  cpu_sum   = 0.0;
 
 /* copy inputs to device */
 
   checkCUDA( cudaMemcpy( d_in, h_in, memBytes, cudaMemcpyHostToDevice ) );
-  checkCUDA( cudaMemset( d_out, 0, sizeof(FLOATTYPE_T) ) );
+  checkCUDA( cudaMemset( d_sum, 0, sizeof(FLOATTYPE_T) ) );
   checkCUDA( cudaMemset( d_tempArray, 0, 
     tempArraySize * sizeof(FLOATTYPE_T) ) );
 
-  void *d_temp_storage = NULL;
-  size_t temp_storage_bytes = 0;
-  cub::DeviceReduce::Sum( d_temp_storage, temp_storage_bytes, d_in, d_out, 
-    size );
+/* calculate block and grid sizes */
 
-  printf("temp storage is %ld\n", temp_storage_bytes );
+  dim3 threads1( THREADS_PER_BLOCK, 1, 1 );
+  
+  int blk = min( (size / threads1.x), tempArraySize );
+  dim3 blocks( blk, 1, 1);
 
-  checkCUDA( cudaMalloc( &d_temp_storage, temp_storage_bytes ) ); 
+  dim3 threads2( min(blocks.x,threads1.x), 1, 1 );
 
 /* start the timers */
 
@@ -80,8 +116,11 @@ int main()
   checkCUDA( cudaEventRecord( start, 0 ) );
 
 /* launch the kernel on the GPU */
-  cub::DeviceReduce::Sum( d_temp_storage, temp_storage_bytes, d_in, d_out, 
-    size );
+
+  sumReduction<<< blocks, threads1 >>>( size, d_in,  d_tempArray );
+  checkKERNEL()
+  sumReduction<<<      1, threads2 >>>( blocks.x, d_tempArray, d_sum );
+  checkKERNEL()
 
 /* stop the timers */
 
@@ -98,14 +137,14 @@ int main()
 
 /* copy result back to host */
 
-  checkCUDA( cudaMemcpy( &h_out, d_out, sizeof(FLOATTYPE_T), 
+  checkCUDA( cudaMemcpy( &h_sum, d_sum, sizeof(FLOATTYPE_T), 
     cudaMemcpyDeviceToHost ) );
 
   checkCUDA( cudaEventRecord( start, 0 ) );
 
   for( int i = 0; i < size; i++ )
   {
-    good_out += h_in[i];
+    cpu_sum += h_in[i];
   } /* end for */
 
   checkCUDA( cudaEventRecord( stop, 0 ) );
@@ -116,23 +155,22 @@ int main()
     ( (double) elapsedTime / 1000.0 ) * 1.e-9);
 
 
-  FLOATTYPE_T diff = abs( good_out - h_out );
+  FLOATTYPE_T diff = abs( cpu_sum - h_sum );
 
-  if( diff / h_out < 0.001 ) printf("PASS\n");
+  if( diff / h_sum < 0.001 ) printf("PASS\n");
   else
   {                       
     printf("FAIL\n");
-    printf("Error is %f\n", diff / h_out );
-    printf("GPU result is %f, CPU result is %f\n",h_out, good_out );
+    printf("Error is %f\n", diff / h_sum );
+    printf("GPU result is %f, CPU result is %f\n",h_sum, cpu_sum );
   } /* end else */
 
 /* clean up */
 
   free(h_in);
   checkCUDA( cudaFree( d_in ) );
-  checkCUDA( cudaFree( d_out ) );
+  checkCUDA( cudaFree( d_sum ) );
   checkCUDA( cudaFree( d_tempArray ) );
-  checkCUDA( cudaFree( d_temp_storage ) );
 
   checkCUDA( cudaDeviceReset() );
 	
