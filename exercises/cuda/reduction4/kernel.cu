@@ -41,19 +41,19 @@ __global__ void sumReduction(int n, FLOATTYPE_T *in, FLOATTYPE_T *out)
 
   for( int i = globalIndex; i < n; i += blockDim.x * gridDim.x )
   {
-    sArray[threadIdx.x] += in[i];
+    sArray[threadIdx.x] += FIXME;
   } /* end for */
   
-  __syncthreads();
+
 
 /* do the final reduction in SMEM */
-  for( int i = blockDim.x/2; i > 0; i = i / 2 )
+  for( int i = FIXME; i > 0; i = FIXME )
   {
     if( threadIdx.x < i )
     {
-      sArray[threadIdx.x] += sArray[threadIdx.x + i];
+      sArray[FIXME] += sArray[FIXME];
     } /* end if */
-    __syncthreads();
+
   } /* end for */
 
 /* thread0 of each threadblock writes the result to global memory */
@@ -123,9 +123,9 @@ int main()
 
 /* launch the kernel on the GPU */
 
-  sumReduction<<< blocks, threads1 >>>( size, d_in,  d_tempArray );
+  sumReduction<<< blocks, FIXME >>>( size, d_in,  d_tempArray );
   checkKERNEL()
-  sumReduction<<<      1, threads2 >>>( blocks.x, d_tempArray, d_sum );
+  sumReduction<<<      1, FIXME >>>( blocks.x, d_tempArray, d_sum );
   checkKERNEL()
 
 /* stop the timers */

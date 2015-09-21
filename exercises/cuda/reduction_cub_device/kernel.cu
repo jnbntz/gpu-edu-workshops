@@ -24,10 +24,9 @@
 int main()
 {
   FLOATTYPE_T *h_in, h_out, good_out;
-  FLOATTYPE_T *d_in, *d_out, *d_tempArray;
+  FLOATTYPE_T *d_in, *d_out;
   int size = N;
   int memBytes = size * sizeof( FLOATTYPE_T );
-  int tempArraySize = 32768;
 
 /* get GPU device number and name */
 
@@ -41,7 +40,6 @@ int main()
 
   checkCUDA( cudaMalloc( &d_in, memBytes ) );
   checkCUDA( cudaMalloc( &d_out, sizeof(FLOATTYPE_T) ) );
-  checkCUDA( cudaMalloc( &d_tempArray, tempArraySize * sizeof(FLOATTYPE_T) ) );
 
 /* allocate space for host copies of in, out and setup input values */
 
@@ -60,13 +58,11 @@ int main()
 
   checkCUDA( cudaMemcpy( d_in, h_in, memBytes, cudaMemcpyHostToDevice ) );
   checkCUDA( cudaMemset( d_out, 0, sizeof(FLOATTYPE_T) ) );
-  checkCUDA( cudaMemset( d_tempArray, 0, 
-    tempArraySize * sizeof(FLOATTYPE_T) ) );
 
+/* initialize the CUB temp storage */
   void *d_temp_storage = NULL;
   size_t temp_storage_bytes = 0;
-  cub::DeviceReduce::Sum( d_temp_storage, temp_storage_bytes, d_in, d_out, 
-    size );
+  cub::DeviceReduce::Sum( FIXME );
 
   printf("temp storage is %ld\n", temp_storage_bytes );
 
@@ -80,8 +76,7 @@ int main()
   checkCUDA( cudaEventRecord( start, 0 ) );
 
 /* launch the kernel on the GPU */
-  cub::DeviceReduce::Sum( d_temp_storage, temp_storage_bytes, d_in, d_out, 
-    size );
+  cub::DeviceReduce::Sum( FIXME );
 
 /* stop the timers */
 
@@ -131,7 +126,6 @@ int main()
   free(h_in);
   checkCUDA( cudaFree( d_in ) );
   checkCUDA( cudaFree( d_out ) );
-  checkCUDA( cudaFree( d_tempArray ) );
   checkCUDA( cudaFree( d_temp_storage ) );
 
   checkCUDA( cudaDeviceReset() );

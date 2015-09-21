@@ -27,8 +27,7 @@ __global__ void sumReduction(int n, FLOATTYPE_T *in, FLOATTYPE_T *out)
 {
 
 /* Allocate shared memory for cub::BlockReduce */
-   __shared__ typename cub::BlockReduce<FLOATTYPE_T,
-                THREADS_PER_BLOCK>::TempStorage sArray;
+   __shared__ typename cub::BlockReduce<FIXME,FIXME>::TempStorage sArray;
 
 /* calculate global index in the array */
   int globalIndex = blockIdx.x * blockDim.x + threadIdx.x;
@@ -47,8 +46,7 @@ __global__ void sumReduction(int n, FLOATTYPE_T *in, FLOATTYPE_T *out)
   } /* end for */
 
 /* Compute the block-wide sum for thread0 */
-   FLOATTYPE_T blockSum = cub::BlockReduce<FLOATTYPE_T,
-                 THREADS_PER_BLOCK>(sArray).Sum(tempResult);
+   FLOATTYPE_T blockSum = cub::BlockReduce<FIXME,FIXME>(FIXME).Sum(FIXME);
 
 /* write the result back to global memory */
   if( threadIdx.x == 0 ) out[blockIdx.x] = blockSum;

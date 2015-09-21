@@ -36,12 +36,12 @@ __global__ void sumReduction(int n, FLOATTYPE_T *in, FLOATTYPE_T *sum)
 /* loop for calculating the result */
   for( int i = 0; i < N; i++ ) 
   { 
-    result += in[i];
+    result += FIXME
   } /* end for */
 
 /* write the result to global memory */
 
-  *sum = result;
+  *sum = FIXME;
   return;
 
 }

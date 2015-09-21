@@ -42,7 +42,7 @@ __global__ void sumReduction(int n, FLOATTYPE_T *in, FLOATTYPE_T *sum)
 
   for( int i = globalIndex; i < n; i += blockDim.x * gridDim.x )
   {
-      atomicAdd( sum, in[i] );
+      atomicAdd( FIXME, FIXME );
   } /* end for */
 
   return;

@@ -38,7 +38,7 @@ int main(void)
   printf("Using GPU %d: %s\n", dev, deviceProp.name );
 
 /* create the host array */  
-  thrust::host_vector<FLOATTYPE_T> h_vec( size );
+  thrust::host_vector<FLOATTYPE_T> h_vec( FIXME );
 
 /* generate random numbers on the host */
   for( int i = 0; i < size; i++ )
@@ -48,7 +48,7 @@ int main(void)
   }
 
 /* transfer data to the device */
-  thrust::device_vector<FLOATTYPE_T> d_vec = h_vec;
+  thrust::device_vector<FLOATTYPE_T> d_vec = FIXME;
 
 /* create timers */
   cudaEvent_t start, stop;
@@ -58,7 +58,7 @@ int main(void)
   cudaEventRecord( start, 0 );
 
 /* reduce data on the device */
-  FLOATTYPE_T devResult = thrust::reduce( d_vec.begin(), d_vec.end() );
+  FLOATTYPE_T devResult = thrust::reduce( FIXME, FIXME );
 
 /* stop timers */
   cudaEventRecord( stop, 0 );
