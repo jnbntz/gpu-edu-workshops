@@ -58,7 +58,7 @@ int main(void)
   cudaEventRecord( start, 0 );
 
 /* reduce data on the device */
-  double devResult = thrust::reduce( d_vec.begin(), d_vec.end() );
+  FLOATTYPE_T devResult = thrust::reduce( d_vec.begin(), d_vec.end() );
 
 /* stop timers */
   cudaEventRecord( stop, 0 );
@@ -81,7 +81,7 @@ int main(void)
   cudaEventRecord( start, 0 );
 
 /* reduce data on host */
-  double hostResult = thrust::reduce(h_vec.begin(), h_vec.end() );
+  FLOATTYPE_T hostResult = thrust::reduce(h_vec.begin(), h_vec.end() );
 
 /* stop timers */
   cudaEventRecord( stop, 0 );

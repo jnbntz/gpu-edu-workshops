@@ -96,7 +96,9 @@ int main()
   checkCUDA( cudaEventCreate( &stop ) );
   checkCUDA( cudaEventRecord( start, 0 ) );
 
-/* launch the kernel on the GPU */
+/* launch the kernel on the GPU 
+   Since it's naive we'll only launch one thread total.  This is a serial
+   algorithm */
 
   sumReduction<<< 1, 1 >>>( size, d_in, d_sum );
   checkKERNEL()

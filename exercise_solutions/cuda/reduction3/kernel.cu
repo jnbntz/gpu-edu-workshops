@@ -56,6 +56,7 @@ __global__ void sumReduction(int n, FLOATTYPE_T *in, FLOATTYPE_T *out)
     __syncthreads();
   } /* end for */
 
+/* thread0 writes the thread block reduced value back to global memory */
   if( threadIdx.x == 0 ) out[blockIdx.x] = sArray[0]; 
 
   return;

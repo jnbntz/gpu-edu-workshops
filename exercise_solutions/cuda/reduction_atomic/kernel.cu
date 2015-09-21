@@ -90,6 +90,9 @@ int main()
 
   dim3 threads( THREADS_PER_BLOCK, 1, 1);
   
+/* choose blocksize such that it will be smaller than the max that this
+   GPU allows */ 
+ 
   int blk = min( (size / threads.x) + 1, deviceProp.maxGridSize[0] );
   dim3 blocks( blk, 1, 1);
 
