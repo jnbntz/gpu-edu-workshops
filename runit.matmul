@@ -2,5 +2,7 @@
 
 #BATCHARGS
 
-matrixMul
-matrixMulCUBLAS
+source ./samplespath
+
+$SAMPLESPATH/matrixMul
+$SAMPLESPATH/matrixMulCUBLAS

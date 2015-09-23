@@ -2,4 +2,6 @@
 
 #BATCHARGS
 
-bandwidthTest
+source ./samplespath
+
+$SAMPLESPATH/bandwidthTest

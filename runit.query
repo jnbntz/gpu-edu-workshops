@@ -2,4 +2,6 @@
 
 #BATCHARGS
 
-deviceQuery
+source ./samplespath
+
+$SAMPLESPATH/deviceQuery
