@@ -63,6 +63,10 @@ int main()
   checkCUDA( cudaMemcpy( d_a, a, size, cudaMemcpyHostToDevice ) );
   checkCUDA( cudaMemcpy( d_b, b, size, cudaMemcpyHostToDevice ) );
 
+/* zero out the C array */
+
+  checkCUDA( cudaMemset( d_c, 0, size ) );
+
 /* launch the kernel on the GPU */
 
   add<<< N / THREADS_PER_BLOCK, THREADS_PER_BLOCK >>>( d_a, d_b, d_c );

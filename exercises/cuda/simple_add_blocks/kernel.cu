@@ -64,6 +64,10 @@ int main()
 /* insert code to copy b to the device */
   FIXME
 
+/* zero out C array */
+
+  checkCUDA( cudaMemset( d_c, 0, size ) );
+
 /* launch the kernel on the GPU */
 /* finish the kernel launch with N blocks and 1 thread per block */
   add<<< FIXME, FIXME >>>( d_a, d_b, d_c );

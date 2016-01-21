@@ -64,6 +64,10 @@ int main()
   checkCUDA( cudaMemcpy( d_a, a, size, cudaMemcpyHostToDevice ) );
   checkCUDA( cudaMemcpy( d_b, b, size, cudaMemcpyHostToDevice ) );
 
+/* zero out C array */
+
+  checkCUDA( cudaMemset( d_c, 0, size ) );
+
 /* launch the kernel on the GPU */
 /* insert correct launch parameters to use 1 block and N threads */
   add<<< FIXME, FIXME >>>( d_a, d_b, d_c );

@@ -61,8 +61,12 @@ int main()
   checkCUDA( cudaMemcpy( d_a, a, size, cudaMemcpyHostToDevice ) );
   checkCUDA( cudaMemcpy( d_b, b, size, cudaMemcpyHostToDevice ) );
 
-/* launch the kernel on the GPU */
+/* zero out C array */
 
+  checkCUDA( cudaMemset( d_c, 0, size ) );
+
+/* launch the kernel on the GPU */
+/* finish the kernel launch with N blocks and 1 thread per block */
   add<<< N, 1 >>>( d_a, d_b, d_c );
   checkKERNEL()
 

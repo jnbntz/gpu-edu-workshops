@@ -49,10 +49,15 @@ int main()
   b = 7;
   c = -99;
 
+
 /* copy inputs to device */
 
   checkCUDA( cudaMemcpy( d_a, &a, size, cudaMemcpyHostToDevice ) );
   checkCUDA( cudaMemcpy( d_b, &b, size, cudaMemcpyHostToDevice ) );
+
+/* zero out the device memory for C */
+
+  checkCUDA( cudaMemset( d_c, 0, size ) );
 
 /* launch the kernel on the GPU */
 

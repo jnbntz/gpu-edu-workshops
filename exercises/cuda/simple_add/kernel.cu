@@ -42,6 +42,10 @@ int main()
 /* enter code here to malloc d_b and d_c */
   FIXME
 
+/* zero out the device memory for C */
+
+  checkCUDA( cudaMemset( d_c, 0, size ) );
+
 /* setup initial values */
 
   a = 2;
