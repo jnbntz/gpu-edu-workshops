@@ -155,7 +155,7 @@ int main()
 
   FLOATTYPE_T diff = abs( cpu_sum - h_sum );
 
-  if( diff / h_sum < 0.001 ) printf("PASS\n");
+  if( diff / abs(h_sum) < 0.001 ) printf("PASS\n");
   else
   {                       
     printf("FAIL\n");

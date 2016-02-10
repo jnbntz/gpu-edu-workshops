@@ -1,2 +1,2 @@
-ARCH=-arch sm_20
+ARCH=-arch sm_30
 CUB_INCLUDE=../../../../cub-1.4.1

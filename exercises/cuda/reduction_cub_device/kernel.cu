@@ -113,7 +113,7 @@ int main()
 
   FLOATTYPE_T diff = abs( good_out - h_out );
 
-  if( diff / h_out < 0.001 ) printf("PASS\n");
+  if( diff / abs(h_out) < 0.001 ) printf("PASS\n");
   else
   {                       
     printf("FAIL\n");

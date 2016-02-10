@@ -107,7 +107,7 @@ int main(void)
 
   double diff = abs( devResult - hostResult );
 
-  if( diff / hostResult < 0.001 ) printf("PASS\n");
+  if( diff / abs(hostResult) < 0.001 ) printf("PASS\n");
   else
   {
     printf("FAIL\n");
