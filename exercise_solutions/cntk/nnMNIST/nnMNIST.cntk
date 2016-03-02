@@ -1,0 +1,123 @@
+RootDir = "."
+
+ConfigDir = "$RootDir$/Config"
+DataDir = "$RootDir$/Data"
+OutputDir = "$RootDir$/Output"
+ModelDir = "$OutputDir$/Models"
+
+command = mnistTrain:mnistTest
+
+modelPath = "$ModelDir$/myModel.dnn"
+
+imageLayout = "cudnn"
+precision = "float"
+deviceId = "auto"
+
+traceLevel=0
+
+stderr = "$RootDir$/mnist2"
+
+mnistTrain = [
+
+  action = "train"
+
+# 784 inputs, 1 hidden layer, 10 output classes
+
+  NDLNetworkBuilder = [
+
+    run = NN 
+
+    NN = [
+
+# network size parameters
+      InputDim=784
+      HiddenDim=256
+      OutputDim=10
+
+# define the sizes of the features and labels
+      features = Input(InputDim)
+      labels = Input(OutputDim)
+
+# define the learnable parameters, i.e., the weights
+      Weights1=Parameter(HiddenDim, InputDim)
+      Weights2=Parameter(OutputDim, HiddenDim)
+      Bias1=Parameter(HiddenDim,1)
+      Bias2=Parameter(OutputDim,1)
+
+# define the computation flow
+      Z1=Times(Weights1, features)
+      B1=Plus(Z1,Bias1)
+
+      Activations1=Sigmoid(B1)
+
+      Z2=Times(Weights2, Activations1)
+      B2=Plus(Z2,Bias2)
+
+      Activations2=Sigmoid(B2)
+
+#define the error criterion
+      Error=SquareError(labels, Activations2)
+      ErrPredict=ErrorPrediction(labels, Activations2)
+
+# define the special nodes
+      FeatureNodes=(features)
+      LabelNodes=(labels)
+      CriteriaNodes=(Error)
+      EvalNodes=(ErrPredict)
+      OutputNodes=(Activations2)
+
+    ] # end run NN
+
+  ] # end NDLNetworkBuilder
+
+  SGD = [
+    epochSize = 60000
+    minibatchSize = 32
+    learningRatesPerMB = 0.1
+    maxEpochs = 30
+  ] # end SGD
+
+  reader = [
+
+    readerType = "UCIFastReader"
+    file = "$DataDir$/Train-28x28.txt"
+
+    features = [
+      dim = 784
+      start = 1
+    ] # end features
+
+    labels = [
+      dim = 1
+      start = 0
+      labelDim = 10
+      labelMappingFile = "$DataDir$/labelsmap.txt"   
+    ] # end labels
+
+  ] # end reader
+
+] # end mnistTrain
+
+mnistTest = [
+  action = "test"
+  minibatchSize = 16
+
+  reader = [
+    readerType = "UCIFastReader"
+    file = "$DataDir$/Test-28x28.txt"
+
+    features = [
+      dim = 784
+      start = 1
+    ] # end features
+
+    labels = [
+      dim = 1
+      start = 0
+      labelDim = 10
+      labelMappingFile = "$DataDir$/labelsmap.txt"
+    ] # end labels
+  
+  ] # end reader
+
+] # end mnistTest

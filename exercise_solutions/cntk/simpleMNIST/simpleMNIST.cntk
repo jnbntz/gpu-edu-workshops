@@ -1,0 +1,90 @@
+RootDir = "."
+
+ConfigDir = "$RootDir$/Config"
+DataDir = "$RootDir$/Data"
+OutputDir = "$RootDir$/Output"
+ModelDir = "$OutputDir$/Models"
+
+command = mnistTrain:mnistTest:topoplot
+
+modelPath = "$ModelDir$/myModel.dnn"
+
+imageLayout = "cudnn"
+precision = "float"
+deviceId = "auto"
+
+traceLevel=1
+
+stderr = "$RootDir$/mnist0"
+
+mnistTrain = [
+
+  action = "train"
+
+# 784 inputs, 1 hidden layer, 10 output classes
+
+  SimpleNetworkBuilder = [
+    layerSizes = 784:256:10
+    layerTypes = "Sigmoid"
+    trainingCriterion = "SquareError"
+    evalCriterion = "ErrorPrediction"
+  ] # end SimpleNetworkBuilder
+
+  SGD = [
+    epochSize = 60000
+    minibatchSize = 32
+    learningRatesPerMB = 0.1
+    maxEpochs = 5
+  ] # end SGD
+
+  reader = [
+
+    readerType = "UCIFastReader"
+    file = "$DataDir$/Train-28x28.txt"
+
+    features = [
+      dim = 784
+      start = 1
+    ] # end features
+
+    labels = [
+      dim = 1
+      start = 0
+      labelDim = 10
+      labelMappingFile = "$DataDir$/labelsmap.txt"   
+    ] # end labels
+
+  ] # end reader
+
+] # end mnistTrain
+
+mnistTest = [
+  action = "test"
+  minibatchSize = 16
+
+  reader = [
+    readerType = "UCIFastReader"
+    file = "$DataDir$/Test-28x28.txt"
+
+    features = [
+      dim = 784
+      start = 1
+    ] # end features
+
+    labels = [
+      dim = 1
+      start = 0
+      labelDim = 10
+      labelMappingFile = "$DataDir$/labelsmap.txt"
+    ] # end labels
+  
+  ] # end reader
+
+] # end mnistTest
+
+topoplot = [
+  action = "plot"
+  outputdotFile="model0.dot"
+  outputFile="model0.jpg"
+  renderCmd="/usr/bin/dot -Tjpg <IN> -o<OUT>"
+] # end topoplot
