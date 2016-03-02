@@ -14,54 +14,83 @@
 #  limitations under the License.
 #
 
+# file path definitions
+
 RootDir = "."
 
 ConfigDir = "$RootDir$/Config"
-DataDir = "$RootDir$/Data"
+DataDir = "$RootDir$/../Data/MNIST"
 OutputDir = "$RootDir$/Output"
 ModelDir = "$OutputDir$/Models"
 
+# overall commands to be executed
 command = mnistTrain:mnistTest:topoplot
 
+# path to the model that will be created by train and used by test
 modelPath = "$ModelDir$/simpleMNIST.dnn"
 
+# data layout of the images
 imageLayout = "cudnn"
+
+# precision of arithmetic to be used
 precision = "float"
+
+# deviceId, choose -1 for CPU, >= 0 for GPU, or auto to use GPU if avail or 
+# fallback to CPU
 deviceId = "auto"
 
-traceLevel=1
+# traceLevel determines how much to be printed, 0 is least and 2 is most
+traceLevel=0
 
+# if stderr is defined, the output will be written to this file instead of 
+# the screen
 stderr = "$RootDir$/stderr"
 
+# command block to specify the training 
 mnistTrain = [
 
+# set the action to train
   action = "train"
 
 # 784 inputs, 1 hidden layer, 10 output classes
 
   SimpleNetworkBuilder = [
 
+# layerSizes, first number is input size, last number is output size, any 
+# middle layers are hidden layers
     layerSizes = 784:256:10
+
+# specify the activation type
     layerTypes = "Sigmoid"
+
+# specify the function to be minimized
     trainingCriterion = "SquareError"
+
+# specify the evaluation criterion
     evalCriterion = "ErrorPrediction"
 
   ] # end SimpleNetworkBuilder
 
+# SGD is for stochastic gradient descent
   SGD = [
 
     epochSize = 60000
     minibatchSize = 32
+
+# learning rate per mini-batch
     learningRatesPerMB = 0.1
     maxEpochs = 5
 
   ] # end SGD
 
+# specify the reader which tells CNTK how to read the data properly
   reader = [
 
     readerType = "UCIFastReader"
-    file = "$DataDir$/Train-28x28.txt"
+    file = "$DataDir$/train-images.txt"
 
+# specify how many features per example and where the features start in the
+# test file
     features = [
 
       dim = 784
@@ -69,11 +98,16 @@ mnistTrain = [
 
     ] # end features
 
+# specify how many labels and where the labels start in the text file
     labels = [
 
       dim = 1
       start = 0
+
+# labelDim is 10 because we have 10 possible digits
       labelDim = 10
+
+# file to map numbers to labels.  Each row corresponds to a unique label
       labelMappingFile = "$DataDir$/labelsmap.txt"   
 
     ] # end labels
@@ -82,15 +116,20 @@ mnistTrain = [
 
 ] # end mnistTrain
 
+# command block to specify the testing
 mnistTest = [
 
+# set the action to test
   action = "test"
+
+# specify minibatchsize for testing
   minibatchSize = 16
 
+# reader same as above just different file name with the test examples
   reader = [
 
     readerType = "UCIFastReader"
-    file = "$DataDir$/Test-28x28.txt"
+    file = "$DataDir$/t10k-images.txt"
 
     features = [
 
@@ -112,11 +151,12 @@ mnistTest = [
 
 ] # end mnistTest
 
+# command block to specify the plot of the network
 topoplot = [
 
   action = "plot"
-  outputdotFile="model0.dot"
-  outputFile="model0.jpg"
+  outputdotFile="model.dot"
+  outputFile="model.jpg"
   renderCmd="/usr/bin/dot -Tjpg <IN> -o<OUT>"
 
 ] # end topoplot
