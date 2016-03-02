@@ -1,3 +1,19 @@
+#
+#  Copyright 2016 NVIDIA Corporation
+#
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+#
+
 RootDir = "."
 
 ConfigDir = "$RootDir$/Config"
@@ -7,7 +23,7 @@ ModelDir = "$OutputDir$/Models"
 
 command = mnistTrain:mnistTest:topoplot
 
-modelPath = "$ModelDir$/myModel.dnn"
+modelPath = "$ModelDir$/simpleMNIST.dnn"
 
 imageLayout = "cudnn"
 precision = "float"
@@ -15,7 +31,7 @@ deviceId = "auto"
 
 traceLevel=1
 
-stderr = "$RootDir$/mnist0"
+stderr = "$RootDir$/stderr"
 
 mnistTrain = [
 
@@ -24,17 +40,21 @@ mnistTrain = [
 # 784 inputs, 1 hidden layer, 10 output classes
 
   SimpleNetworkBuilder = [
+
     layerSizes = 784:256:10
     layerTypes = "Sigmoid"
     trainingCriterion = "SquareError"
     evalCriterion = "ErrorPrediction"
+
   ] # end SimpleNetworkBuilder
 
   SGD = [
+
     epochSize = 60000
     minibatchSize = 32
     learningRatesPerMB = 0.1
     maxEpochs = 5
+
   ] # end SGD
 
   reader = [
@@ -43,15 +63,19 @@ mnistTrain = [
     file = "$DataDir$/Train-28x28.txt"
 
     features = [
+
       dim = 784
       start = 1
+
     ] # end features
 
     labels = [
+
       dim = 1
       start = 0
       labelDim = 10
       labelMappingFile = "$DataDir$/labelsmap.txt"   
+
     ] # end labels
 
   ] # end reader
@@ -59,23 +83,29 @@ mnistTrain = [
 ] # end mnistTrain
 
 mnistTest = [
+
   action = "test"
   minibatchSize = 16
 
   reader = [
+
     readerType = "UCIFastReader"
     file = "$DataDir$/Test-28x28.txt"
 
     features = [
+
       dim = 784
       start = 1
+
     ] # end features
 
     labels = [
+
       dim = 1
       start = 0
       labelDim = 10
       labelMappingFile = "$DataDir$/labelsmap.txt"
+
     ] # end labels
   
   ] # end reader
@@ -83,8 +113,10 @@ mnistTest = [
 ] # end mnistTest
 
 topoplot = [
+
   action = "plot"
   outputdotFile="model0.dot"
   outputFile="model0.jpg"
   renderCmd="/usr/bin/dot -Tjpg <IN> -o<OUT>"
+
 ] # end topoplot
