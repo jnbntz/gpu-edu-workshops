@@ -14,6 +14,8 @@
 #  limitations under the License.
 #
 
+# file path definitions
+
 RootDir = "."
 
 ConfigDir = "$RootDir$/Config"
@@ -21,28 +23,42 @@ DataDir = "$RootDir$/Data"
 OutputDir = "$RootDir$/Output"
 ModelDir = "$OutputDir$/Models"
 
+# overall commands to be executed
 command = mnistTrain:mnistTest
 
-modelPath = "$ModelDir$/myModel.dnn"
+# path to teh model that will be created by train and used by test
+modelPath = "$ModelDir$/nnMNIST.dnn"
 
+# data layout of the images.  cudnn when using GPU wtih CUDNN library
 imageLayout = "cudnn"
+
+# precision of the arithmetic. 
 precision = "float"
+
+# which device to use.  -1 for CPU, >= 0 for GPU, "auto" for GPU then fallback
+# to CPU if no GPU present
 deviceId = "auto"
 
+# determines how much info to be printed.  0 is least and 2 is most
 traceLevel=0
 
+# if defined, output will be written to this file instead of the screen
 stderr = "$RootDir$/mnist2"
 
+# command block to specify the training
 mnistTrain = [
 
+# set the action to train
   action = "train"
 
 # 784 inputs, 1 hidden layer, 10 output classes
 
   NDLNetworkBuilder = [
 
+# choose which subblock to run
     run = NN 
 
+# define the NN subblock
     NN = [
 
 # network size parameters
@@ -87,6 +103,7 @@ mnistTrain = [
 
   ] # end NDLNetworkBuilder
 
+# define the SGD parameters
   SGD = [
     epochSize = 60000
     minibatchSize = 32
@@ -94,16 +111,19 @@ mnistTrain = [
     maxEpochs = 30
   ] # end SGD
 
+#specify the reader which tells CNTK how to read the data properly.
   reader = [
 
     readerType = "UCIFastReader"
-    file = "$DataDir$/Train-28x28.txt"
+    file = "$DataDir$/train-images.txt"
 
+# how many features per example and where the features start in the test file
     features = [
       dim = 784
       start = 1
     ] # end features
 
+# how many labels and where they start in the text file
     labels = [
       dim = 1
       start = 0
@@ -115,13 +135,19 @@ mnistTrain = [
 
 ] # end mnistTrain
 
+# command block to specify the testing
 mnistTest = [
+
+# set the action to test
   action = "test"
+
+# set the minibatch size
   minibatchSize = 16
 
+# set the reader, same info as above with different file name
   reader = [
     readerType = "UCIFastReader"
-    file = "$DataDir$/Test-28x28.txt"
+    file = "$DataDir$/t10k-images.txt"
 
     features = [
       dim = 784
