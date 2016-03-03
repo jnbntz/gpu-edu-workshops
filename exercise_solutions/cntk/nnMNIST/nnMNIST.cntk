@@ -19,12 +19,12 @@
 RootDir = "."
 
 ConfigDir = "$RootDir$/Config"
-DataDir = "$RootDir$/Data"
+DataDir = "$RootDir$/../Data/MNIST"
 OutputDir = "$RootDir$/Output"
 ModelDir = "$OutputDir$/Models"
 
 # overall commands to be executed
-command = mnistTrain:mnistTest
+command = mnistTrain:mnistTest:topoplot
 
 # path to teh model that will be created by train and used by test
 modelPath = "$ModelDir$/nnMNIST.dnn"
@@ -43,7 +43,7 @@ deviceId = "auto"
 traceLevel=0
 
 # if defined, output will be written to this file instead of the screen
-stderr = "$RootDir$/mnist2"
+stderr = "$RootDir$/output"
 
 # command block to specify the training
 mnistTrain = [
@@ -74,8 +74,8 @@ mnistTrain = [
 # define the learnable parameters, i.e., the weights of the network
       Weights1=Parameter(HiddenDim, InputDim)
       Weights2=Parameter(OutputDim, HiddenDim)
-      Bias1=Parameter(HiddenDim,1)
-      Bias2=Parameter(OutputDim,1)
+      Bias1=Parameter(HiddenDim)
+      Bias2=Parameter(OutputDim)
 
 # define the computation flow of the neural network
       Z1=Times(Weights1, features)
@@ -164,3 +164,12 @@ mnistTest = [
   ] # end reader
 
 ] # end mnistTest
+
+# command block to specify the plot of the network
+topoplot = [
+
+  action = "plot" 
+  outputdotFile="model.dot"
+  outputFile="model.jpg"
+  renderCmd="/usr/bin/dot -Tjpg <IN> -o<OUT>"
+] # end topoplot
