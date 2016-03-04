@@ -108,7 +108,7 @@ mnistTrain = [
     epochSize = 60000
     minibatchSize = 32
     learningRatesPerMB = 0.1
-    maxEpochs = 30
+    maxEpochs = 5
   ] # end SGD
 
 #specify the reader which tells CNTK how to read the data properly.
