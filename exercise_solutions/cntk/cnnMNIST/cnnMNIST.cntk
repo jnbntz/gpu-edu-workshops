@@ -56,46 +56,93 @@ mnistTrain = [
   NDLNetworkBuilder = [
 
 # choose which subblock to run
-    run = NN 
+    run = CNN 
 
 # define the NN subblock
-    NN = [
+    CNN = [
 
-# network size parameters
-      InputDim=784
-      HiddenDim=256
-      OutputDim=10
+# image size parameters
+      imageWidth=28
+      imageHeight=28
+      numChannels=1
+      labelDim=10
 
-# define the sizes of the features and labels.  features and labels are key
+      features=ImageInput(imageWidth, imageHeight, numChannels, 
+        imageLayout=$imageLayout$ )
+      
+
 # words that should be defined
-      features = Input(InputDim)
-      labels = Input(OutputDim)
+      labels = InputValue(labelDim)
 
 # define the learnable parameters, i.e., the weights of the network
-      Weights1=Parameter(HiddenDim, InputDim)
-      Weights2=Parameter(OutputDim, HiddenDim)
-      ConvWeights1=Parameter(1,25)
+#      Weights1=Parameter(HiddenDim, InputDim)
+#      Weights2=Parameter(OutputDim, HiddenDim)
+#      ConvWeights1=Parameter(1,25)
 
 #      Conv1=Convolution(ConvWeights1, features, 
 # define the computation flow of the neural network
-      Z1=Times(Weights1, features)
+#      Z1=Times(Weights1, features)
 
-      Activations1=Sigmoid(Z1)
+#      Activations1=Sigmoid(Z1)
 
-      Z2=Times(Weights2, Activations1)
+#      Z2=Times(Weights2, Activations1)
 
-      Activations2=Sigmoid(Z2)
+#      Activations2=Sigmoid(Z2)
+
+# first convolution layer
+      numFeatureMaps = 16
+      kernelWidth = 5
+      kernelHeight = 5
+
+      Conv1Weights = Parameter( numFeatureMaps, 25 )
+      Conv1Bias = ImageParameter( 1, 1, numFeatureMaps)
+      Conv1 = Convolution( Conv1Weights, features, kernelWidth, kernelHeight, 
+        numFeatureMaps, 1, 1, zeroPadding=false, imageLayout=$imageLayout$ )
+
+# first activation layer
+
+      Act1 = Sigmoid( Conv1 )
+
+# first pooling layer
+
+      Pool1 = MaxPooling( Act1, 2, 2, 2, 2, imageLayout=$imageLayout$ )
+
+# second convolution layer
+
+      numFeatureMaps2 = 24
+
+      Conv2Weights = Parameter( numFeatureMaps2, 400 )
+      Conv2Bias = ImageParameter( 1, 1, numFeatureMaps2)
+      Conv2 = Convolution( Conv2Weights, Pool1, kernelWidth, kernelHeight, 
+        numFeatureMaps2, 1, 1, zeroPadding=false, imageLayout=$imageLayout$ )
+
+# second pooling layer
+
+# first fully connected layer
+      W6=Parameter(128,1536)
+      b6=Parameter(128,1)
+      t6=Times(W6,Conv2)
+      z6=Plus(t6,b6)
+      y6=Sigmoid(z6)
+
+# second fully connected layer
+
+      W7=Parameter(10,128)
+      b7=Parameter(10,1)
+      t7=Times(W7,y6)
+      z7=Plus(t7,b7)
+      y7=Sigmoid(z7)
 
 #define the error criterion
-      Error=SquareError(labels, Activations2)
-      ErrPredict=ErrorPrediction(labels, Activations2)
+      Error=SquareError(labels, y7)
+      ErrPredict=ErrorPrediction(labels, y7)
 
 # define the special nodes.
       FeatureNodes=(features)
       LabelNodes=(labels)
       CriteriaNodes=(Error)
       EvalNodes=(ErrPredict)
-      OutputNodes=(Activations2)
+      OutputNodes=(y7)
 
     ] # end run NN
 
