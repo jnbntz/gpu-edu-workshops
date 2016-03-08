@@ -24,28 +24,36 @@ OutputDir = "$RootDir$/Output"
 ModelDir = "$OutputDir$/Models"
 
 # overall commands to be executed
+
 command = mnistTrain:mnistTest:topoplot
 
 # path to teh model that will be created by train and used by test
+
 modelPath = "$ModelDir$/nnMNIST.dnn"
 
 # data layout of the images.  cudnn when using GPU wtih CUDNN library
+
 imageLayout = "cudnn"
 
 # precision of the arithmetic. 
+
 precision = "float"
 
 # which device to use.  -1 for CPU, >= 0 for GPU, "auto" for GPU then fallback
 # to CPU if no GPU present
+
 deviceId = "auto"
 
 # determines how much info to be printed.  0 is least and 2 is most
+
 traceLevel=0
 
 # if defined, output will be written to this file instead of the screen
+
 stderr = "$RootDir$/output"
 
 # command block to specify the training
+
 mnistTrain = [
 
 # set the action to train
@@ -56,79 +64,97 @@ mnistTrain = [
   NDLNetworkBuilder = [
 
 # choose which subblock to run
+
     run = NN 
 
 # define the NN subblock
+
     NN = [
 
 # network size parameters
-      InputDim=784
-      HiddenDim=256
-      OutputDim=10
+
+      InputDim = 784
+      HiddenDim = 256
+      OutputDim = 10
 
 # define the sizes of the features and labels.  features and labels are key
 # words that should be defined
-      features = Input(InputDim)
-      labels = Input(OutputDim)
+
+      features = InputValue( InputDim ) 
+      labels = InputValue( OutputDim )
 
 # define the learnable parameters, i.e., the weights of the network
-      Weights1=Parameter(HiddenDim, InputDim)
-      Weights2=Parameter(OutputDim, HiddenDim)
-      Bias1=Parameter(HiddenDim)
-      Bias2=Parameter(OutputDim)
+
+      Weights1 = LearnableParameter( HiddenDim, InputDim )
+      Weights2 = LearnableParameter( OutputDim, HiddenDim )
+      Bias1 = LearnableParameter( HiddenDim )
+      Bias2 = LearnableParameter( OutputDim )
 
 # define the computation flow of the neural network
-      Z1=Times(Weights1, features)
-      B1=Plus(Z1,Bias1)
 
-      Activations1=Sigmoid(B1)
+      Z1 = Times( Weights1, features )
+      B1 = Plus( Z1,Bias1 )
 
-      Z2=Times(Weights2, Activations1)
-      B2=Plus(Z2,Bias2)
+      Activations1 = Sigmoid( B1 )
 
-      Activations2=Sigmoid(B2)
+      Z2 = Times( Weights2, Activations1 )
+      B2 = Plus( Z2,Bias2 )
+
+      Activations2 = Sigmoid( B2 )
 
 #define the error criterion
-      Error=SquareError(labels, Activations2)
-      ErrPredict=ErrorPrediction(labels, Activations2)
+
+      Error = SquareError( labels, Activations2 )
+      ErrPredict = ErrorPrediction( labels, Activations2 )
 
 # define the special nodes.
-      FeatureNodes=(features)
-      LabelNodes=(labels)
-      CriteriaNodes=(Error)
-      EvalNodes=(ErrPredict)
-      OutputNodes=(Activations2)
+
+      FeatureNodes = (features)
+      LabelNodes = (labels)
+      CriteriaNodes = (Error)
+      EvalNodes = (ErrPredict)
+      OutputNodes = (Activations2)
 
     ] # end run NN
 
   ] # end NDLNetworkBuilder
 
 # define the SGD parameters
+
   SGD = [
+
     epochSize = 60000
     minibatchSize = 32
     learningRatesPerMB = 0.1
     maxEpochs = 5
+
   ] # end SGD
 
 #specify the reader which tells CNTK how to read the data properly.
+
   reader = [
 
     readerType = "UCIFastReader"
     file = "$DataDir$/train-images.txt"
 
 # how many features per example and where the features start in the test file
+
     features = [
+
       dim = 784
       start = 1
+
     ] # end features
 
 # how many labels and where they start in the text file
+
     labels = [
+
       dim = 1
       start = 0
       labelDim = 10
       labelMappingFile = "$DataDir$/labelsmap.txt"   
+
     ] # end labels
 
   ] # end reader
@@ -136,29 +162,38 @@ mnistTrain = [
 ] # end mnistTrain
 
 # command block to specify the testing
+
 mnistTest = [
 
 # set the action to test
+
   action = "test"
 
 # set the minibatch size
+
   minibatchSize = 16
 
 # set the reader, same info as above with different file name
+
   reader = [
+
     readerType = "UCIFastReader"
     file = "$DataDir$/t10k-images.txt"
 
     features = [
+
       dim = 784
       start = 1
+
     ] # end features
 
     labels = [
+
       dim = 1
       start = 0
       labelDim = 10
       labelMappingFile = "$DataDir$/labelsmap.txt"
+
     ] # end labels
   
   ] # end reader
@@ -166,10 +201,12 @@ mnistTest = [
 ] # end mnistTest
 
 # command block to specify the plot of the network
+
 topoplot = [
 
   action = "plot" 
   outputdotFile="model.dot"
   outputFile="model.jpg"
   renderCmd="/usr/bin/dot -Tjpg <IN> -o<OUT>"
+
 ] # end topoplot
