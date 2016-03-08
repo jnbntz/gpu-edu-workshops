@@ -24,7 +24,7 @@ OutputDir = "$RootDir$/Output"
 ModelDir = "$OutputDir$/Models"
 
 # overall commands to be executed
-command = mnistTrain:mnistTest:topoplot
+command = mnistTrain:mnistTest
 
 # path to teh model that will be created by train and used by test
 modelPath = "$ModelDir$/nnMNIST.dnn"
@@ -61,41 +61,27 @@ mnistTrain = [
 # define the NN subblock
     CNN = [
 
-# image size parameters
-      imageWidth=28
-      imageHeight=28
-      numChannels=1
-      labelDim=10
-
-      features=ImageInput(imageWidth, imageHeight, numChannels, 
-        imageLayout=$imageLayout$ )
-      
+# image parameters
+      imageWidth = 28
+      imageHeight = 28
+      numChannels = 1
+      labelDim = 10
 
 # words that should be defined
-      labels = InputValue(labelDim)
 
-# define the learnable parameters, i.e., the weights of the network
-#      Weights1=Parameter(HiddenDim, InputDim)
-#      Weights2=Parameter(OutputDim, HiddenDim)
-#      ConvWeights1=Parameter(1,25)
+      features = ImageInput( imageWidth, imageHeight, numChannels, 
+        imageLayout=$imageLayout$ )
 
-#      Conv1=Convolution(ConvWeights1, features, 
-# define the computation flow of the neural network
-#      Z1=Times(Weights1, features)
-
-#      Activations1=Sigmoid(Z1)
-
-#      Z2=Times(Weights2, Activations1)
-
-#      Activations2=Sigmoid(Z2)
+      labels = InputValue( labelDim )
 
 # first convolution layer
+
       numFeatureMaps = 16
       kernelWidth = 5
       kernelHeight = 5
 
-      Conv1Weights = Parameter( numFeatureMaps, 25 )
-      Conv1Bias = ImageParameter( 1, 1, numFeatureMaps)
+      Conv1Weights = LearnableParameter( numFeatureMaps, 25 )
+      Conv1Bias = ImageParameter( 1, 1, numFeatureMaps )
       Conv1 = Convolution( Conv1Weights, features, kernelWidth, kernelHeight, 
         numFeatureMaps, 1, 1, zeroPadding=false, imageLayout=$imageLayout$ )
 
@@ -111,38 +97,51 @@ mnistTrain = [
 
       numFeatureMaps2 = 24
 
-      Conv2Weights = Parameter( numFeatureMaps2, 400 )
+      Conv2Weights = LearnableParameter( numFeatureMaps2, 400 )
       Conv2Bias = ImageParameter( 1, 1, numFeatureMaps2)
       Conv2 = Convolution( Conv2Weights, Pool1, kernelWidth, kernelHeight, 
         numFeatureMaps2, 1, 1, zeroPadding=false, imageLayout=$imageLayout$ )
 
+# second activation layer
+
+      Act2 = Sigmoid( Conv2 )
+
 # second pooling layer
 
+      Pool2 = MaxPooling( Act2, 2, 2, 2, 2, imageLayout=$imageLayout$ )
+
 # first fully connected layer
-      W6=Parameter(128,1536)
-      b6=Parameter(128,1)
-      t6=Times(W6,Conv2)
-      z6=Plus(t6,b6)
-      y6=Sigmoid(z6)
+      Full1Weights = LearnableParameter( 128, 384 )
+      Full1Bias = LearnableParameter( 128,1 )
+      t1 = Times( Full1Weights, Pool2)
+      z1 = Plus( t1, Full1Bias )
+
+# third activation layer
+
+      Act3 = Sigmoid( z1 )
 
 # second fully connected layer
 
-      W7=Parameter(10,128)
-      b7=Parameter(10,1)
-      t7=Times(W7,y6)
-      z7=Plus(t7,b7)
-      y7=Sigmoid(z7)
+      Full2Weights = LearnableParameter( 10, 128 )
+      Full2Bias = LearnableParameter( 10, 1 )
+      t2 = Times( Full2Weights,Act3 )
+      z2 = Plus( t2, Full2Bias )
+
+# fourth activation layer
+
+      Act4 = Sigmoid( z2 )
 
 #define the error criterion
-      Error=SquareError(labels, y7)
-      ErrPredict=ErrorPrediction(labels, y7)
+
+      Error = SquareError( labels, Act4 )
+      ErrPredict = ErrorPrediction( labels, Act4 )
 
 # define the special nodes.
-      FeatureNodes=(features)
-      LabelNodes=(labels)
-      CriteriaNodes=(Error)
-      EvalNodes=(ErrPredict)
-      OutputNodes=(y7)
+      FeatureNodes =(features)
+      LabelNodes = (labels)
+      CriteriaNodes = (Error)
+      EvalNodes = (ErrPredict)
+      OutputNodes = (Act4)
 
     ] # end run NN
 
@@ -153,7 +152,7 @@ mnistTrain = [
     epochSize = 60000
     minibatchSize = 32
     learningRatesPerMB = 0.1
-    maxEpochs = 1
+    maxEpochs = 5
   ] # end SGD
 
 #specify the reader which tells CNTK how to read the data properly.
