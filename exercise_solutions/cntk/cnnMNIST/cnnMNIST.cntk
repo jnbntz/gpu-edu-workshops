@@ -24,31 +24,40 @@ OutputDir = "$RootDir$/Output"
 ModelDir = "$OutputDir$/Models"
 
 # overall commands to be executed
+ 
 command = mnistTrain:mnistTest
 
 # path to teh model that will be created by train and used by test
+
 modelPath = "$ModelDir$/nnMNIST.dnn"
 
 # data layout of the images.  cudnn when using GPU wtih CUDNN library
+
 imageLayout = "cudnn"
 
 # precision of the arithmetic. 
+
 precision = "float"
 
 # which device to use.  -1 for CPU, >= 0 for GPU, "auto" for GPU then fallback
 # to CPU if no GPU present
+
 deviceId = "auto"
 
 # determines how much info to be printed.  0 is least and 2 is most
+
 traceLevel=0
 
 # if defined, output will be written to this file instead of the screen
+
 stderr = "$RootDir$/output"
 
 # command block to specify the training
+
 mnistTrain = [
 
 # set the action to train
+
   action = "train"
 
 # 784 inputs, 1 hidden layer, 10 output classes
@@ -56,12 +65,15 @@ mnistTrain = [
   NDLNetworkBuilder = [
 
 # choose which subblock to run
+
     run = CNN 
 
 # define the NN subblock
+
     CNN = [
 
 # image parameters
+
       imageWidth = 28
       imageHeight = 28
       numChannels = 1
@@ -137,6 +149,7 @@ mnistTrain = [
       ErrPredict = ErrorPrediction( labels, Act4 )
 
 # define the special nodes.
+
       FeatureNodes =(features)
       LabelNodes = (labels)
       CriteriaNodes = (Error)
@@ -148,31 +161,41 @@ mnistTrain = [
   ] # end NDLNetworkBuilder
 
 # define the SGD parameters
+
   SGD = [
+
     epochSize = 60000
     minibatchSize = 32
     learningRatesPerMB = 0.1
     maxEpochs = 5
+
   ] # end SGD
 
 #specify the reader which tells CNTK how to read the data properly.
+
   reader = [
 
     readerType = "UCIFastReader"
     file = "$DataDir$/train-images.txt"
 
 # how many features per example and where the features start in the test file
+
     features = [
+
       dim = 784
       start = 1
+
     ] # end features
 
 # how many labels and where they start in the text file
+
     labels = [
+
       dim = 1
       start = 0
       labelDim = 10
       labelMappingFile = "$DataDir$/labelsmap.txt"   
+
     ] # end labels
 
   ] # end reader
@@ -180,29 +203,38 @@ mnistTrain = [
 ] # end mnistTrain
 
 # command block to specify the testing
+
 mnistTest = [
 
 # set the action to test
+
   action = "test"
 
 # set the minibatch size
+
   minibatchSize = 16
 
 # set the reader, same info as above with different file name
+
   reader = [
+
     readerType = "UCIFastReader"
     file = "$DataDir$/t10k-images.txt"
 
     features = [
+
       dim = 784
       start = 1
+
     ] # end features
 
     labels = [
+
       dim = 1
       start = 0
       labelDim = 10
       labelMappingFile = "$DataDir$/labelsmap.txt"
+
     ] # end labels
   
   ] # end reader
@@ -210,6 +242,7 @@ mnistTest = [
 ] # end mnistTest
 
 # command block to specify the plot of the network
+
 topoplot = [
 
   action = "plot" 
