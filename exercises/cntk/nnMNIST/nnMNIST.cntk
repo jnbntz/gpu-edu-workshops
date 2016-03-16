@@ -25,7 +25,7 @@ ModelDir = "$OutputDir$/Models"
 
 # overall commands to be executed
 
-command = mnistTrain:mnistTest:topoplot
+command = mnistTrain:mnistTest
 
 # path to the model that will be created by train and used by test
 
@@ -73,9 +73,9 @@ mnistTrain = [
 
 # network size parameters
 
-      InputDim = 784
-      HiddenDim = 256
-      OutputDim = 10
+      InputDim = FIXME
+      HiddenDim = FIXME
+      OutputDim = FIXME
 
 # define the sizes of the features and labels. 
 
@@ -122,10 +122,10 @@ mnistTrain = [
 
   SGD = [
 
-    epochSize = 60000
-    minibatchSize = 32
+    epochSize = FIXME
+    minibatchSize = FIXME
     learningRatesPerMB = 0.1
-    maxEpochs = 5
+    maxEpochs = FIXME
 
   ] # end SGD
 

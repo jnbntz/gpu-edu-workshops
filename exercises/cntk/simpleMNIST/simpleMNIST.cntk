@@ -23,9 +23,9 @@ DataDir = "$RootDir$/../Data/MNIST"
 OutputDir = "$RootDir$/Output"
 ModelDir = "$OutputDir$/Models"
 
-# overall commands to be executed
+# overall commands to be executed can string together with colons
 
-command = mnistTrain:mnistTest:topoplot
+command = mnistTrain:mnistTest
 
 # path to the model that will be created by train and used by test
 
@@ -65,17 +65,18 @@ mnistTrain = [
   SimpleNetworkBuilder = [
 
 # layerSizes, first number is input size, last number is output size, any 
-# middle layers are hidden layers
+# middle layers are hidden layers. numbers separated by colons
 
-    layerSizes = 784:256:10
+    layerSizes = FIXME
 
-# specify the activation type
+# specify the activation type, options are Sigmoid, Tanh, RectifiedLinear
 
-    layerTypes = "Sigmoid"
+    layerTypes = FIXME
 
-# specify the function to be minimized
+# specify the function to be minimized, options are SquareError, CrossEntropy
+# and CrossEntropyWithSoftmax
 
-    trainingCriterion = "SquareError"
+    trainingCriterion = FIXME
 
 # specify the evaluation criterion
 
@@ -93,7 +94,7 @@ mnistTrain = [
 # learning rate per mini-batch
 
     learningRatesPerMB = 0.1
-    maxEpochs = 5
+    maxEpochs = FIXME
 
   ] # end SGD
 
