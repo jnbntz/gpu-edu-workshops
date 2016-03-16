@@ -1,0 +1,186 @@
+#
+#  Copyright 2016 NVIDIA Corporation
+#
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+#
+
+# file path definitions
+
+RootDir = "."
+
+ConfigDir = "$RootDir$/Config"
+DataDir = "$RootDir$/../Data/MNIST"
+OutputDir = "$RootDir$/Output"
+ModelDir = "$OutputDir$/Models"
+
+# overall commands to be executed
+
+command = mnistTrain:mnistTest:topoplot
+
+# path to the model that will be created by train and used by test
+
+modelPath = "$ModelDir$/simpleMNIST.dnn"
+
+# data layout of the images
+
+imageLayout = "cudnn"
+
+# precision of arithmetic to be used
+
+precision = "float"
+
+# deviceId, choose -1 for CPU, >= 0 for GPU, or auto to use GPU if avail or 
+# fallback to CPU
+
+deviceId = "auto"
+
+# traceLevel determines how much to be printed, 0 is least and 2 is most
+
+traceLevel = 0
+
+# if stderr is defined, the output will be written to this file instead of 
+# the screen
+
+stderr = "$RootDir$/output"
+
+# command block to specify the training 
+mnistTrain = [
+
+# set the action to train
+
+  action = "train"
+
+# 784 inputs, 1 hidden layer, 10 output classes
+
+  SimpleNetworkBuilder = [
+
+# layerSizes, first number is input size, last number is output size, any 
+# middle layers are hidden layers
+
+    layerSizes = 784:256:10
+
+# specify the activation type
+
+    layerTypes = "Sigmoid"
+
+# specify the function to be minimized
+
+    trainingCriterion = "SquareError"
+
+# specify the evaluation criterion
+
+    evalCriterion = "ErrorPrediction"
+
+  ] # end SimpleNetworkBuilder
+
+# SGD is for stochastic gradient descent
+
+  SGD = [
+
+    epochSize = 60000
+    minibatchSize = 32
+
+# learning rate per mini-batch
+
+    learningRatesPerMB = 0.1
+    maxEpochs = 5
+
+  ] # end SGD
+
+# specify the reader which tells CNTK how to read the data properly
+
+  reader = [
+
+    readerType = "UCIFastReader"
+    file = "$DataDir$/train-images.txt"
+
+# specify how many features per example and where the features start in the
+# test file
+
+    features = [
+
+      dim = 784
+      start = 1
+
+    ] # end features
+
+# specify how many labels and where the labels start in the text file
+
+    labels = [
+
+      dim = 1
+      start = 0
+
+# labelDim is 10 because we have 10 possible digits
+
+      labelDim = 10
+
+# file to map numbers to labels.  Each row corresponds to a unique label
+
+      labelMappingFile = "$DataDir$/labelsmap.txt"   
+
+    ] # end labels
+
+  ] # end reader
+
+] # end mnistTrain
+
+# command block to specify the testing
+
+mnistTest = [
+
+# set the action to test
+
+  action = "test"
+
+# specify minibatchsize for testing
+
+  minibatchSize = 16
+
+# reader same as above just different file name with the test examples
+
+  reader = [
+
+    readerType = "UCIFastReader"
+    file = "$DataDir$/t10k-images.txt"
+
+    features = [
+
+      dim = 784
+      start = 1
+
+    ] # end features
+
+    labels = [
+
+      dim = 1
+      start = 0
+      labelDim = 10
+      labelMappingFile = "$DataDir$/labelsmap.txt"
+
+    ] # end labels
+  
+  ] # end reader
+
+] # end mnistTest
+
+# command block to specify the plot of the network
+
+topoplot = [
+
+  action = "plot"
+  outputdotFile="model.dot"
+  outputFile="model.jpg"
+  renderCmd="/usr/bin/dot -Tjpg <IN> -o<OUT>"
+
+] # end topoplot

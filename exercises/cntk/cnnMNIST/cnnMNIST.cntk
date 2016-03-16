@@ -1,0 +1,252 @@
+#
+#  Copyright 2016 NVIDIA Corporation
+#
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+#
+
+# file path definitions
+
+RootDir = "."
+
+ConfigDir = "$RootDir$/Config"
+DataDir = "$RootDir$/../Data/MNIST"
+OutputDir = "$RootDir$/Output"
+ModelDir = "$OutputDir$/Models"
+
+# overall commands to be executed
+ 
+command = mnistTrain:mnistTest
+
+# path to teh model that will be created by train and used by test
+
+modelPath = "$ModelDir$/nnMNIST.dnn"
+
+# data layout of the images.  cudnn when using GPU wtih CUDNN library
+
+imageLayout = "cudnn"
+
+# precision of the arithmetic. 
+
+precision = "float"
+
+# which device to use.  -1 for CPU, >= 0 for GPU, "auto" for GPU then fallback
+# to CPU if no GPU present
+
+deviceId = "auto"
+
+# determines how much info to be printed.  0 is least and 2 is most
+
+traceLevel=0
+
+# if defined, output will be written to this file instead of the screen
+
+stderr = "$RootDir$/output"
+
+# command block to specify the training
+
+mnistTrain = [
+
+# set the action to train
+
+  action = "train"
+
+# 784 inputs, 1 hidden layer, 10 output classes
+
+  NDLNetworkBuilder = [
+
+# choose which subblock to run
+
+    run = CNN 
+
+# define the NN subblock
+
+    CNN = [
+
+# image parameters
+
+      imageWidth = 28
+      imageHeight = 28
+      numChannels = 1
+      labelDim = 10
+
+# defining the sizes of the feature and labels
+
+      features = ImageInput( imageWidth, imageHeight, numChannels, 
+        imageLayout=$imageLayout$ )
+
+      labels = InputValue( labelDim )
+
+# first convolution layer
+
+      numFeatureMaps = 16
+      kernelWidth = 5
+      kernelHeight = 5
+
+      Conv1Weights = LearnableParameter( numFeatureMaps, 25 )
+      Conv1Bias = ImageParameter( 1, 1, numFeatureMaps )
+      Conv1 = Convolution( Conv1Weights, features, kernelWidth, kernelHeight, 
+        numFeatureMaps, 1, 1, zeroPadding=false, imageLayout=$imageLayout$ )
+
+# first activation layer
+
+      Act1 = Sigmoid( Conv1 )
+
+# first pooling layer
+
+      Pool1 = MaxPooling( Act1, 2, 2, 2, 2, imageLayout=$imageLayout$ )
+
+# second convolution layer
+
+      numFeatureMaps2 = 24
+
+      Conv2Weights = LearnableParameter( numFeatureMaps2, 400 )
+      Conv2Bias = ImageParameter( 1, 1, numFeatureMaps2)
+      Conv2 = Convolution( Conv2Weights, Pool1, kernelWidth, kernelHeight, 
+        numFeatureMaps2, 1, 1, zeroPadding=false, imageLayout=$imageLayout$ )
+
+# second activation layer
+
+      Act2 = Sigmoid( Conv2 )
+
+# second pooling layer
+
+      Pool2 = MaxPooling( Act2, 2, 2, 2, 2, imageLayout=$imageLayout$ )
+
+# first fully connected layer
+      Full1Weights = LearnableParameter( 128, 384 )
+      Full1Bias = LearnableParameter( 128,1 )
+      t1 = Times( Full1Weights, Pool2)
+      z1 = Plus( t1, Full1Bias )
+
+# third activation layer
+
+      Act3 = Sigmoid( z1 )
+
+# second fully connected layer
+
+      Full2Weights = LearnableParameter( 10, 128 )
+      Full2Bias = LearnableParameter( 10, 1 )
+      t2 = Times( Full2Weights,Act3 )
+      z2 = Plus( t2, Full2Bias )
+
+# fourth activation layer
+
+      Act4 = Sigmoid( z2 )
+
+#define the error criterion
+
+      Error = SquareError( labels, Act4 )
+      ErrPredict = ErrorPrediction( labels, Act4 )
+
+# define the special nodes.
+
+      FeatureNodes =(features)
+      LabelNodes = (labels)
+      CriteriaNodes = (Error)
+      EvalNodes = (ErrPredict)
+      OutputNodes = (Act4)
+
+    ] # end run NN
+
+  ] # end NDLNetworkBuilder
+
+# define the SGD parameters
+
+  SGD = [
+
+    epochSize = 60000
+    minibatchSize = 32
+    learningRatesPerMB = 0.1
+    maxEpochs = 5
+
+  ] # end SGD
+
+#specify the reader which tells CNTK how to read the data properly.
+
+  reader = [
+
+    readerType = "UCIFastReader"
+    file = "$DataDir$/train-images.txt"
+
+# how many features per example and where the features start in the test file
+
+    features = [
+
+      dim = 784
+      start = 1
+
+    ] # end features
+
+# how many labels and where they start in the text file
+
+    labels = [
+
+      dim = 1
+      start = 0
+      labelDim = 10
+      labelMappingFile = "$DataDir$/labelsmap.txt"   
+
+    ] # end labels
+
+  ] # end reader
+
+] # end mnistTrain
+
+# command block to specify the testing
+
+mnistTest = [
+
+# set the action to test
+
+  action = "test"
+
+# set the minibatch size
+
+  minibatchSize = 16
+
+# set the reader, same info as above with different file name
+
+  reader = [
+
+    readerType = "UCIFastReader"
+    file = "$DataDir$/t10k-images.txt"
+
+    features = [
+
+      dim = 784
+      start = 1
+
+    ] # end features
+
+    labels = [
+
+      dim = 1
+      start = 0
+      labelDim = 10
+      labelMappingFile = "$DataDir$/labelsmap.txt"
+
+    ] # end labels
+  
+  ] # end reader
+
+] # end mnistTest
+
+# command block to specify the plot of the network
+
+topoplot = [
+
+  action = "plot" 
+  outputdotFile="model.dot"
+  outputFile="model.jpg"
+  renderCmd="/usr/bin/dot -Tjpg <IN> -o<OUT>"
+] # end topoplot
