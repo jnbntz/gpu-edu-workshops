@@ -27,7 +27,7 @@ ModelDir = "$OutputDir$/Models"
 
 command = mnistTrain:mnistTest:topoplot
 
-# path to teh model that will be created by train and used by test
+# path to the model that will be created by train and used by test
 
 modelPath = "$ModelDir$/nnMNIST.dnn"
 
@@ -77,8 +77,7 @@ mnistTrain = [
       HiddenDim = 256
       OutputDim = 10
 
-# define the sizes of the features and labels.  features and labels are key
-# words that should be defined
+# define the sizes of the features and labels. 
 
       features = InputValue( InputDim ) 
       labels = InputValue( OutputDim )

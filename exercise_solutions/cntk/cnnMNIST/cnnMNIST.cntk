@@ -79,7 +79,7 @@ mnistTrain = [
       numChannels = 1
       labelDim = 10
 
-# words that should be defined
+# defining the sizes of the feature and labels
 
       features = ImageInput( imageWidth, imageHeight, numChannels, 
         imageLayout=$imageLayout$ )
