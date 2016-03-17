@@ -50,7 +50,7 @@ traceLevel=0
 
 # if defined, output will be written to this file instead of the screen
 
-stderr = "$RootDir$/output"
+#stderr = "$RootDir$/output"
 
 # command block to specify the training
 
