@@ -82,23 +82,24 @@ mnistTrain = [
       features = InputValue( InputDim ) 
       labels = InputValue( OutputDim )
 
-# first layer multiply by weights
+# define the learnable parameters, i.e., the weights of the network
 
       Weights1 = LearnableParameter( HiddenDim, InputDim )
-      Z1 = Times( Weights1, features )
-
-# first layer activations
-
-      Activations1 = Sigmoid( Z1 )
-
-# second layer multiply by weights
-
       Weights2 = LearnableParameter( OutputDim, HiddenDim )
+      Bias1 = LearnableParameter( HiddenDim )
+      Bias2 = LearnableParameter( OutputDim )
+
+# define the computation flow of the neural network
+
+      Z1 = Times( Weights1, features )
+      B1 = Plus( Z1,Bias1 )
+
+      Activations1 = Sigmoid( B1 )
+
       Z2 = Times( Weights2, Activations1 )
+      B2 = Plus( Z2,Bias2 )
 
-# second layer activations
-
-      Activations2 = Sigmoid( Z2 )
+      Activations2 = Sigmoid( B2 )
 
 #define the error criterion
 
