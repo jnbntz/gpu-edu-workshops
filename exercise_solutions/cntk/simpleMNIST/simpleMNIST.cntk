@@ -67,7 +67,7 @@ mnistTrain = [
 # layerSizes, first number is input size, last number is output size, any 
 # middle layers are hidden layers
 
-    layerSizes = 784:256:256:10
+    layerSizes = 784:256:10
 
 # specify the activation type
 
