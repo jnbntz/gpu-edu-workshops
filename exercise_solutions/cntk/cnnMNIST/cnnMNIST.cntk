@@ -25,7 +25,7 @@ ModelDir = "$OutputDir$/Models"
 
 # overall commands to be executed
  
-command = mnistTrain:mnistTest
+command = mnistTrain:mnistTest:topoplot
 
 # path to teh model that will be created by train and used by test
 
@@ -86,6 +86,11 @@ mnistTrain = [
 
       labels = InputValue( labelDim )
 
+# scale the features
+      
+      normFactor = Constant( 0.00390625 )
+      featuresScaled = Scale( normFactor, features )
+
 # first convolution layer
 
       numFeatureMaps = 16
@@ -93,13 +98,20 @@ mnistTrain = [
       kernelHeight = 5
 
       Conv1Weights = LearnableParameter( numFeatureMaps, 25 )
-      Conv1Bias = ImageParameter( 1, 1, numFeatureMaps )
-      Conv1 = Convolution( Conv1Weights, features, kernelWidth, kernelHeight, 
-        numFeatureMaps, 1, 1, zeroPadding=false, imageLayout=$imageLayout$ )
+      Conv1Bias = ImageParameter( 1, 1, numFeatureMaps, 
+        imageLayout=$imageLayout$ )
+
+      Conv1 = Convolution( Conv1Weights, featuresScaled, kernelWidth, 
+        kernelHeight, numFeatureMaps, 1, 1, zeroPadding=false, 
+        imageLayout=$imageLayout$ )
+
+# first bias term
+     
+      B1 = Plus( Conv1, Conv1Bias )
 
 # first activation layer
 
-      Act1 = Sigmoid( Conv1 )
+      Act1 = RectifiedLinear( B1 )
 
 # first pooling layer
 
@@ -110,13 +122,19 @@ mnistTrain = [
       numFeatureMaps2 = 24
 
       Conv2Weights = LearnableParameter( numFeatureMaps2, 400 )
-      Conv2Bias = ImageParameter( 1, 1, numFeatureMaps2)
+      Conv2Bias = ImageParameter( 1, 1, numFeatureMaps2, 
+        imageLayout=$imageLayout$ )
+
       Conv2 = Convolution( Conv2Weights, Pool1, kernelWidth, kernelHeight, 
         numFeatureMaps2, 1, 1, zeroPadding=false, imageLayout=$imageLayout$ )
 
+# second bias layer
+
+      B2 = Plus( Conv2, Conv2Bias )
+
 # second activation layer
 
-      Act2 = Sigmoid( Conv2 )
+      Act2 = RectifiedLinear( B2 )
 
 # second pooling layer
 
@@ -130,7 +148,7 @@ mnistTrain = [
 
 # third activation layer
 
-      Act3 = Sigmoid( z1 )
+      Act3 = RectifiedLinear( z1 )
 
 # second fully connected layer
 
@@ -141,11 +159,11 @@ mnistTrain = [
 
 # fourth activation layer
 
-      Act4 = Sigmoid( z2 )
+      Act4 = RectifiedLinear( z2 )
 
 #define the error criterion
 
-      Error = SquareError( labels, Act4 )
+      Error = CrossEntropyWithSoftmax( labels, Act4 )
       ErrPredict = ErrorPrediction( labels, Act4 )
 
 # define the special nodes.
@@ -167,7 +185,7 @@ mnistTrain = [
     epochSize = 60000
     minibatchSize = 32
     learningRatesPerMB = 0.1
-    maxEpochs = 5
+    maxEpochs = 30
 
   ] # end SGD
 
