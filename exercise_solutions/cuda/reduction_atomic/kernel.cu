@@ -40,10 +40,14 @@ __global__ void sumReduction(int n, FLOATTYPE_T *in, FLOATTYPE_T *sum)
  * launched, using atomics
  */
 
+  FLOATTYPE_T temp = 0.0;
+
   for( int i = globalIndex; i < n; i += blockDim.x * gridDim.x )
   {
-      atomicAdd( sum, in[i] );
+      temp += in[i];
   } /* end for */
+
+  atomicAdd( sum, temp );
 
   return;
 }
@@ -93,7 +97,7 @@ int main()
 /* choose blocksize such that it will be smaller than the max that this
    GPU allows */ 
  
-  int blk = min( (size / threads.x) + 1, deviceProp.maxGridSize[0] );
+  int blk = 64;
   dim3 blocks( blk, 1, 1);
 
 /* start the timers */
