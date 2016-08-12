@@ -66,7 +66,7 @@ def inference(images):
     print('images after reshape',images_re.get_shape())
     
 # Convolution 1
-    with tf.variable_scope('Conv1'):
+    with tf.name_scope('Conv1'):
 # weight variable 4d tensor, first two dims are patch (kernel) size       
 # third dim is number of input channels and fourth dim is output channels
         W_conv1 = tf.Variable(tf.truncated_normal([5,5,1,100],stddev=0.1,
@@ -76,7 +76,6 @@ def inference(images):
         conv1_op = tf.nn.conv2d( images_re, W_conv1, strides=[1,2,2,1], 
                      padding="SAME", name='conv1_op' )
         print("conv1_op shape",conv1_op.get_shape())
-        _activation_summary(conv1_op)
 
         relu1_op = tf.nn.relu( conv1_op, name='relu1_op' )
         print("relu1_op shape",relu1_op.get_shape())
