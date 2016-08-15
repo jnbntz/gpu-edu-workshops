@@ -13,7 +13,7 @@
 # limitations under the License.
 # ==============================================================================
 
-"""Builds the MNIST network.
+"""Builds the network.
 
 Implements the inference/loss/training pattern for model building.
 
@@ -31,25 +31,70 @@ from __future__ import division
 from __future__ import print_function
 
 import math
-import re
+import os.path
 import tensorflow as tf
 
-def _activation_summary(x):
-  """Helper to create summaries for activations.
+def read_and_decode(filename_queue):
 
-  Creates a summary that provides a histogram of activations.
-  Creates a summary that measure the sparsity of activations.
+    reader = tf.TFRecordReader()
+    _, serialized_example = reader.read(filename_queue)
 
-  Args:
-    x: Tensor
-  Returns:
-    nothing
-  """
-  # Remove 'tower_[0-9]/' from the name in case this is a multi-GPU training
-  # session. This helps the clarity of presentation on tensorboard.
-#  tensor_name = re.sub('%s_[0-9]*/' % TOWER_NAME, '', x.op.name)
-  tf.histogram_summary(x.op.name + '/activations', x)
-  tf.scalar_summary(x.op.name + '/sparsity', tf.nn.zero_fraction(x))
+    features = tf.parse_single_example(
+        serialized_example,
+      # Defaults are not specified since both keys are required.
+        features={
+            'img_raw': tf.FixedLenFeature([], tf.string),
+            'label_raw': tf.FixedLenFeature([], tf.string),
+        })
+
+  # Convert from a scalar string tensor (whose single string has
+  # length mnist.IMAGE_PIXELS) to a uint8 tensor with shape
+  # [mnist.IMAGE_PIXELS].
+    image = tf.decode_raw(features['img_raw'], tf.int64)
+    image.set_shape([65536])
+    image_re = tf.reshape(image, (256,256))
+    image_re = tf.cast(image_re, tf.float32) * (1. / 1024)
+#
+  # OPTIONAL: Could reshape into a 28x28 image and apply distortions
+  # here.  Since we are not applying any distortions in this
+  # example, and the next step expects the image to be flattened
+  # into a vector, we don't bother.
+
+  # Convert from [0, 255] -> [-0.5, 0.5] floats.
+#    image = tf.cast(image, tf.float32) * (1. / 255) - 0.5
+    label = tf.decode_raw(features['label_raw'], tf.uint8)
+    label.set_shape([65536])
+    label_re = tf.reshape(label, (256,256))
+#    print(image_re.get_shape())
+
+  # Convert label from a scalar uint8 tensor to an int32 scalar.
+#    label = tf.cast(features['label'], tf.int32)
+    return image_re, label_re
+
+def inputs(train, batch_size, num_epochs, filename):
+
+    if not num_epochs: num_epochs = None
+#    filename = os.path.join(FLAGS.train_dir, 
+#                            TRAIN_FILE if train else VALIDATION_FILE)
+
+    with tf.name_scope('input'):
+        filename_queue = tf.train.string_input_producer(
+            [filename], num_epochs=num_epochs)
+
+        image, label = read_and_decode(filename_queue)
+     
+        images, sparse_labels = tf.train.shuffle_batch(
+            [image, label], batch_size=batch_size, num_threads=2,
+            capacity=200,
+            min_after_dequeue = 10)
+#        images, sparse_labels = tf.train.batch(
+#            [image, label], batch_size=batch_size, num_threads=2,
+#            capacity=300)
+
+#        tf.image_summary( 'images', tf.reshape(images,[-1,256,256,1] ))
+#        tf.image_summary( 'labels', tf.reshape(sparse_labels,[-1,256,256,1]))
+        return images, sparse_labels
+
 
 def inference(images):
     """Build the MNIST model up to where it may be used for inference.
@@ -219,19 +264,20 @@ def evaluation(logits, labels):
         A scalar int32 tensor with the number of examples (out of batch_size)
         that were predicted correctly.
     """ 
-    labels = tf.to_int64(labels)
-    print("logits eval shape before", logits.get_shape())
-    print("labels eval shape before", labels.get_shape())
+    with tf.name_scope('eval'):
+        labels = tf.to_int64(labels)
+        print("logits eval shape before", logits.get_shape())
+        print("labels eval shape before", labels.get_shape())
 
 # reshape to match args required for the cross entropy function
-    logits_re = tf.reshape( logits, [-1, 2] )
-    labels_re = tf.reshape( labels, [-1] )
-    print("logits eval shape after", logits_re.get_shape())
-    print("labels eval shape after", labels_re.get_shape())
+        logits_re = tf.reshape( logits, [-1, 2] )
+        labels_re = tf.reshape( labels, [-1] )
+        print("logits eval shape after", logits_re.get_shape())
+        print("labels eval shape after", labels_re.get_shape())
   # For a classifier model, we can use the in_top_k Op.
   # It returns a bool tensor with shape [batch_size] that is true for
   # the examples where the label is in the top k (here k=1)
   # of all logits for that example.
-    correct = tf.nn.in_top_k(logits_re, labels_re, 1)
+        correct = tf.nn.in_top_k(logits_re, labels_re, 1)
   # Return the number of true entries.
-    return tf.reduce_sum(tf.cast(correct, tf.int32))
+        return tf.reduce_sum(tf.cast(correct, tf.int32))
