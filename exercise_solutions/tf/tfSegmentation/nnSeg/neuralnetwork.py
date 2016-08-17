@@ -23,8 +23,7 @@ forward to make predictions.
 3. training() - Adds to the loss model the Ops required to generate and
 apply gradients.
 
-This file is used by the various "fully_connected_*.py" files and not meant to
-be run.
+This file is used by the other files and not meant to be run.
 """
 from __future__ import absolute_import
 from __future__ import division
@@ -64,7 +63,7 @@ def read_and_decode(filename_queue):
 #    image = tf.cast(image, tf.float32) * (1. / 255) - 0.5
     label = tf.decode_raw(features['label_raw'], tf.uint8)
     label.set_shape([65536])
-    label_re = tf.reshape(label, (256,256))
+    label_re = tf.reshape(label, [256,256])
 #    print(image_re.get_shape())
 
   # Convert label from a scalar uint8 tensor to an int32 scalar.
@@ -85,7 +84,7 @@ def inputs(train, batch_size, num_epochs, filename):
      
         images, sparse_labels = tf.train.shuffle_batch(
             [image, label], batch_size=batch_size, num_threads=2,
-            capacity=200,
+            capacity=15,
             min_after_dequeue = 10)
 #        images, sparse_labels = tf.train.batch(
 #            [image, label], batch_size=batch_size, num_threads=2,

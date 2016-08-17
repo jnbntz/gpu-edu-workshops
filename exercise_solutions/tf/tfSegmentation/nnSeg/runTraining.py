@@ -12,10 +12,14 @@ VALIDATION_FILE = 'val_images.tfrecords'
 flags = tf.app.flags
 FLAGS = flags.FLAGS
 flags.DEFINE_float('learning_rate', 0.01, 'Initial learning rate.')
-flags.DEFINE_integer('num_epochs', 1, 'Number of epochs to run trainer.')
+flags.DEFINE_integer('num_epochs', 20, 'Number of epochs to run trainer.')
 flags.DEFINE_integer('batch_size', 1, 'Batch size.')
 flags.DEFINE_string('train_dir', '/tmp/data',
                     'Directory with the training data.')
+flags.DEFINE_string('checkpoint_dir', '/tmp/cifar10_train',
+                           """Directory where to write model checkpoints.""")
+
+
 def run_training():
  
     with tf.Graph().as_default():
@@ -51,9 +55,9 @@ def run_training():
         try:
             step = 0
             while not coord.should_stop():
+
                 start_time = time.time()
                 _, loss_value = sess.run([train_op, loss])
-                
                 duration = time.time() - start_time
 
                 if step % 100 == 0:
@@ -63,10 +67,17 @@ def run_training():
                     summary_str = sess.run(summary_op)
                     summary_writer.add_summary(summary_str, step)
                     summary_writer.flush()
+                if step % 1000 == 0:
+                    checkpoint_path = os.path.join(FLAGS.checkpoint_dir, 
+                                                     'model.ckpt')
+                    saver.save(sess, checkpoint_path, global_step=step)
                 step += 1
         except tf.errors.OutOfRangeError:
             print('Done training for %d epochs, %d steps.' % (FLAGS.num_epochs,
                                                               step))
+            checkpoint_path = os.path.join(FLAGS.checkpoint_dir, 
+                                              'model.ckpt')
+            saver.save(sess, checkpoint_path, global_step=step)
         finally:
             coord.request_stop()
     
