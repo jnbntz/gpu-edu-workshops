@@ -45,7 +45,7 @@ flags.DEFINE_integer('eval_interval_secs', 60 * 5,
 flags.DEFINE_boolean('run_once', True,
                          """Whether to run eval only once.""")
 
-def evaluate():
+def run_eval():
 
     # Run evaluation on the input data set
     with tf.Graph().as_default() as g:
@@ -58,7 +58,7 @@ def evaluate():
                     VALIDATION_FILE if eval_data else TRAIN_FILE)
 
 # read the proper data set
-        images, labels = nn.inputs(train=False, batch_size=FLAGS.batch_size,
+        images, labels = nn.inputs(batch_size=FLAGS.batch_size,
                            num_epochs=1, filename=evalfile)
 
     # Build a Graph that computes the logits predictions from the
@@ -138,7 +138,7 @@ def evaluate():
             sess.close()
 
 def main(_):
-    evaluate()
+    run_eval()
 
 if __name__ == '__main__':
     tf.app.run()

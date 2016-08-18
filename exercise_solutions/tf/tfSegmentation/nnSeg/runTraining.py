@@ -46,7 +46,7 @@ def run_training():
         trainfile = os.path.join(FLAGS.data_dir, TRAIN_FILE)
 
 # read the images and labels
-        images, labels = nn.inputs(train=True, batch_size=FLAGS.batch_size,
+        images, labels = nn.inputs(batch_size=FLAGS.batch_size,
                                 num_epochs=FLAGS.num_epochs,
                                 filename=trainfile)
 

@@ -25,11 +25,17 @@ import tensorflow as tf
 # function to print the tensor shape.  useful for debugging
 
 def print_tensor_shape(tensor, string):
+
+# input: tensor and string to describe it
+
     if __debug__:
         print('DEBUG ' + string, tensor.get_shape())
 
 
 def read_and_decode(filename_queue):
+
+# input: filename
+# output: image, label pair
 
 # setup a TF record reader
     reader = tf.TFRecordReader()
@@ -62,7 +68,10 @@ def read_and_decode(filename_queue):
     return image_re, label_re
 
 
-def inputs(train, batch_size, num_epochs, filename):
+def inputs(batch_size, num_epochs, filename):
+
+# inputs: batch_size, num_epochs are scalars, filename
+# output: image and label pairs for use in training or eval
 
     if not num_epochs: num_epochs = None
 
@@ -89,14 +98,10 @@ def inputs(train, batch_size, num_epochs, filename):
 
 
 def inference(images):
-    """Build the network model up to where it may be used for inference.
 
-    Args:
-        images: the images from the input
+#   input: tensor of images
+#   output: tensor of computed logits
 
-    Returns:
-        softmax_linear: Output tensor with the computed logits.
-    """
     print_tensor_shape( images, 'images shape inference' )
 
 # resize the image tensors to add the number of channels, 1 in this case
@@ -198,15 +203,11 @@ def inference(images):
 
     
 def loss(logits, labels):
-    """Calculates the loss from the logits and the labels.
+    
+    # input: logits: Logits tensor, float - [batch_size, 256, 256, NUM_CLASSES].
+    # intput: labels: Labels tensor, int32 - [batch_size, 256, 256].
+    # output: loss: Loss tensor of type float.
 
-    Args:
-        logits: Logits tensor, float - [batch_size, 256, 256, NUM_CLASSES].
-        labels: Labels tensor, int32 - [batch_size, 256, 256].
-
-    Returns:
-        loss: Loss tensor of type float.
-    """
     labels = tf.to_int64(labels)
     print_tensor_shape( logits, 'logits shape before')
     print_tensor_shape( labels, 'labels shape before')
@@ -226,22 +227,17 @@ def loss(logits, labels):
 
 
 def training(loss, learning_rate):
-    """Sets up the training Ops.
+    # input: loss: loss tensor from loss()
+    # input: learning_rate: scalar for gradient descent
+    # output: train_op the operation for training
 
-    Creates a summarizer to track the loss over time in TensorBoard.
+#    Creates a summarizer to track the loss over time in TensorBoard.
 
-    Creates an optimizer and applies the gradients to all trainable variables.
+#    Creates an optimizer and applies the gradients to all trainable variables.
 
-    The Op returned by this function is what must be passed to the
-    `sess.run()` call to cause the model to train.
+#    The Op returned by this function is what must be passed to the
+#    `sess.run()` call to cause the model to train.
 
-    Args:
-        loss: Loss tensor, from loss().
-        learning_rate: The learning rate to use for gradient descent.
-
-    Returns:
-        train_op: The Op for training.
-    """
   # Add a scalar summary for the snapshot loss.
     tf.scalar_summary(loss.op.name, loss)
 
@@ -258,18 +254,11 @@ def training(loss, learning_rate):
     return train_op
 
 def evaluation(logits, labels):
-    """Evaluate the quality of the logits at predicting the label.
+    # input: logits: Logits tensor, float - [batch_size, 256, 256, NUM_CLASSES].
+    # input: labels: Labels tensor, int32 - [batch_size, 256, 256]
+    # output: scaler int32 tensor with number of examples that were 
+    #         predicted correctly
 
-    Args:
-        logits: Logits tensor, float - [batch_size, 256, 256, NUM_CLASSES].
-        labels: Labels tensor, int32 - [batch_size, 256, 256], 
-           with values in the
-           range [0, NUM_CLASSES).
-
-    Returns:
-        A scalar int32 tensor with the number of examples (out of batch_size)
-        that were predicted correctly.
-    """ 
     with tf.name_scope('eval'):
         labels = tf.to_int64(labels)
         print_tensor_shape( logits, 'logits eval shape before')
