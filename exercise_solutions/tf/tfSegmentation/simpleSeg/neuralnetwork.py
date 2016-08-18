@@ -109,99 +109,26 @@ def inference(images):
     images_re = tf.reshape( images, [-1,256,256,1] ) 
     print_tensor_shape( images, 'images shape inference' )
     
-# Convolution layer
-    with tf.name_scope('Conv1'):
-
-# weight variable 4d tensor, first two dims are patch (kernel) size       
-# third dim is number of input channels and fourth dim is output channels
-        W_conv1 = tf.Variable(tf.truncated_normal([5,5,1,100],stddev=0.1,
-                     dtype=tf.float32),name='W_conv1')
-        print_tensor_shape( W_conv1, 'W_conv1 shape')
-
-        conv1_op = tf.nn.conv2d( images_re, W_conv1, strides=[1,2,2,1], 
-                     padding="SAME", name='conv1_op' )
-        print_tensor_shape( conv1_op, 'conv1_op shape')
-
-        relu1_op = tf.nn.relu( conv1_op, name='relu1_op' )
-        print_tensor_shape( relu1_op, 'relu1_op shape')
-
-# Pooling layer
-    with tf.name_scope('Pool1'):
-        pool1_op = tf.nn.max_pool(relu1_op, ksize=[1,2,2,1],
-                                  strides=[1,2,2,1], padding='SAME') 
-        print_tensor_shape( pool1_op, 'pool1_op shape')
-
-# Conv layer
-    with tf.name_scope('Conv2'):
-        W_conv2 = tf.Variable(tf.truncated_normal([5,5,100,200],stddev=0.1,
-                     dtype=tf.float32),name='W_conv2')
-        print_tensor_shape( W_conv2, 'W_conv2 shape')
-
-        conv2_op = tf.nn.conv2d( pool1_op, W_conv2, strides=[1,2,2,1],
-                     padding="SAME", name='conv2_op' )
-        print_tensor_shape( conv2_op, 'conv2_op shape')
-
-        relu2_op = tf.nn.relu( conv2_op, name='relu2_op' )
-        print_tensor_shape( relu2_op, 'relu2_op shape')
-
-# Pooling layer
-    with tf.name_scope('Pool2'):
-        pool2_op = tf.nn.max_pool(relu2_op, ksize=[1,2,2,1],
-                                  strides=[1,2,2,1], padding='SAME')
-        print_tensor_shape( pool2_op, 'pool2_op shape')
+    with tf.name_scope('Hidden1'):
+        W_fc = tf.Variable(tf.truncated_normal( [256*256, 2048],
+                     stddev=0.1, dtype=tf.float32), name='W_fc')
+        print_tensor_shape( W_fc, 'W_fc shape')
+        flatten1_op = tf.reshape( images_re, [-1, 256*256])
+        print_tensor_shape( flatten1_op, 'flatten1_op shape')
+        h_fc1 = tf.matmul( flatten1_op, W_fc )
+        print_tensor_shape( h_fc1, 'h_fc1 shape')
     
-# Conv layer
-    with tf.name_scope('Conv3'):
-        W_conv3 = tf.Variable(tf.truncated_normal([3,3,200,300],stddev=0.1,
-                     dtype=tf.float32),name='W_conv3') 
-        print_tensor_shape( W_conv3, 'W_conv3 shape')
+    with tf.name_scope('Final'):
+        W_fc2 = tf.Variable(tf.truncated_normal( [2048, 256*256*2],
+                    stddev=0.1, dtype=tf.float32), name='W_fc2' )
+        print_tensor_shape( W_fc2, 'W_fc2 shape')
+        h_fc2 = tf.matmul( h_fc1, W_fc2 )
+        print_tensor_shape( h_fc2, 'h_fc2 shape')
+        h_fc2_re = tf.reshape( h_fc2, [-1, 256, 256, 2] )
+        print_tensor_shape( h_fc2_re, 'h_fc2_re shape')
+        
+    return h_fc2_re 
 
-        conv3_op = tf.nn.conv2d( pool2_op, W_conv3, strides=[1,1,1,1],
-                     padding='SAME', name='conv3_op' )
-        print_tensor_shape( conv3_op, 'conv3_op shape')
-
-        relu3_op = tf.nn.relu( conv3_op, name='relu3_op' )
-        print_tensor_shape( relu3_op, 'relu3_op shape')
-    
-# Conv layer
-    with tf.name_scope('Conv4'):
-        W_conv4 = tf.Variable(tf.truncated_normal([3,3,300,300],stddev=0.1,
-                    dtype=tf.float32), name='W_conv4')
-        print_tensor_shape( W_conv4, 'W_conv4 shape')
-
-        conv4_op = tf.nn.conv2d( relu3_op, W_conv4, strides=[1,1,1,1],
-                     padding='SAME', name='conv4_op' )
-        print_tensor_shape( conv4_op, 'conv4_op shape')
-
-        drop_op = tf.nn.dropout( conv4_op, 1.0 )
-        print_tensor_shape( drop_op, 'drop_op shape' )
-    
-# Conv layer to generate the 2 score classes
-    with tf.name_scope('Score_classes'):
-        W_score_classes = tf.Variable(tf.truncated_normal([1,1,300,2],
-                            stddev=0.1,dtype=tf.float32),name='W_score_classes')
-        print_tensor_shape( W_score_classes, 'W_score_classes_shape')
-
-        score_classes_conv_op = tf.nn.conv2d( drop_op, W_score_classes, 
-                       strides=[1,1,1,1], padding='SAME', 
-                       name='score_classes_conv_op')
-        print_tensor_shape( score_classes_conv_op,'score_conv_op shape')
-
-# Upscore the results to 256x256x2 image
-    with tf.name_scope('Upscore'):
-        W_upscore = tf.Variable(tf.truncated_normal([31,31,2,2],
-                              stddev=0.1,dtype=tf.float32),name='W_upscore')
-        print_tensor_shape( W_upscore, 'W_upscore shape')
-      
-        upscore_conv_op = tf.nn.conv2d_transpose( score_classes_conv_op, 
-                       W_upscore,
-                       output_shape=[1,256,256,2],strides=[1,16,16,1],
-                       padding='SAME',name='upscore_conv_op')
-        print_tensor_shape(upscore_conv_op, 'upscore_conv_op shape')
-
-    return upscore_conv_op
-
-    
 def loss(logits, labels):
     
     # input: logits: Logits tensor, float - [batch_size, 256, 256, NUM_CLASSES].
