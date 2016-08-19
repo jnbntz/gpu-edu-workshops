@@ -226,7 +226,7 @@ def loss(logits, labels):
     return loss
 
 
-def training(loss, learning_rate):
+def training(loss, learning_rate, decay_steps, decay_rate):
     # input: loss: loss tensor from loss()
     # input: learning_rate: scalar for gradient descent
     # output: train_op the operation for training
@@ -241,11 +241,20 @@ def training(loss, learning_rate):
   # Add a scalar summary for the snapshot loss.
     tf.scalar_summary(loss.op.name, loss)
 
-  # Create the gradient descent optimizer with the given learning rate.
-    optimizer = tf.train.GradientDescentOptimizer(learning_rate)
-
   # Create a variable to track the global step.
     global_step = tf.Variable(0, name='global_step', trainable=False)
+
+  # create learning_decay
+    lr = tf.train.exponential_decay( learning_rate,
+                                     global_step,
+                                     decay_steps,
+                                     decay_rate, staircase=True )
+
+    tf.scalar_summary('learning_rate', lr )
+
+  # Create the gradient descent optimizer with the given learning rate.
+#    optimizer = tf.train.GradientDescentOptimizer(learning_rate)
+    optimizer = tf.train.GradientDescentOptimizer(lr)
 
   # Use the optimizer to apply the gradients that minimize the loss
   # (and also increment the global step counter) as a single training step.

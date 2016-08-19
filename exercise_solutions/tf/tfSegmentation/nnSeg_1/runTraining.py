@@ -21,7 +21,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import neuralnetwork as nn
 
-tf.logging.set_verbosity(tf.logging.FATAL)
+tf.logging.set_verbosity(tf.logging.DEBUG)
 
 TRAIN_FILE = 'train_images.tfrecords'
 VALIDATION_FILE = 'val_images.tfrecords'
@@ -29,6 +29,8 @@ VALIDATION_FILE = 'val_images.tfrecords'
 flags = tf.app.flags
 FLAGS = flags.FLAGS
 flags.DEFINE_float('learning_rate', 0.01, 'Initial learning rate.')
+flags.DEFINE_float('decay_rate', 1.0, 'Learning rate decay.')
+flags.DEFINE_integer('decay_steps', 1000, 'Steps at each learning rate.')
 flags.DEFINE_integer('num_epochs', 1, 'Number of epochs to run trainer.')
 flags.DEFINE_integer('batch_size', 1, 'Batch size.')
 flags.DEFINE_string('data_dir', '/tmp/sunny_data',
@@ -57,7 +59,8 @@ def run_training():
         loss = nn.loss(results, labels)
 
 # setup the training operations
-        train_op = nn.training(loss, FLAGS.learning_rate)
+        train_op = nn.training(loss, FLAGS.learning_rate, FLAGS.decay_steps,
+                       FLAGS.decay_rate)
 
 # setup the summary ops to use TensorBoard
         summary_op = tf.merge_all_summaries()
