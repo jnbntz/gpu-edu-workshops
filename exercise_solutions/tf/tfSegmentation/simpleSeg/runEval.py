@@ -62,7 +62,7 @@ def run_eval():
                            num_epochs=1, filename=evalfile)
 
     # Build a Graph that computes the logits predictions from the
-    # inference model.  We'll use a prior graph built by the training
+    # inference model.  We'll use the weights from a training run
         logits = nn.inference(images)
 
     # Calculate predictions.
@@ -134,8 +134,9 @@ def run_eval():
              
             if FLAGS.run_once:
                 break
+
             time.sleep(FLAGS.eval_interval_secs)
-            sess.close()
+#            sess.close()
 
 def main(_):
     run_eval()
