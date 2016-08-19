@@ -148,6 +148,7 @@ def loss(logits, labels):
 # call cross entropy with logits
     cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(
          logits, labels, name='cross_entropy')
+    print_tensor_shape( cross_entropy, 'cross_entropy shape')
 
     loss = tf.reduce_mean(cross_entropy, name='cross_entropy_mean')
     return loss
@@ -194,14 +195,15 @@ def evaluation(logits, labels):
 # reshape to match args required for the cross entropy function
         logits_re = tf.reshape( logits, [-1, 2] )
         labels_re = tf.reshape( labels, [-1] )
-        print_tensor_shape( logits, 'logits eval shape after')
-        print_tensor_shape( labels, 'labels eval shape after')
+        print_tensor_shape( logits_re, 'logits_re eval shape after')
+        print_tensor_shape( labels_re, 'labels_re eval shape after')
 
   # For a classifier model, we can use the in_top_k Op.
   # It returns a bool tensor with shape [batch_size] that is true for
   # the examples where the label is in the top k (here k=1)
   # of all logits for that example.
         correct = tf.nn.in_top_k(logits_re, labels_re, 1)
+        print_tensor_shape( correct, 'correct shape')
 
   # Return the number of true entries.
         return tf.reduce_sum(tf.cast(correct, tf.int32))
