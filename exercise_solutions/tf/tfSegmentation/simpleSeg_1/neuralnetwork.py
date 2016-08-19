@@ -192,40 +192,58 @@ def evaluation(logits, labels):
         print_tensor_shape( logits, 'logits eval shape before')
         print_tensor_shape( labels, 'labels eval shape before')
 
-# reshape to match args required for the cross entropy function
+# reshape to match args required for the top_k function
         logits_re = tf.reshape( logits, [-1, 2] )
-        labels_re = tf.reshape( labels, [-1 ] )
         print_tensor_shape( logits_re, 'logits_re eval shape after')
+        labels_re = tf.reshape( labels, [-1 ] )
         print_tensor_shape( labels_re, 'labels_re eval shape after')
-#        logits_re = tf.Print(logits_re, [logits_re], message="this is logs: ")
-#        labels_re = tf.Print(labels_re, [labels_re], message="this is labs: ")
-
-  # For a classifier model, we can use the in_top_k Op.
-  # It returns a bool tensor with shape [batch_size] that is true for
-  # the examples where the label is in the top k (here k=1)
-  # of all logits for that example.
-        correct = tf.nn.in_top_k(logits_re, labels_re, 1)
-        print_tensor_shape( correct, 'correct shape')
-#        correct = tf.Print(correct, [correct], message="this is correct:")
-
-        _, labcor = tf.nn.top_k( logits_re, 1 ) 
-#        labcor = tf.Print(labcor, [labcor], message="this is correct:")
-        print_tensor_shape( labcor, 'labcor shape')
 
         labels_re = tf.reshape( labels_re, [-1, 1] )
         print_tensor_shape( labels_re, 'labels_re eval shape after')
 
-        example_sum = tf.reduce_sum(tf.cast(labcor, tf.int32)) 
+# top_k returns a tuple of values and indices tensors.  The values are the 
+# ones in the top_k and the indices are the indexes of the values that
+# are in the top_k.  In this case the index is also the class, i.e., if 
+# for a particular pixel the top_k is located in index 0 then the class is 0
+# and if the index is 1 then the class is 1, i.e., in LV
+        _, indices = tf.nn.top_k( logits_re, 1 ) 
+        print_tensor_shape( indices, 'indices shape')
+
+# the total number of pixels in the LV example as calculated by inference
+        example_sum = tf.reduce_sum(tf.cast(indices, tf.int32)) 
+        print_tensor_shape( example_sum, 'example_sum shape')
+
+# the total number of pixels in the LV example from the label
         label_sum = tf.reduce_sum(tf.cast(labels_re, tf.int32))
-        print('example_sum', example_sum)
-        sum_tensor = tf.add(labcor, tf.cast( labels_re, tf.int32 ))
+        print_tensor_shape( label_sum, 'label_sum shape')
+
+# the addition of the indices tensor and the correct tensor, i.e., 
+# adding up the label and the training example, element by element.
+# this resuls in a tensor where each value is 0, 1, or 2.  If 0 then that
+# pixel location was not in LV in either the inference or the label.  If 1
+# then that pixel was labeled as LV by either the correct label or the 
+# inference step.  If 2, then both the inference and the label chose that 
+# pixel as included in LV.
+        sum_tensor = tf.add(indices, tf.cast( labels_re, tf.int32 ))
         print_tensor_shape(sum_tensor, 'sum_tensor shape')  
+
+# create a tensor same shape as sum_tensor and each element is 2
         twos = tf.fill( sum_tensor.get_shape(), 2 )
-        twos = tf.cast( twos, tf.int32)
         print_tensor_shape(twos, 'twos shape')
-        divs = tf.div( sum_tensor, twos ) 
-        print_tensor_shape(divs, 'divs shape')
-  # Return the number of true entries.
-#        return example_sum
-        return tf.reduce_sum(tf.cast(correct, tf.int32))
-#        return tf.reduce_sum(divs)
+
+# perfrom element wise division of the sum_tensor divided by twos.  Integer
+# division will throw away the remainder, so the 0's and 1's from sum_tensor
+# will evaluate to 0 and only the locations in sum_tensor that were 2's will
+# evaluate to 1.  This has the effect of leaving 1's in the tensor ONLY in 
+# the locations where both the label and the inference showed LV class
+# i.e., this is the intersection of the label and the inference
+        intersection_tensor = tf.div( sum_tensor, twos ) 
+        print_tensor_shape(intersection_tensor, 'divs shape')
+
+# calculate how many 1's, i.e., how many pixels were in LV class in both the
+# the label and the inference
+        intersection_sum = tf.reduce_sum( tf.cast( intersection_tensor, 
+                                               tf.int32 ) )
+
+  # Return the tuple of intersection, label and example areas
+        return intersection_sum, label_sum, example_sum 

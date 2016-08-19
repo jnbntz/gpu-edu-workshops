@@ -66,7 +66,7 @@ def run_eval():
         logits = nn.inference(images)
 
     # Calculate predictions.
-        top_k_op = nn.evaluation(logits, labels)
+        int_area, label_area, example_area = nn.evaluation(logits, labels)
 
     # setup the initialization of variables
         local_init = tf.initialize_local_variables()
@@ -100,24 +100,33 @@ def run_eval():
             try:
 
 # true_count accumulates the correct predictions
-                true_count = 0
+                int_sum = 0
+                label_sum = 0
+                example_sum = 0 
+#                true_count = 0
                 step = 0
                 while not coord.should_stop():
 
 # run a single iteration of evaluation
-                    predictions = sess.run([top_k_op])
-
+#                    predictions = sess.run([top_k_op])
+                    ii, ll, ee = sess.run([int_area, label_area, example_area])
+                    int_sum += ii
+                    label_sum += ll
+                    example_sum += ee
 # aggregate correct predictions 
-                    true_count += np.sum(predictions)
+#                    true_count += np.sum(predictions)
                     step += 1
 
 # uncomment below line for debugging
-                    print("step truecount", step, true_count)
+#                    print("step ii, ll, ee, iI, lL, eE", 
+#                             step, ii, ll, ee, int_sum,
+#                              label_sum, example_sum)
         
             except tf.errors.OutOfRangeError:
 # print and output the relevant prediction accuracy
-                precision = true_count / ( step * 256.0 * 256 )
-                print('%s: precision @ 1 = %.3f' % (datetime.now(), precision))
+#                precision = true_count / ( step * 256.0 * 256 )
+                precision = (2.0 * int_sum) / ( label_sum + example_sum )
+                print('%s: Dice metric = %.3f' % (datetime.now(), precision))
                 print('%d images evaluated from file %s' % (step, evalfile))
 
 # create summary to show in TensorBoard
