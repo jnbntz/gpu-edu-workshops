@@ -275,6 +275,7 @@ def evaluation(logits, labels):
   # the examples where the label is in the top k (here k=1)
   # of all logits for that example.
         correct = tf.nn.in_top_k(logits_re, labels_re, 1)
+        print_tensor_shape( correct, 'correct shape')
 
   # Return the number of true entries.
         return tf.reduce_sum(tf.cast(correct, tf.int32))
