@@ -11,12 +11,6 @@ plt.rcParams['image.cmap'] = 'Greys_r'
 import warnings
 warnings.filterwarnings('ignore') # we ignore a RuntimeWarning produced from dividing by zero
 
-#CAFFE_ROOT = "/home/jbentz/isv/caffe/caffe_FCN/"
-#caffe_path = os.path.join(CAFFE_ROOT, "python")
-#if caffe_path not in sys.path:
-#    sys.path.insert(0, caffe_path)
-
-#import caffe
 
 tf.app.flags.DEFINE_string('directory', '/tmp/data',
                            'Directory to write the tf files ' )
