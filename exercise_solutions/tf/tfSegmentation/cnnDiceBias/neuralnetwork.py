@@ -122,7 +122,14 @@ def inference(images):
                      padding="SAME", name='conv1_op' )
         print_tensor_shape( conv1_op, 'conv1_op shape')
 
-        relu1_op = tf.nn.relu( conv1_op, name='relu1_op' )
+        W_bias1 = tf.Variable( tf.zeros([1,128,128,100], dtype=tf.float32), 
+                          name='W_bias1')
+        print_tensor_shape( W_bias1, 'W_bias1 shape')
+
+        bias1_op = conv1_op + W_bias1
+        print_tensor_shape( bias1_op, 'bias1_op shape')
+
+        relu1_op = tf.nn.relu( bias1_op , name='relu1_op' )
         print_tensor_shape( relu1_op, 'relu1_op shape')
 
 # Pooling layer
@@ -141,7 +148,14 @@ def inference(images):
                      padding="SAME", name='conv2_op' )
         print_tensor_shape( conv2_op, 'conv2_op shape')
 
-        relu2_op = tf.nn.relu( conv2_op, name='relu2_op' )
+        W_bias2 = tf.Variable( tf.zeros([1,32,32,200], dtype=tf.float32),
+                          name='W_bias2')
+        print_tensor_shape( W_bias2, 'W_bias2 shape')
+
+        bias2_op = conv2_op + W_bias2
+        print_tensor_shape( bias2_op, 'bias2_op shape')
+
+        relu2_op = tf.nn.relu( bias2_op, name='relu2_op' )
         print_tensor_shape( relu2_op, 'relu2_op shape')
 
 # Pooling layer
@@ -160,7 +174,14 @@ def inference(images):
                      padding='SAME', name='conv3_op' )
         print_tensor_shape( conv3_op, 'conv3_op shape')
 
-        relu3_op = tf.nn.relu( conv3_op, name='relu3_op' )
+        W_bias3 = tf.Variable( tf.zeros([1,16,16,300], dtype=tf.float32),
+                          name='W_bias3')
+        print_tensor_shape( W_bias3, 'W_bias3 shape')
+
+        bias3_op = conv3_op + W_bias3
+        print_tensor_shape( bias3_op, 'bias3_op shape')
+
+        relu3_op = tf.nn.relu( bias3_op, name='relu3_op' )
         print_tensor_shape( relu3_op, 'relu3_op shape')
     
 # Conv layer
@@ -173,7 +194,14 @@ def inference(images):
                      padding='SAME', name='conv4_op' )
         print_tensor_shape( conv4_op, 'conv4_op shape')
 
-        drop_op = tf.nn.dropout( conv4_op, 1.0 )
+        W_bias4 = tf.Variable( tf.zeros([1,16,16,300], dtype=tf.float32),
+                          name='W_bias4')
+        print_tensor_shape( W_bias4, 'W_bias4 shape')
+
+        bias4_op = conv4_op + W_bias4
+        print_tensor_shape( bias4_op, 'bias4_op shape')
+
+        drop_op = tf.nn.dropout( bias4_op, 1.0 )
         print_tensor_shape( drop_op, 'drop_op shape' )
     
 # Conv layer to generate the 2 score classes

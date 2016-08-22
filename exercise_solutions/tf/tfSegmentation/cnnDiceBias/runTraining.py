@@ -30,7 +30,7 @@ flags = tf.app.flags
 FLAGS = flags.FLAGS
 flags.DEFINE_float('learning_rate', 0.01, 'Initial learning rate.')
 flags.DEFINE_float('decay_rate', 1.0, 'Learning rate decay.')
-flags.DEFINE_integer('decay_steps', 1000, 'Steps at each learning rate.')
+flags.DEFINE_integer('decay_steps', 10000, 'Steps at each learning rate.')
 flags.DEFINE_integer('num_epochs', 1, 'Number of epochs to run trainer.')
 flags.DEFINE_integer('batch_size', 1, 'Batch size.')
 flags.DEFINE_string('data_dir', '/tmp/sunny_data',
