@@ -126,8 +126,8 @@ def run_eval():
 # print and output the relevant prediction accuracy
 #                precision = true_count / ( step * 256.0 * 256 )
                 precision = (2.0 * int_sum) / ( label_sum + example_sum )
-                print('%s: Dice metric = %.3f' % (datetime.now(), precision))
-                print('%d images evaluated from file %s' % (step, evalfile))
+                print('OUTPUT: %s: Dice metric = %.3f' % (datetime.now(), precision))
+                print('OUTPUT: %d images evaluated from file %s' % (step, evalfile))
 
 # create summary to show in TensorBoard
                 summary = tf.Summary()
