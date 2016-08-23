@@ -108,22 +108,37 @@ def inference(images):
 # required to pass the images to various layers upcoming in the graph
     images_re = tf.reshape( images, [-1,256,256,1] ) 
     print_tensor_shape( images, 'images shape inference' )
-    
+
+# Choose/change the hidden layer dimension
+    hidden = 512
+
     with tf.name_scope('Hidden1'):
-        W_fc = tf.Variable(tf.truncated_normal( [256*256, 512],
+
+# Create the weights matrix for the first layer
+        W_fc = tf.Variable(tf.truncated_normal( [256*256, hidden],
                      stddev=0.1, dtype=tf.float32), name='W_fc')
         print_tensor_shape( W_fc, 'W_fc shape')
+
+# flatten the tensor to align with arg requirements for matmul
         flatten1_op = tf.reshape( images_re, [-1, 256*256])
         print_tensor_shape( flatten1_op, 'flatten1_op shape')
+
+# multiple the images with the weights
         h_fc1 = tf.matmul( flatten1_op, W_fc )
         print_tensor_shape( h_fc1, 'h_fc1 shape')
     
     with tf.name_scope('Final'):
-        W_fc2 = tf.Variable(tf.truncated_normal( [512, 256*256*2],
+
+# create weights matrix for second layer
+        W_fc2 = tf.Variable(tf.truncated_normal( [hidden, 256*256*2],
                     stddev=0.1, dtype=tf.float32), name='W_fc2' )
         print_tensor_shape( W_fc2, 'W_fc2 shape')
+
+# matrix multiply them together
         h_fc2 = tf.matmul( h_fc1, W_fc2 )
         print_tensor_shape( h_fc2, 'h_fc2 shape')
+
+# reshape the output back to a 2d image
         h_fc2_re = tf.reshape( h_fc2, [-1, 256, 256, 2] )
         print_tensor_shape( h_fc2_re, 'h_fc2_re shape')
         
