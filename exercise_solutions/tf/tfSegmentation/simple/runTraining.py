@@ -97,7 +97,7 @@ def run_training():
 
 # print some output periodically
                 if step % 100 == 0:
-                    print('Step %d: loss = %.3f (%.3f sec)' % (step, 
+                    print('OUTPUT: Step %d: loss = %.3f (%.3f sec)' % (step, 
                                                                loss_value,
                                                                duration))
 # output some data to the log files for tensorboard
@@ -114,7 +114,7 @@ def run_training():
 
 # quit after we run out of input files to read
         except tf.errors.OutOfRangeError:
-            print('Done training for %d epochs, %d steps.' % (FLAGS.num_epochs,
+            print('OUTPUT: Done training for %d epochs, %d steps.' % (FLAGS.num_epochs,
                                                               step))
             checkpoint_path = os.path.join(FLAGS.checkpoint_dir, 
                                               'model.ckpt')

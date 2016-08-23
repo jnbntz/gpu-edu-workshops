@@ -110,7 +110,7 @@ def inference(images):
     print_tensor_shape( images, 'images shape inference' )
     
     with tf.name_scope('Hidden1'):
-        W_fc = tf.Variable(tf.truncated_normal( [256*256, 2048],
+        W_fc = tf.Variable(tf.truncated_normal( [256*256, 512],
                      stddev=0.1, dtype=tf.float32), name='W_fc')
         print_tensor_shape( W_fc, 'W_fc shape')
         flatten1_op = tf.reshape( images_re, [-1, 256*256])
@@ -119,7 +119,7 @@ def inference(images):
         print_tensor_shape( h_fc1, 'h_fc1 shape')
     
     with tf.name_scope('Final'):
-        W_fc2 = tf.Variable(tf.truncated_normal( [2048, 256*256*2],
+        W_fc2 = tf.Variable(tf.truncated_normal( [512, 256*256*2],
                     stddev=0.1, dtype=tf.float32), name='W_fc2' )
         print_tensor_shape( W_fc2, 'W_fc2 shape')
         h_fc2 = tf.matmul( h_fc1, W_fc2 )

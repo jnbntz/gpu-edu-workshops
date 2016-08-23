@@ -117,8 +117,8 @@ def run_eval():
             except tf.errors.OutOfRangeError:
 # print and output the relevant prediction accuracy
                 precision = true_count / ( step * 256.0 * 256 )
-                print('%s: precision @ 1 = %.3f' % (datetime.now(), precision))
-                print('%d images evaluated from file %s' % (step, evalfile))
+                print('OUTPUT: %s: precision = %.3f' % (datetime.now(), precision))
+                print('OUTPUT: %d images evaluated from file %s' % (step, evalfile))
 
 # create summary to show in TensorBoard
                 summary = tf.Summary()
