@@ -116,7 +116,8 @@ def inference(images):
 # third dim is number of input channels and fourth dim is output channels
 # will be convolved with images_re
 
-        W_conv1 = tf.Variable(tf.truncated_normal([5,5,1,100],stddev=0.1,
+        W_conv1 = tf.Variable(tf.truncated_normal([FIXME,FIXME,1,100],
+                     stddev=0.1,
                      dtype=tf.float32),name='W_conv1')
         print_tensor_shape( W_conv1, 'W_conv1 shape')
 
@@ -129,7 +130,8 @@ def inference(images):
 # strides is a 4d tensor.  stride of the sliding window for each
 # dimension of input
 
-        conv1_op = tf.nn.conv2d( images_re, W_conv1, strides=[1,2,2,1], 
+        conv1_op = tf.nn.conv2d( images_re, W_conv1, 
+                     strides=[1,FIXME,FIXME,1], 
                      padding="SAME", name='conv1_op' )
         print_tensor_shape( conv1_op, 'conv1_op shape')
 
@@ -145,17 +147,19 @@ def inference(images):
 # ksize = size of the window for each input dimension
 # strides = stride of the sliding window for each input dimension
 
-        pool1_op = tf.nn.max_pool(relu1_op, ksize=[1,2,2,1],
-                                  strides=[1,2,2,1], padding='SAME') 
+        pool1_op = tf.nn.max_pool(relu1_op, ksize=[1,FIXME,FIXME,1],
+                                  strides=[1,FIXME,FIXME,1], padding='SAME') 
         print_tensor_shape( pool1_op, 'pool1_op shape')
 
 # Conv layer
     with tf.name_scope('Conv2'):
-        W_conv2 = tf.Variable(tf.truncated_normal([5,5,100,200],stddev=0.1,
+        W_conv2 = tf.Variable(tf.truncated_normal([FIXME,FIXME,100,200],
+                     stddev=0.1,
                      dtype=tf.float32),name='W_conv2')
         print_tensor_shape( W_conv2, 'W_conv2 shape')
 
-        conv2_op = tf.nn.conv2d( pool1_op, W_conv2, strides=[1,2,2,1],
+        conv2_op = tf.nn.conv2d( pool1_op, W_conv2, 
+                     strides=[1,FIXME,FIXME,1],
                      padding="SAME", name='conv2_op' )
         print_tensor_shape( conv2_op, 'conv2_op shape')
 
@@ -164,17 +168,19 @@ def inference(images):
 
 # Pooling layer
     with tf.name_scope('Pool2'):
-        pool2_op = tf.nn.max_pool(relu2_op, ksize=[1,2,2,1],
-                                  strides=[1,2,2,1], padding='SAME')
+        pool2_op = tf.nn.max_pool(relu2_op, ksize=[1,FIXME,FIXME,1],
+                                  strides=[1,FIXME,FIXME,1], padding='SAME')
         print_tensor_shape( pool2_op, 'pool2_op shape')
     
 # Conv layer
     with tf.name_scope('Conv3'):
-        W_conv3 = tf.Variable(tf.truncated_normal([3,3,200,300],stddev=0.1,
+        W_conv3 = tf.Variable(tf.truncated_normal([FIXME,FIXME,200,300],
+                     stddev=0.1,
                      dtype=tf.float32),name='W_conv3') 
         print_tensor_shape( W_conv3, 'W_conv3 shape')
 
-        conv3_op = tf.nn.conv2d( pool2_op, W_conv3, strides=[1,1,1,1],
+        conv3_op = tf.nn.conv2d( pool2_op, W_conv3, 
+                     strides=[1,FIXME,FIXME,1],
                      padding='SAME', name='conv3_op' )
         print_tensor_shape( conv3_op, 'conv3_op shape')
 
@@ -183,11 +189,13 @@ def inference(images):
     
 # Conv layer
     with tf.name_scope('Conv4'):
-        W_conv4 = tf.Variable(tf.truncated_normal([3,3,300,300],stddev=0.1,
+        W_conv4 = tf.Variable(tf.truncated_normal([FIXME,FIXME,300,300],
+                    stddev=0.1,
                     dtype=tf.float32), name='W_conv4')
         print_tensor_shape( W_conv4, 'W_conv4 shape')
 
-        conv4_op = tf.nn.conv2d( relu3_op, W_conv4, strides=[1,1,1,1],
+        conv4_op = tf.nn.conv2d( relu3_op, W_conv4, 
+                     strides=[1,FIXME,FIXME,1],
                      padding='SAME', name='conv4_op' )
         print_tensor_shape( conv4_op, 'conv4_op shape')
 
