@@ -114,19 +114,37 @@ def inference(images):
 
 # weight variable 4d tensor, first two dims are patch (kernel) size       
 # third dim is number of input channels and fourth dim is output channels
+# will be convolved with images_re
+
         W_conv1 = tf.Variable(tf.truncated_normal([5,5,1,100],stddev=0.1,
                      dtype=tf.float32),name='W_conv1')
         print_tensor_shape( W_conv1, 'W_conv1 shape')
 
+# convolution operator.  first arg is the batch of input images with 
+# shape [batch, in_height, in_width, in_channels]
+
+# second arg is the filter (weights) with shape 
+# [filter_height, filter_width, in_channels, out_channels]
+
+# strides is a 4d tensor.  stride of the sliding window for each
+# dimension of input
+
         conv1_op = tf.nn.conv2d( images_re, W_conv1, strides=[1,2,2,1], 
                      padding="SAME", name='conv1_op' )
         print_tensor_shape( conv1_op, 'conv1_op shape')
+
+# rectified linear activation function
 
         relu1_op = tf.nn.relu( conv1_op, name='relu1_op' )
         print_tensor_shape( relu1_op, 'relu1_op shape')
 
 # Pooling layer
     with tf.name_scope('Pool1'):
+
+# max pooling layer
+# ksize = size of the window for each input dimension
+# strides = stride of the sliding window for each input dimension
+
         pool1_op = tf.nn.max_pool(relu1_op, ksize=[1,2,2,1],
                                   strides=[1,2,2,1], padding='SAME') 
         print_tensor_shape( pool1_op, 'pool1_op shape')
@@ -173,7 +191,11 @@ def inference(images):
                      padding='SAME', name='conv4_op' )
         print_tensor_shape( conv4_op, 'conv4_op shape')
 
-        drop_op = tf.nn.dropout( conv4_op, 1.0 )
+        relu4_op = tf.nn.relu( conv4_op, name='relu4_op' )
+        print_tensor_shape( relu4_op, 'relu4_op shape')
+
+# optional dropout node.  when set to 1.0 nothing is dropped out
+        drop_op = tf.nn.dropout( relu4_op, 1.0 )
         print_tensor_shape( drop_op, 'drop_op shape' )
     
 # Conv layer to generate the 2 score classes
@@ -193,6 +215,8 @@ def inference(images):
                               stddev=0.1,dtype=tf.float32),name='W_upscore')
         print_tensor_shape( W_upscore, 'W_upscore shape')
       
+# conv2d_transpose is also referred to in the literature as 
+# deconvolution
         upscore_conv_op = tf.nn.conv2d_transpose( score_classes_conv_op, 
                        W_upscore,
                        output_shape=[1,256,256,2],strides=[1,16,16,1],
