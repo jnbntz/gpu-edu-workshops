@@ -220,7 +220,7 @@ def inference(images):
 
         W_bias5 = tf.Variable( tf.zeros([1,16,16,2], dtype=tf.float32),
                           name='W_bias5')
-        print_tensor_shape( W_bias4, 'W_bias5 shape')
+        print_tensor_shape( W_bias5, 'W_bias5 shape')
 
         bias5_op = score_classes_conv_op + W_bias5
         print_tensor_shape( bias5_op, 'bias5_op shape')

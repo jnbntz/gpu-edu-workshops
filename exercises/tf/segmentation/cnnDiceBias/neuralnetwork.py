@@ -122,7 +122,7 @@ def inference(images):
                      padding="SAME", name='conv1_op' )
         print_tensor_shape( conv1_op, 'conv1_op shape')
 
-        W_bias1 = tf.Variable( tf.zeros([1,128,128,100], dtype=tf.float32), 
+        W_bias1 = tf.Variable( tf.zeros([1,FIXME,FIXME,FIXME], dtype=tf.float32), 
                           name='W_bias1')
         print_tensor_shape( W_bias1, 'W_bias1 shape')
 
@@ -148,7 +148,7 @@ def inference(images):
                      padding="SAME", name='conv2_op' )
         print_tensor_shape( conv2_op, 'conv2_op shape')
 
-        W_bias2 = tf.Variable( tf.zeros([1,32,32,200], dtype=tf.float32),
+        W_bias2 = tf.Variable( tf.zeros([1,FIXME,FIXME,FIXME], dtype=tf.float32),
                           name='W_bias2')
         print_tensor_shape( W_bias2, 'W_bias2 shape')
 
@@ -174,7 +174,7 @@ def inference(images):
                      padding='SAME', name='conv3_op' )
         print_tensor_shape( conv3_op, 'conv3_op shape')
 
-        W_bias3 = tf.Variable( tf.zeros([1,16,16,300], dtype=tf.float32),
+        W_bias3 = tf.Variable( tf.zeros([1,FIXME,FIXME,FIXME], dtype=tf.float32),
                           name='W_bias3')
         print_tensor_shape( W_bias3, 'W_bias3 shape')
 
@@ -194,7 +194,7 @@ def inference(images):
                      padding='SAME', name='conv4_op' )
         print_tensor_shape( conv4_op, 'conv4_op shape')
 
-        W_bias4 = tf.Variable( tf.zeros([1,16,16,300], dtype=tf.float32),
+        W_bias4 = tf.Variable( tf.zeros([1,FIXME,FIXME,FIXME], dtype=tf.float32),
                           name='W_bias4')
         print_tensor_shape( W_bias4, 'W_bias4 shape')
 
@@ -218,9 +218,9 @@ def inference(images):
                        name='score_classes_conv_op')
         print_tensor_shape( score_classes_conv_op,'score_conv_op shape')
 
-        W_bias5 = tf.Variable( tf.zeros([1,16,16,2], dtype=tf.float32),
+        W_bias5 = tf.Variable( tf.zeros([1,FIXME,FIXME,FIXME], dtype=tf.float32),
                           name='W_bias5')
-        print_tensor_shape( W_bias4, 'W_bias5 shape')
+        print_tensor_shape( W_bias5, 'W_bias5 shape')
 
         bias5_op = score_classes_conv_op + W_bias5
         print_tensor_shape( bias5_op, 'bias5_op shape')
