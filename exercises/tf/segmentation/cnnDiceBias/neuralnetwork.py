@@ -201,7 +201,10 @@ def inference(images):
         bias4_op = conv4_op + W_bias4
         print_tensor_shape( bias4_op, 'bias4_op shape')
 
-        drop_op = tf.nn.dropout( bias4_op, 1.0 )
+        relu4_op = tf.nn.relu( bias4_op, name='relu4_op' )
+        print_tensor_shape( relu4_op, 'relu4_op shape')
+
+        drop_op = tf.nn.dropout( relu4_op, 1.0 )
         print_tensor_shape( drop_op, 'drop_op shape' )
     
 # Conv layer to generate the 2 score classes
@@ -214,6 +217,13 @@ def inference(images):
                        strides=[1,1,1,1], padding='SAME', 
                        name='score_classes_conv_op')
         print_tensor_shape( score_classes_conv_op,'score_conv_op shape')
+
+        W_bias5 = tf.Variable( tf.zeros([1,16,16,2], dtype=tf.float32),
+                          name='W_bias5')
+        print_tensor_shape( W_bias4, 'W_bias5 shape')
+
+        bias5_op = score_classes_conv_op + W_bias5
+        print_tensor_shape( bias5_op, 'bias5_op shape')
 
 # Upscore the results to 256x256x2 image
     with tf.name_scope('Upscore'):
