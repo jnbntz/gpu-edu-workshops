@@ -173,7 +173,10 @@ def inference(images):
                      padding='SAME', name='conv4_op' )
         print_tensor_shape( conv4_op, 'conv4_op shape')
 
-        drop_op = tf.nn.dropout( conv4_op, 1.0 )
+        relu4_op = tf.nn.relu( conv4_op, name='relu4_op' )
+        print_tensor_shape( relu4_op, 'relu4_op shape')
+
+        drop_op = tf.nn.dropout( relu4_op, 1.0 )
         print_tensor_shape( drop_op, 'drop_op shape' )
     
 # Conv layer to generate the 2 score classes

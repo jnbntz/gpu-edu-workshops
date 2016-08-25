@@ -201,7 +201,10 @@ def inference(images):
         bias4_op = conv4_op + W_bias4
         print_tensor_shape( bias4_op, 'bias4_op shape')
 
-        drop_op = tf.nn.dropout( bias4_op, 1.0 )
+        relu4_op = tf.nn.relu( bias4_op, name='relu4_op' )
+        print_tensor_shape( relu4_op, 'relu4_op shape')
+
+        drop_op = tf.nn.dropout( relu4_op, 1.0 )
         print_tensor_shape( drop_op, 'drop_op shape' )
     
 # Conv layer to generate the 2 score classes
