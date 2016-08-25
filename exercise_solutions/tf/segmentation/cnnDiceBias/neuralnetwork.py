@@ -218,6 +218,13 @@ def inference(images):
                        name='score_classes_conv_op')
         print_tensor_shape( score_classes_conv_op,'score_conv_op shape')
 
+        W_bias5 = tf.Variable( tf.zeros([1,16,16,2], dtype=tf.float32),
+                          name='W_bias5')
+        print_tensor_shape( W_bias4, 'W_bias5 shape')
+
+        bias5_op = score_classes_conv_op + W_bias5
+        print_tensor_shape( bias5_op, 'bias5_op shape')
+
 # Upscore the results to 256x256x2 image
     with tf.name_scope('Upscore'):
         W_upscore = tf.Variable(tf.truncated_normal([31,31,2,2],
