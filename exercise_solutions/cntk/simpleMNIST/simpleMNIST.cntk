@@ -82,6 +82,8 @@ mnistTrain = [
 
     evalCriterion = "ErrorPrediction"
 
+    applyMeanVarNorm = true
+
   ] # end SimpleNetworkBuilder
 
 # SGD is for stochastic gradient descent
@@ -102,37 +104,49 @@ mnistTrain = [
 
   reader = [
 
-    readerType = "UCIFastReader"
+#    readerType = "UCIFastReader"
+    readerType = "CNTKTextFormatReader"
     file = "$DataDir$/train-images.txt"
+
+    input = [
+      features = [
+        dim = 784
+        format = "dense"
+      ]
+      labels = [
+        dim = 10
+        format = "dense"
+      ]
+    ]
+  ]
 
 # specify how many features per example and where the features start in the
 # test file
 
-    features = [
+#    features = [
 
-      dim = 784
-      start = 1
+#      dim = 784
+#      start = 1
 
-    ] # end features
+#    ] # end features
 
 # specify how many labels and where the labels start in the text file
 
-    labels = [
+#    labels = [
 
-      dim = 1
-      start = 0
+#      dim = 1
+#      start = 0
 
 # labelDim is 10 because we have 10 possible digits
 
-      labelDim = 10
+#      labelDim = 10
 
 # file to map numbers to labels.  Each row corresponds to a unique label
 
-      labelMappingFile = "$DataDir$/labelsmap.txt"   
+#      labelMappingFile = "$DataDir$/labelsmap.txt"   
 
-    ] # end labels
+#    ] # end labels
 
-  ] # end reader
 
 ] # end mnistTrain
 
@@ -149,29 +163,46 @@ mnistTest = [
   minibatchSize = 16
 
 # reader same as above just different file name with the test examples
-
   reader = [
 
-    readerType = "UCIFastReader"
+#    readerType = "UCIFastReader"
+    readerType = "CNTKTextFormatReader"
     file = "$DataDir$/t10k-images.txt"
 
-    features = [
+    input = [
+      features = [
+        dim = 784
+        format = "dense"
+      ]
+      labels = [
+        dim = 10
+        format = "dense"
+      ]
+    ]
+  ]
 
-      dim = 784
-      start = 1
-
-    ] # end features
-
-    labels = [
-
-      dim = 1
-      start = 0
-      labelDim = 10
-      labelMappingFile = "$DataDir$/labelsmap.txt"
-
-    ] # end labels
+#  reader = [
+#
+#    readerType = "UCIFastReader"
+#    file = "$DataDir$/t10k-images.txt"
+#
+#    features = [
+#
+#      dim = 784
+#      start = 1
+#
+#    ] # end features
+#
+#    labels = [
+#
+#      dim = 1
+#      start = 0
+#      labelDim = 10
+#      labelMappingFile = "$DataDir$/labelsmap.txt"
+#
+#    ] # end labels
   
-  ] # end reader
+#  ] # end reader
 
 ] # end mnistTest
 

@@ -135,6 +135,8 @@ print_next_image(int f, u_int32_t n, u_char *image, u_int32_t nr, u_int32_t nc)
          * the array first
          */
 //      printf("%u %u\n", nr, nc);
+//        printf("|features ", nr, nc);
+        printf("|features ");
         for (i = 0; i < nr; i++) {
                 for (j = 0; j < nc; j++) {
                         printf(" %u", *(image + j + (i * nc)));
@@ -151,6 +153,7 @@ main(int argc, char **argv)
 {
         int c, n_flag, l_flag, i_flag, b_flag, p_flag, r_flag;
         int fl, fi;
+        int ii, temp;
         u_int32_t i, j, lmagic, imagic, lnum, inum, nr, nc, ilen, n;
         u_char byte, *image;
         char *lfile, *ifile, *basename;
@@ -325,7 +328,14 @@ main(int argc, char **argv)
                 if (byte == byte) {
 //jlb                printf("%d\n",byte);
 // printing the digit number
-                   fprintf(stdout,"%d ",byte);
+//                   fprintf(stdout,"|labels %d ",byte);
+                   fprintf(stdout,"|labels ");
+                   for( i = 0; i < 10; i++)
+                   {
+                     temp = 0;
+                     if( i == byte ) temp = 1;
+                     fprintf(stdout,"%d ", temp);
+                   }
 //jlb                   fprintf(stderr,"%d\n",byte);
                         if (p_flag) {
                                 print_pgm_image(fi, n, image, nr, nc, basename, r_flag);

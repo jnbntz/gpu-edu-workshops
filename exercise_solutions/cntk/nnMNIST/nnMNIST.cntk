@@ -132,30 +132,48 @@ mnistTrain = [
 
   reader = [
 
-    readerType = "UCIFastReader"
+    readerType = "CNTKTextFormatReader"
     file = "$DataDir$/train-images.txt"
+
+    input = [
+      features = [
+        dim = 784
+        format = "dense"
+      ]
+      labels = [
+        dim = 10
+        format = "dense"
+      ]
+    ]
+  ]
+
+
+#  reader = [
+
+#    readerType = "UCIFastReader"
+#    file = "$DataDir$/train-images.txt"
 
 # how many features per example and where the features start in the test file
 
-    features = [
+#    features = [
 
-      dim = 784
-      start = 1
-
-    ] # end features
+#      dim = 784
+#      start = 1
+#
+#    ] # end features
 
 # how many labels and where they start in the text file
 
-    labels = [
+#    labels = [
+#
+#      dim = 1
+#      start = 0
+#      labelDim = 10
+#      labelMappingFile = "$DataDir$/labelsmap.txt"   
 
-      dim = 1
-      start = 0
-      labelDim = 10
-      labelMappingFile = "$DataDir$/labelsmap.txt"   
+#    ] # end labels
 
-    ] # end labels
-
-  ] # end reader
+#  ] # end reader
 
 ] # end mnistTrain
 
@@ -175,26 +193,44 @@ mnistTest = [
 
   reader = [
 
-    readerType = "UCIFastReader"
+    readerType = "CNTKTextFormatReader"
     file = "$DataDir$/t10k-images.txt"
 
-    features = [
+    input = [
+      features = [
+        dim = 784
+        format = "dense"
+      ]
+      labels = [
+        dim = 10
+        format = "dense"
+      ]
+    ]
+  ]
 
-      dim = 784
-      start = 1
 
-    ] # end features
+#  reader = [
 
-    labels = [
+#    readerType = "UCIFastReader"
+#    file = "$DataDir$/t10k-images.txt"
 
-      dim = 1
-      start = 0
-      labelDim = 10
-      labelMappingFile = "$DataDir$/labelsmap.txt"
+#    features = [
 
-    ] # end labels
+#      dim = 784
+#      start = 1
+
+#    ] # end features
+
+#    labels = [
+
+#      dim = 1
+#      start = 0
+#      labelDim = 10
+#      labelMappingFile = "$DataDir$/labelsmap.txt"
+
+#    ] # end labels
   
-  ] # end reader
+#  ] # end reader
 
 ] # end mnistTest
 
