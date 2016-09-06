@@ -165,7 +165,7 @@ def loss(logits, labels):
          logits, labels, name='cross_entropy')
     print_tensor_shape( cross_entropy, 'cross_entropy shape')
 
-    loss = tf.reduce_mean(cross_entropy, name='cross_entropy_mean')
+    loss = tf.reduce_mean(cross_entropy, name='0simple_cross_entropy_mean')
     return loss
 
 
