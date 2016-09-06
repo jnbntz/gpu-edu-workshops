@@ -123,7 +123,7 @@ def run_eval():
 # create summary to show in TensorBoard
                 summary = tf.Summary()
                 summary.ParseFromString(sess.run(summary_op))
-                summary.value.add(tag='Accuracy', simple_value=precision)
+                summary.value.add(tag='0simple_accuracy', simple_value=precision)
                 summary_writer.add_summary(summary, global_step)
 
             finally:

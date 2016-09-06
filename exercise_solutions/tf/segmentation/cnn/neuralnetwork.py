@@ -246,7 +246,7 @@ def loss(logits, labels):
     cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(
          logits, labels, name='cross_entropy')
 
-    loss = tf.reduce_mean(cross_entropy, name='cross_entropy_mean')
+    loss = tf.reduce_mean(cross_entropy, name='1cnn_cross_entropy_mean')
     return loss
 
 
@@ -274,7 +274,7 @@ def training(loss, learning_rate, decay_steps, decay_rate):
                                      decay_steps,
                                      decay_rate, staircase=True )
 
-    tf.scalar_summary('learning_rate', lr )
+    tf.scalar_summary('1learning_rate', lr )
 
   # Create the gradient descent optimizer with the given learning rate.
 #    optimizer = tf.train.GradientDescentOptimizer(learning_rate)
