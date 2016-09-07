@@ -154,44 +154,20 @@ mnistTrain = [
     file = "$DataDir$/train-images.txt"
 
     input = [
+
+# specify how many features per example
       features = [
         dim = 784
         format = "dense"
       ]
       labels = [
+
+# specify how many classes the label can be in
         dim = 10
         format = "dense"
       ]
     ]
   ] # end reader
-
-
-#  reader = [
-
-#    readerType = "UCIFastReader"
-#    file = "$DataDir$/train-images.txt"
-
-# how many features per example and where the features start in the test file
-
-#    features = [
-#
-#      dim = 784
-#      start = 1
-#
-#    ] # end features
-#
-## how many labels and where they start in the text file
-#
-#    labels = [
-#
-#      dim = 1
-#      start = 0
-#      labelDim = 10
-#      labelMappingFile = "$DataDir$/labelsmap.txt"   
-#
-#    ] # end labels
-#
-#  ] # end reader
 
 ] # end mnistTrain
 
@@ -211,7 +187,6 @@ mnistTest = [
 
   reader = [
 
-#    readerType = "UCIFastReader"
     readerType = "CNTKTextFormatReader"
     file = "$DataDir$/t10k-images.txt"
 
@@ -226,30 +201,6 @@ mnistTest = [
       ]
     ]
   ]
-
-
-#  reader = [
-
-#    readerType = "UCIFastReader"
-#    file = "$DataDir$/t10k-images.txt"
-
-#    features = [
-
-#      dim = 784
-#      start = 1
-
-#    ] # end features
-
-#    labels = [
-
-#      dim = 1
-#      start = 0
-#      labelDim = 10
-#      labelMappingFile = "$DataDir$/labelsmap.txt"
-
-#    ] # end labels
-  
-#  ] # end reader
 
 ] # end mnistTest
 
