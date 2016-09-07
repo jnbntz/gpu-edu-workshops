@@ -81,7 +81,13 @@ mnistTrain = [
       model = Sequential (
         
         normalize256 : 
+
+# layer connecting input to hidden layer
+
         DenseLayer { hiddenDim, activation=ReLU } :
+
+# connecting hidden layer to output
+
         DenseLayer { outputDim, activation=ReLU }
 
       ) # end model definition
