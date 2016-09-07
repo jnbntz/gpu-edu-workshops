@@ -61,79 +61,74 @@ mnistTrain = [
 
 # 784 inputs, 1 hidden layer, 10 output classes
 
-  NDLNetworkBuilder = [
-
-# choose which subblock to run
-
-    run = NN 
-
-# define the NN subblock
-
-    NN = [
+  BrainScriptNetworkBuilder = [
 
 # network size parameters
 
-      InputDim = 784
-      HiddenDim = 256
-      OutputDim = 10
+      inputDim = 784
+      hiddenDim = 256
+      outputDim = 10
 
 # define the sizes of the features and labels. 
 
-      features = InputValue( InputDim ) 
-      labels = InputValue( OutputDim )
+      features = Input{ inputDim } 
+      labels = Input{ outputDim }
 
 # normalize the input from 0-255 to 0.0 to 1.0
 
       normFactor = Constant( 0.00390625 )
-      featuresScaled = Scale( normFactor, features )
+      featuresScaled = normFactor .* features 
+
+# define the model to be trained
+
+      model (featuresScaled) = {
 
 # first layer multiply by weights
 
-      Weights1 = LearnableParameter( HiddenDim, InputDim )
-      Z1 = Times( Weights1, featuresScaled )
+        weights1 = ParameterTensor {( hiddenDim:inputDim )}
+        z1 = weights1 * featuresScaled 
 
 # add the bias term
 
-      Bias1 = LearnableParameter( HiddenDim )
-      B1 = Plus( Z1,Bias1 )
+        bias1 = ParameterTensor {( hiddenDim )}
+        b1 = z1 + bias1
 
 # activation of first layer
 
-#      Activations1 = Sigmoid( B1 )
-      Activations1 = RectifiedLinear( B1 )
+        activations1 = ReLU( b1 )
 
 # second layer multiply by weights
 
-      Weights2 = LearnableParameter( OutputDim, HiddenDim )
-      Z2 = Times( Weights2, Activations1 )
+        weights2 = ParameterTensor {( outputDim:hiddenDim )}
+        z2 = weights2 * activations1
 
 # second bias layer
 
-      Bias2 = LearnableParameter( OutputDim )
-      B2 = Plus( Z2,Bias2 )
+        bias2 = ParameterTensor {( outputDim )}
+        b2 = z2 + bias2 
 
 # second activation layer
 
-#      Activations2 = Sigmoid( B2 )
-      Activations2 = RectifiedLinear( B2 )
+        activations2 = ReLU( b2 )
+
+      }.activations2 # end model
+
+      z = model( featuresScaled )
 
 #define the error criterion
 
-#      Error = SquareError( labels, Activations2 )
-      Error = CrossEntropyWithSoftmax( labels, Activations2 )
-      ErrPredict = ErrorPrediction( labels, Activations2 )
+      error = CrossEntropyWithSoftmax( labels, z )
+      errPredict = ErrorPrediction( labels, z )
 
 # define the special nodes.
 
-      FeatureNodes = (features)
-      LabelNodes = (labels)
-      CriteriaNodes = (Error)
-      EvalNodes = (ErrPredict)
-      OutputNodes = (Activations2)
+      featureNodes = (features)
+      labelNodes = (labels)
+      criterionNodes = (error)
+      evaluationNodes = (errPredict)
+      outputNodes = (z)
 
-    ] # end run NN
-
-  ] # end NDLNetworkBuilder
+  ] # end BrainScriptNetworkBuilder
 
 # define the SGD parameters
 
