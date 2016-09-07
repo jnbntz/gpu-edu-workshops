@@ -61,61 +61,61 @@ mnistTrain = [
 
 # 784 inputs, 1 hidden layer, 10 output classes
 
-  NDLNetworkBuilder = [
-
-# choose which subblock to run
-
-    run = NN 
-
-# define the NN subblock
-
-    NN = [
+  BrainScriptNetworkBuilder = [
 
 # network size parameters
 
-      InputDim = 784
-      HiddenDim = 256
-      OutputDim = 10
+      inputDim = 784
+      hiddenDim = 256
+      outputDim = 10
 
 # define the sizes of the features and labels. 
 
-      features = InputValue( InputDim ) 
-      labels = InputValue( OutputDim )
+      features = Input{ inputDim } 
+      labels = Input{ outputDim }
+
+# define the model (neural network)
+
+      model (features) = {
 
 # first layer multiply by weights
 
-      Weights1 = LearnableParameter( HiddenDim, InputDim )
-      Z1 = Times( Weights1, features )
+        weights1 = ParameterTensor{ (hiddenDim:inputDim) }
+        z1 = weights1 * features 
 
 # first layer activations
 
-      Activations1 = Sigmoid( Z1 )
+        activations1 = Sigmoid( z1 )
 
 # second layer multiply by weights
 
-      Weights2 = LearnableParameter( OutputDim, HiddenDim )
-      Z2 = Times( Weights2, Activations1 )
+        weights2 = ParameterTensor{ (outputDim:hiddenDim) }
+        z2 = weights2 * activations1
 
 # second layer activations
 
-      Activations2 = Sigmoid( Z2 )
+        activations2 = Sigmoid( z2 )
+
+      }.activations2 # end model defintion
+
+# compute the model with features as input
+
+      z = model( features )
 
 #define the error criterion
 
-      Error = SquareError( labels, Activations2 )
-      ErrPredict = ErrorPrediction( labels, Activations2 )
+      sqErr = SquareError( labels, z )
+      errPred = ClassificationError( labels, z )
 
 # define the special nodes.
 
-      FeatureNodes = (features)
-      LabelNodes = (labels)
-      CriteriaNodes = (Error)
-      EvalNodes = (ErrPredict)
-      OutputNodes = (Activations2)
+      featureNodes = (features)
+      labelNodes = (labels)
+      criterionNodes = (sqErr)
+      evaluationNodes = (errPred)
+      outputNodes = (z)
 
-    ] # end run NN
-
-  ] # end NDLNetworkBuilder
+  ] # end BrainScriptNetworkBuilder
 
 # define the SGD parameters
 

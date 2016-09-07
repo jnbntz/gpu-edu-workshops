@@ -80,7 +80,7 @@ mnistTrain = [
 
 # specify the evaluation criterion
 
-    evalCriterion = "ErrorPrediction"
+    evalCriterion = "ClassificationError"
 
     applyMeanVarNorm = true
 

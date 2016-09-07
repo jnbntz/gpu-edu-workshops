@@ -62,121 +62,75 @@ mnistTrain = [
 
 # 784 inputs, 1 hidden layer, 10 output classes
 
-  NDLNetworkBuilder = [
-
-# choose which subblock to run
-
-    run = CNN 
-
-# define the NN subblock
-
-    CNN = [
+  BrainScriptNetworkBuilder = {
 
 # image parameters
 
       imageWidth = 28
       imageHeight = 28
       numChannels = 1
+      imageShape = (imageWidth:imageHeight:numChannels)
       labelDim = 10
 
 # defining the sizes of the feature and labels
 
-      features = ImageInput( imageWidth, imageHeight, numChannels, 
-        imageLayout=$imageLayout$ )
-
-      labels = InputValue( labelDim )
+       features = Input { imageShape }
+       labels = Input { labelDim }
 
 # scale the features
       
-      normFactor = Constant( 0.00390625 )
-      featuresScaled = Scale( normFactor, features )
+      normalize256 (x) = x .* Constant( 0.00390625 )
 
-# first convolution layer
+# define the model using CNTK built-in Layers
 
-      numFeatureMaps = 16
-      kernelWidth = 5
-      kernelHeight = 5
+      model = Sequential (
+        
+        normalize256 :
 
-      Conv1Weights = LearnableParameter( numFeatureMaps, 25 )
-      Conv1Bias = ImageParameter( 1, 1, numFeatureMaps, 
-        imageLayout=$imageLayout$ )
+# first convolution layer, combines bias and activation
 
-      Conv1 = Convolution( Conv1Weights, featuresScaled, kernelWidth, 
-        kernelHeight, numFeatureMaps, 1, 1, zeroPadding=false, 
-        imageLayout=$imageLayout$ )
-
-# first bias term
-     
-      B1 = Plus( Conv1, Conv1Bias )
-
-# first activation layer
-
-      Act1 = RectifiedLinear( B1 )
+        ConvolutionalLayer { 16, (5:5), 
+          activation=ReLU, stride=1, bias=true }:
 
 # first pooling layer
 
-      Pool1 = MaxPooling( Act1, 2, 2, 2, 2, imageLayout=$imageLayout$ )
+        MaxPoolingLayer { (2:2), stride=(2:2) }:
 
-# second convolution layer
+# second convolution layer, combines bias and activation
 
-      numFeatureMaps2 = 24
-
-      Conv2Weights = LearnableParameter( numFeatureMaps2, 400 )
-      Conv2Bias = ImageParameter( 1, 1, numFeatureMaps2, 
-        imageLayout=$imageLayout$ )
-
-      Conv2 = Convolution( Conv2Weights, Pool1, kernelWidth, kernelHeight, 
-        numFeatureMaps2, 1, 1, zeroPadding=false, imageLayout=$imageLayout$ )
-
-# second bias layer
-
-      B2 = Plus( Conv2, Conv2Bias )
-
-# second activation layer
-
-      Act2 = RectifiedLinear( B2 )
+        ConvolutionalLayer { 24, (5:5),
+          activation=ReLU, stride=1, bias=true }:
 
 # second pooling layer
 
-      Pool2 = MaxPooling( Act2, 2, 2, 2, 2, imageLayout=$imageLayout$ )
-
+        MaxPoolingLayer { (2:2), stride=(2:2) }:
+        
 # first fully connected layer
-      Full1Weights = LearnableParameter( 128, 384 )
-      Full1Bias = LearnableParameter( 128,1 )
-      t1 = Times( Full1Weights, Pool2)
-      z1 = Plus( t1, Full1Bias )
-
-# third activation layer
-
-      Act3 = RectifiedLinear( z1 )
+        DenseLayer { 128, activation=ReLU, bias=true }: 
 
 # second fully connected layer
+        DenseLayer { 10, activation=ReLU, bias=true }
 
-      Full2Weights = LearnableParameter( 10, 128 )
-      Full2Bias = LearnableParameter( 10, 1 )
-      t2 = Times( Full2Weights,Act3 )
-      z2 = Plus( t2, Full2Bias )
+      ) # end model definition 
 
-# fourth activation layer
+# run the model
 
-      Act4 = RectifiedLinear( z2 )
+      z = model( features )
 
 #define the error criterion
 
-      Error = CrossEntropyWithSoftmax( labels, Act4 )
-      ErrPredict = ErrorPrediction( labels, Act4 )
+      error = CrossEntropyWithSoftmax( labels, z )
+      errPredict = ClassificationError( labels, z )
 
 # define the special nodes.
 
-      FeatureNodes =(features)
-      LabelNodes = (labels)
-      CriteriaNodes = (Error)
-      EvalNodes = (ErrPredict)
-      OutputNodes = (Act4)
+      featureNodes =(features)
+      labelNodes = (labels)
+      criterionNodes = (error)
+      evaluationNodes = (errPredict)
+      outputNodes = (z)
 
-    ] # end run NN
-
-  ] # end NDLNetworkBuilder
+  } # end BrainScriptNetworkBuilder
 
 # define the SGD parameters
 
