@@ -25,7 +25,7 @@ ModelDir = "$OutputDir$/Models"
 
 # overall commands to be executed
  
-command = mnistTrain:mnistTest
+command = mnistTrain:mnistTest:topoplot
 
 # path to teh model that will be created by train and used by test
 
@@ -62,131 +62,83 @@ mnistTrain = [
 
 # 784 inputs, 1 hidden layer, 10 output classes
 
-  NDLNetworkBuilder = [
-
-# choose which subblock to run
-
-    run = CNN 
-
-# define the NN subblock
-
-    CNN = [
+  BrainScriptNetworkBuilder = {
 
 # image parameters
 
       imageWidth = FIXME
       imageHeight = FIXME
       numChannels = 1
+      imageShape = (imageHeight:imageWidth:numChannels)
       labelDim = 10
 
 # defining the sizes of the feature and labels
 
-      features = ImageInput( imageWidth, imageHeight, numChannels, 
-        imageLayout=$imageLayout$ )
-
-      labels = InputValue( labelDim )
+       features = Input { imageShape }
+       labels = Input { labelDim }
 
 # scale the features
       
-      normFactor = Constant( 0.00390625 )
-      featuresScaled = Scale( normFactor, features )
+      normalize256 (x) = x .* Constant( 0.00390625 )
 
-# first convolution layer
+# define the model using CNTK built-in Layers
 
-      numFeatureMaps = 16
-      kernelWidth = FIXME
-      kernelHeight = FIXME
+      model = Sequential (
+        
+        normalize256 :
 
-      Conv1Weights = LearnableParameter( numFeatureMaps, 25 )
-      Conv1Bias = ImageParameter( 1, 1, numFeatureMaps, 
-        imageLayout=$imageLayout$ )
+# first convolution layer, combines bias and activation
 
-      Conv1 = Convolution( Conv1Weights, featuresScaled, FIXME, 
-        FIXME, numFeatureMaps, 1, 1, zeroPadding=false, 
-        imageLayout=$imageLayout$ )
-
-# first bias term
-     
-      B1 = Plus( Conv1, Conv1Bias )
-
-# first activation layer
-
-      Act1 = FIXME
+        ConvolutionalLayer { 16, (FIXME:FIXME), 
+          activation=ReLU, stride=FIXME, bias=true }:
 
 # first pooling layer
 
-      Pool1 = MaxPooling( Act1, FIXME, FIXME, FIXME, FIXME, 
-                imageLayout=$imageLayout$ )
+        MaxPoolingLayer { (FIXME:FIXME), stride=(FIXME:FIXME) }:
 
-# second convolution layer
+# second convolution layer, combines bias and activation
 
-      numFeatureMaps2 = 24
-
-      Conv2Weights = LearnableParameter( numFeatureMaps2, 400 )
-      Conv2Bias = ImageParameter( 1, 1, numFeatureMaps2, 
-        imageLayout=$imageLayout$ )
-
-      Conv2 = Convolution( Conv2Weights, Pool1, FIXME, FIXME, 
-        numFeatureMaps2, 1, 1, zeroPadding=false, imageLayout=$imageLayout$ )
-
-# second bias layer
-
-      B2 = Plus( Conv2, Conv2Bias )
-
-# second activation layer
-
-      Act2 = FIXME
+        ConvolutionalLayer { 24, (FIXME:FIXME),
+          activation=ReLU, stride=FIXME, bias=true }:
 
 # second pooling layer
 
-      Pool2 = MaxPooling( Act2, FIXME, FIXME, FIXME, FIXME,
-                imageLayout=$imageLayout$ )
-
+        MaxPoolingLayer { (FIXME:FIXME), stride=(FIXME:FIXME) }:
+        
 # first fully connected layer
-      Full1Weights = LearnableParameter( 128, 384 )
-      Full1Bias = LearnableParameter( 128,1 )
-      t1 = Times( Full1Weights, Pool2)
-      z1 = Plus( t1, Full1Bias )
-
-# third activation layer
-
-      Act3 = FIXME
+        DenseLayer { FIXME, activation=ReLU, bias=true }: 
 
 # second fully connected layer
+        DenseLayer { FIXME, activation=ReLU, bias=true }
 
-      Full2Weights = LearnableParameter( 10, 128 )
-      Full2Bias = LearnableParameter( 10, 1 )
-      t2 = Times( Full2Weights,Act3 )
-      z2 = Plus( t2, Full2Bias )
+      ) # end model definition 
 
-# fourth activation layer
+# run the model
 
-      Act4 = FIXME
+      z = model( features )
 
 #define the error criterion
 
-      Error = CrossEntropyWithSoftmax( labels, Act4 )
-      ErrPredict = ErrorPrediction( labels, Act4 )
+      error = CrossEntropyWithSoftmax( labels, z )
+      errPredict = ClassificationError( labels, z )
 
 # define the special nodes.
 
-      FeatureNodes =(features)
-      LabelNodes = (labels)
-      CriteriaNodes = (Error)
-      EvalNodes = (ErrPredict)
-      OutputNodes = (Act4)
+      featureNodes =(features)
+      labelNodes = (labels)
+      criterionNodes = (error)
+      evaluationNodes = (errPredict)
+      outputNodes = (z)
 
-    ] # end run NN
-
-  ] # end NDLNetworkBuilder
+  } # end BrainScriptNetworkBuilder
 
 # define the SGD parameters
 
   SGD = [
 
     epochSize = 60000
-    minibatchSize = FIXME
-    learningRatesPerMB = FIXME
+    minibatchSize = 32
+    learningRatesPerMB = 0.1
     maxEpochs = FIXME
 
   ] # end SGD
@@ -195,29 +147,25 @@ mnistTrain = [
 
   reader = [
 
-    readerType = "UCIFastReader"
+    readerType = "CNTKTextFormatReader"
     file = "$DataDir$/train-images.txt"
 
-# how many features per example and where the features start in the test file
+    input = [
 
-    features = [
+# how many features per example
 
-      dim = 784
-      start = 1
+      features = [
+        dim = 784
+        format = "dense"
+      ]
 
-    ] # end features
+# how many classes for the label
 
-# how many labels and where they start in the text file
-
-    labels = [
-
-      dim = 1
-      start = 0
-      labelDim = 10
-      labelMappingFile = "$DataDir$/labelsmap.txt"   
-
-    ] # end labels
-
+      labels = [
+        dim = 10
+        format = "dense"
+      ]
+    ]
   ] # end reader
 
 ] # end mnistTrain
@@ -238,26 +186,20 @@ mnistTest = [
 
   reader = [
 
-    readerType = "UCIFastReader"
+    readerType = "CNTKTextFormatReader"
     file = "$DataDir$/t10k-images.txt"
 
-    features = [
-
-      dim = 784
-      start = 1
-
-    ] # end features
-
-    labels = [
-
-      dim = 1
-      start = 0
-      labelDim = 10
-      labelMappingFile = "$DataDir$/labelsmap.txt"
-
-    ] # end labels
-  
-  ] # end reader
+    input = [
+      features = [
+        dim = 784
+        format = "dense"
+      ]
+      labels = [
+        dim = 10
+        format = "dense"
+      ]
+    ]
+  ]
 
 ] # end mnistTest
 

@@ -25,7 +25,7 @@ ModelDir = "$OutputDir$/Models"
 
 # overall commands to be executed
 
-command = mnistTrain:mnistTest
+command = mnistTrain:mnistTest:topoplot
 
 # path to the model that will be created by train and used by test
 
@@ -61,84 +61,63 @@ mnistTrain = [
 
 # 784 inputs, 1 hidden layer, 10 output classes
 
-  NDLNetworkBuilder = [
-
-# choose which subblock to run
-
-    run = NN 
-
-# define the NN subblock
-
-    NN = [
+  BrainScriptNetworkBuilder = {
 
 # network size parameters
 
-      InputDim = FIXME
-      HiddenDim = FIXME
-      OutputDim = FIXME
+      inputDim = FIXME
+      hiddenDim = FIXME
+      outputDim = FIXME
 
 # define the sizes of the features and labels. 
 
-      features = InputValue( FIXME ) 
-      labels = InputValue( FIXME )
+      features = Input{ inputDim } 
+      labels = Input{ outputDim }
 
 # normalize the input from 0-255 to 0.0 to 1.0
 
-      normFactor = Constant( 0.00390625 )
-      featuresScaled = Scale( normFactor, features )
+      normalize256 (x) = x * Constant( 0.00390625 )
 
-# first layer multiply by weights
+      model = Sequential (
+        
+        normalize256 : 
 
-      Weights1 = LearnableParameter( FIXME, FIXME )
-      Z1 = Times( Weights1, featuresScaled )
+# layer connecting input to hidden layer
 
-# add the bias term
+        DenseLayer { FIXME, activation=FIXME } :
 
-      Bias1 = LearnableParameter( FIXME )
-      B1 = Plus( Z1,Bias1 )
+# connecting hidden layer to output
 
-# activation of first layer
+        DenseLayer { FIXME, activation=FIXME }
 
-      Activations1 = FIXME
+      ) # end model definition
 
-# second layer multiply by weights
+# apply the model to the examples
 
-      Weights2 = LearnableParameter( FIXME, FIXME )
-      Z2 = Times( Weights2, Activations1 )
-
-# second bias layer
-
-      Bias2 = LearnableParameter( FIXME )
-      B2 = Plus( Z2,Bias2 )
-
-# second activation layer
-
-      Activations2 = FIXME
+      z = model( features )
 
 #define the error criterion
 
-      Error = FIXME
-      ErrPredict = ErrorPrediction( labels, Activations2 )
+      error = FIXME( labels, z )
+      errPredict = ClassificationError( labels, z )
 
 # define the special nodes.
 
-      FeatureNodes = (features)
-      LabelNodes = (labels)
-      CriteriaNodes = (Error)
-      EvalNodes = (ErrPredict)
-      OutputNodes = (Activations2)
+      featureNodes = (features)
+      labelNodes = (labels)
+      criterionNodes = (error)
+      evaluationNodes = (errPredict)
+      outputNodes = (z)
 
-    ] # end run NN
-
-  ] # end NDLNetworkBuilder
+  } # end BrainScriptNetworkBuilder
 
 # define the SGD parameters
 
   SGD = [
 
     epochSize = 60000
-    minibatchSize = FIXME
-    learningRatesPerMB = FIXME
+    minibatchSize = 32
+    learningRatesPerMB = 0.1
     maxEpochs = FIXME
 
   ] # end SGD
@@ -147,29 +126,23 @@ mnistTrain = [
 
   reader = [
 
-    readerType = "UCIFastReader"
+    readerType = "CNTKTextFormatReader"
     file = "$DataDir$/train-images.txt"
 
-# how many features per example and where the features start in the test file
+    input = [
 
-    features = [
+# specify how many features per example
+      features = [
+        dim = 784
+        format = "dense"
+      ]
+      labels = [
 
-      dim = 784
-      start = 1
-
-    ] # end features
-
-# how many labels and where they start in the text file
-
-    labels = [
-
-      dim = 1
-      start = 0
-      labelDim = 10
-      labelMappingFile = "$DataDir$/labelsmap.txt"   
-
-    ] # end labels
-
+# specify how many classes the label can be in
+        dim = 10
+        format = "dense"
+      ]
+    ]
   ] # end reader
 
 ] # end mnistTrain
@@ -190,26 +163,20 @@ mnistTest = [
 
   reader = [
 
-    readerType = "UCIFastReader"
+    readerType = "CNTKTextFormatReader"
     file = "$DataDir$/t10k-images.txt"
 
-    features = [
-
-      dim = 784
-      start = 1
-
-    ] # end features
-
-    labels = [
-
-      dim = 1
-      start = 0
-      labelDim = 10
-      labelMappingFile = "$DataDir$/labelsmap.txt"
-
-    ] # end labels
-  
-  ] # end reader
+    input = [
+      features = [
+        dim = 784
+        format = "dense"
+      ]
+      labels = [
+        dim = 10
+        format = "dense"
+      ]
+    ]
+  ]
 
 ] # end mnistTest
 

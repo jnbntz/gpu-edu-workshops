@@ -25,7 +25,7 @@ ModelDir = "$OutputDir$/Models"
 
 # overall commands to be executed
 
-command = mnistTrain:mnistTest
+command = mnistTrain:mnistTest:topoplot
 
 # path to the model that will be created by train and used by test
 
@@ -61,70 +61,70 @@ mnistTrain = [
 
 # 784 inputs, 1 hidden layer, 10 output classes
 
-  NDLNetworkBuilder = [
-
-# choose which subblock to run
-
-    run = NN 
-
-# define the NN subblock
-
-    NN = [
+  BrainScriptNetworkBuilder = [
 
 # network size parameters
 
-      InputDim = FIXME
-      HiddenDim = FIXME
-      OutputDim = FIXME
+      inputDim = FIXME
+      hiddenDim = FIXME
+      outputDim = FIXME
 
 # define the sizes of the features and labels. 
 
-      features = InputValue( InputDim ) 
-      labels = InputValue( OutputDim )
+      features = Input{ inputDim } 
+      labels = Input{ outputDim }
+
+# define the model (neural network)
+
+      model (features) = {
 
 # first layer multiply by weights
 
-      Weights1 = LearnableParameter( HiddenDim, FIXME )
-      Z1 = Times( Weights1, features )
+        weights1 = ParameterTensor{ (hiddenDim:inputDim) }
+        z1 = weights1 * features 
 
 # first layer activations
 
-      Activations1 = FIXME
+        activations1 = Sigmoid( z1 )
 
 # second layer multiply by weights
 
-      Weights2 = LearnableParameter( FIXME, HiddenDim )
-      Z2 = Times( Weights2, Activations1 )
+        weights2 = ParameterTensor{ (outputDim:hiddenDim) }
+        z2 = weights2 * activations1
 
 # second layer activations
 
-      Activations2 = FIXME
+        activations2 = Sigmoid( z2 )
+
+      }.activations2 # end model defintion
+
+# compute the model with features as input
+
+      z = model( features )
 
 #define the error criterion
 
-      Error = SquareError( labels, Activations2 )
-      ErrPredict = ErrorPrediction( labels, Activations2 )
+      sqErr = SquareError( labels, z )
+      errPred = ClassificationError( labels, z )
 
 # define the special nodes.
 
-      FeatureNodes = (features)
-      LabelNodes = (labels)
-      CriteriaNodes = (Error)
-      EvalNodes = (ErrPredict)
-      OutputNodes = (Activations2)
+      featureNodes = (features)
+      labelNodes = (labels)
+      criterionNodes = (sqErr)
+      evaluationNodes = (errPred)
+      outputNodes = (z)
 
-    ] # end run NN
-
-  ] # end NDLNetworkBuilder
+  ] # end BrainScriptNetworkBuilder
 
 # define the SGD parameters
 
   SGD = [
 
     epochSize = 60000
-    minibatchSize = FIXME
+    minibatchSize = 32
     learningRatesPerMB = 0.1
-    maxEpochs = FIXME
+    maxEpochs = 5
 
   ] # end SGD
 
@@ -132,30 +132,25 @@ mnistTrain = [
 
   reader = [
 
-    readerType = "UCIFastReader"
+    readerType = "CNTKTextFormatReader"
     file = "$DataDir$/train-images.txt"
 
-# how many features per example and where the features start in the test file
+    input = [
 
-    features = [
+# how many features per example
+      features = [
+        dim = 784
+        format = "dense"
+      ]
 
-      dim = 784
-      start = 1
+      labels = [
 
-    ] # end features
-
-# how many labels and where they start in the text file
-
-    labels = [
-
-      dim = 1
-      start = 0
-      labelDim = 10
-      labelMappingFile = "$DataDir$/labelsmap.txt"   
-
-    ] # end labels
-
-  ] # end reader
+# how many classes of examples
+        dim = 10
+        format = "dense"
+      ]
+    ]
+  ]
 
 ] # end mnistTrain
 
@@ -175,26 +170,20 @@ mnistTest = [
 
   reader = [
 
-    readerType = "UCIFastReader"
+    readerType = "CNTKTextFormatReader"
     file = "$DataDir$/t10k-images.txt"
 
-    features = [
-
-      dim = 784
-      start = 1
-
-    ] # end features
-
-    labels = [
-
-      dim = 1
-      start = 0
-      labelDim = 10
-      labelMappingFile = "$DataDir$/labelsmap.txt"
-
-    ] # end labels
-  
-  ] # end reader
+    input = [
+      features = [
+        dim = 784
+        format = "dense"
+      ]
+      labels = [
+        dim = 10
+        format = "dense"
+      ]
+    ]
+  ]
 
 ] # end mnistTest
 

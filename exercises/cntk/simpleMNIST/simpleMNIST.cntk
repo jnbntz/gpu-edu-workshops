@@ -25,7 +25,7 @@ ModelDir = "$OutputDir$/Models"
 
 # overall commands to be executed can string together with colons
 
-command = mnistTrain:mnistTest
+command = mnistTrain:mnistTest:topoplot
 
 # path to the model that will be created by train and used by test
 
@@ -80,7 +80,9 @@ mnistTrain = [
 
 # specify the evaluation criterion
 
-    evalCriterion = "ErrorPrediction"
+    evalCriterion = "ClassificationError"
+
+    applyMeanVarNorm = true
 
   ] # end SimpleNetworkBuilder
 
@@ -102,37 +104,25 @@ mnistTrain = [
 
   reader = [
 
-    readerType = "UCIFastReader"
+    readerType = "CNTKTextFormatReader"
     file = "$DataDir$/train-images.txt"
 
-# specify how many features per example and where the features start in the
-# test file
+    input = [
 
-    features = [
+# specify how many features per example
+      features = [
+        dim = 784
+        format = "dense"
+      ]
 
-      dim = 784
-      start = 1
+      labels = [
 
-    ] # end features
-
-# specify how many labels and where the labels start in the text file
-
-    labels = [
-
-      dim = 1
-      start = 0
-
-# labelDim is 10 because we have 10 possible digits
-
-      labelDim = 10
-
-# file to map numbers to labels.  Each row corresponds to a unique label
-
-      labelMappingFile = "$DataDir$/labelsmap.txt"   
-
-    ] # end labels
-
-  ] # end reader
+# specify the dimensionality of the labels
+        dim = 10
+        format = "dense"
+      ]
+    ]
+  ]
 
 ] # end mnistTrain
 
@@ -149,29 +139,22 @@ mnistTest = [
   minibatchSize = 16
 
 # reader same as above just different file name with the test examples
-
   reader = [
 
-    readerType = "UCIFastReader"
+    readerType = "CNTKTextFormatReader"
     file = "$DataDir$/t10k-images.txt"
 
-    features = [
-
-      dim = 784
-      start = 1
-
-    ] # end features
-
-    labels = [
-
-      dim = 1
-      start = 0
-      labelDim = 10
-      labelMappingFile = "$DataDir$/labelsmap.txt"
-
-    ] # end labels
-  
-  ] # end reader
+    input = [
+      features = [
+        dim = 784
+        format = "dense"
+      ]
+      labels = [
+        dim = 10
+        format = "dense"
+      ]
+    ]
+  ]
 
 ] # end mnistTest
 
