@@ -1,5 +1,5 @@
 /*
- *  Copyright 2012 NVIDIA Corporation
+ *  Copyright 2017 NVIDIA Corporation
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -82,4 +82,5 @@ int main(int argc, char** argv)
     double runtime = GetTimer();
  
     printf(" total: %f s\n", runtime / 1000);
+    return 0;
 }
