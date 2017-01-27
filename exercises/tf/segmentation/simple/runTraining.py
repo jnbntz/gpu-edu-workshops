@@ -60,11 +60,11 @@ def run_training():
         train_op = nn.training(loss, FLAGS.learning_rate)
 
 # setup the summary ops to use TensorBoard
-        summary_op = tf.merge_all_summaries()
+        summary_op = tf.summary.merge_all()
 
 # init to setup the initial values of the weights
-        init_op = tf.group(tf.initialize_all_variables(),
-                           tf.initialize_local_variables())
+        init_op = tf.group(tf.global_variables_initializer(),
+                           tf.local_variables_initializer())
 
 # setup a saver for saving checkpoints
         saver = tf.train.Saver()
@@ -73,7 +73,7 @@ def run_training():
         sess = tf.Session()
 
 # specify where to write the log files for import to TensorBoard
-        summary_writer = tf.train.SummaryWriter(FLAGS.checkpoint_dir,  
+        summary_writer = tf.summary.FileWriter(FLAGS.checkpoint_dir,  
                             sess.graph)
 
 # initialize the graph

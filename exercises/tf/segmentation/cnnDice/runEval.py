@@ -69,11 +69,11 @@ def run_eval():
         int_area, label_area, example_area = nn.evaluation(logits, labels)
 
     # setup the initialization of variables
-        local_init = tf.initialize_local_variables()
+        local_init = tf.local_variables_initializer()
 
     # Build the summary operation based on the TF collection of Summaries.
-        summary_op = tf.merge_all_summaries()
-        summary_writer = tf.train.SummaryWriter(FLAGS.eval_dir, g)
+        summary_op = tf.summary.merge_all()
+        summary_writer = tf.summary.FileWriter(FLAGS.eval_dir, g)
 
 # create the saver and session
         saver = tf.train.Saver()

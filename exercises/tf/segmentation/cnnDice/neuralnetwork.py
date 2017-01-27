@@ -239,7 +239,7 @@ def training(loss, learning_rate, decay_steps, decay_rate):
 #    `sess.run()` call to cause the model to train.
 
   # Add a scalar summary for the snapshot loss.
-    tf.scalar_summary(loss.op.name, loss)
+    tf.summary.scalar(loss.op.name, loss)
 
   # Create a variable to track the global step.
     global_step = tf.Variable(0, name='global_step', trainable=False)
@@ -250,7 +250,7 @@ def training(loss, learning_rate, decay_steps, decay_rate):
                                      decay_steps,
                                      decay_rate, staircase=True )
 
-    tf.scalar_summary('2learning_rate', lr )
+    tf.summary.scalar('2learning_rate', lr )
 
   # Create the gradient descent optimizer with the given learning rate.
 #    optimizer = tf.train.GradientDescentOptimizer(learning_rate)
