@@ -162,7 +162,7 @@ def loss(logits, labels):
 
 # call cross entropy with logits
     cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(
-         logits, labels, name='cross_entropy')
+         labels=labels, logits=logits, name='cross_entropy')
     print_tensor_shape( cross_entropy, 'cross_entropy shape')
 
     loss = tf.reduce_mean(cross_entropy, name='0simple_cross_entropy_mean')
