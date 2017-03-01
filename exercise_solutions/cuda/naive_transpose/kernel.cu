@@ -41,7 +41,7 @@ __global__ void naive_cuda_transpose( const int m,
 
   if( myRow < m && myCol < m )
   {
-    c[INDX( myRow, myCol, m )] = a[INDX( myCol, myRow, m )];
+    c[INDX( myCol, myRow, m )] = a[INDX( myRow, myCol, m )];
   } /* end if */
   return;
 
