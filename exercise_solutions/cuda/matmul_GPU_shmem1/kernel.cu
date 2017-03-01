@@ -44,96 +44,97 @@ __global__ void GPU_shmem2(const int m, floatType_t const * const a,
 
 /* setup some constants for later use */
 
-	const int tx = threadIdx.x;
-	const int ty = threadIdx.y;
-	const int iby = blockIdx.y * TBY;
-	const int ibx = blockIdx.x * TBX;
+  const int tx = threadIdx.x;
+  const int ty = threadIdx.y;
+  const int iby = blockIdx.y * TBY;
+  const int ibx = blockIdx.x * TBX;
 
 /* shared memory arrays for A and B */
 
-	__shared__ floatType_t as[ TBX ][ BK+1 ];
-	__shared__ floatType_t bs[ BK ][ TBY+1 ];
+  __shared__ floatType_t as[ TBX ][ BK+1 ];
+  __shared__ floatType_t bs[ BK ][ TBY+1 ];
 	
 /* space for C to be held in registers */
 
-	floatType_t c_tmp[ NX ][ NY ] ;
+  floatType_t c_tmp[ NX ][ NY ] ;
 
 	/* zero the temp C array */
 
 #pragma unroll
-	for ( int i = 0 ; i < NX ; i++) { 
-		for ( int j = 0 ; j < NY ; j++) {
-			c_tmp[i][j] = 0.0;
-		}
+  for ( int i = 0 ; i < NX ; i++) { 
+    for ( int j = 0 ; j < NY ; j++) {
+      c_tmp[i][j] = 0.0;
+    }
+  }
+
+/* calculate my initial offset into A and B */
+
+  int aoff = INDX( ibx + tx, ty, m );
+  int boff = INDX( tx, iby + ty, m );
+
+/* main loop over blocks of K */
+
+  for( int Kblock = 0; Kblock < m; Kblock+=BK )
+  {
+
+/* read block of A into shared memory */
+
+#pragma unroll
+    for ( int i = 0; i < NX ; i ++ ) 
+    {
+      as[ tx + i * TX ][ ty ] = a[ (aoff + i*TX) ];
+    }
+
+/* read block of B into shared memory */
+
+#pragma unroll
+    for ( int i = 0; i < NY ; i ++ ) 
+    {
+      bs[ tx ][ ty + TY * i ] = b[ (boff + m*i*TY) ];
+    }
+
+    __syncthreads();
+
+/* increment A and B offsets  for next round of data reads */
+
+    boff += BK;
+    aoff += m * BK;
+
+/* triply nested loop to perform the matmult on the blocks */
+
+#pragma unroll
+    for( int k = 0 ; k < BK ; k++ )
+      {
+#pragma unroll
+        for (int j = 0 ; j < NY ; j++ )
+        {
+#pragma unroll
+          for (int i = 0 ; i < NX ; i++ )
+	  {
+	    c_tmp[ i ][ j ] += as[ tx + TX*i ][ k ] * bs[ k ][ ty + j*TY ];
+	  }
 	}
+      }
 
-	/* calculate my initial offset into A and B */
+    __syncthreads();
 
-	int aoff = INDX( ibx + tx, ty, m );
-	int boff = INDX( tx, iby + ty, m );
+  } /* end for Kblock */
 
-	/* main loop over blocks of K */
+/* set coff to its proper index int the C matrix */
 
-	for( int Kblock = 0; Kblock < m; Kblock+=BK )
-	{
-
-		/* read block of A into shared memory */
-
-#pragma unroll
-		for ( int i = 0; i < NX ; i ++ ) 
-		{
-			as[ tx + i * TX ][ ty ] = a[ (aoff + i*TX) ];
-		}
-
-		/* read block of B into shared memory */
-
-#pragma unroll
-		for ( int i = 0; i < NY ; i ++ ) 
-		{
-			bs[ tx ][ ty + TY * i ] = b[ (boff + m*i*TY) ];
-		}
-
-		__syncthreads();
-
-		/* increment A and B offsets  for next round of data reads */
-
-		boff += BK;
-		aoff += m * BK;
-
-		/* triply nested loop to perform the matmult on the blocks */
-
-#pragma unroll
-		for( int k = 0 ; k < BK ; k++ )
-		{
-#pragma unroll
-			for (int j = 0 ; j < NY ; j++ )
-			{
-#pragma unroll
-				for (int i = 0 ; i < NX ; i++ )
-				{
-					c_tmp[ i ][ j ] += as[ tx + TX*i ][ k ] * bs[ k ][ ty + j*TY ];
-				}
-			}
-		}
-		__syncthreads();
-
-	} /* end for Kblock */
-
-	/* set coff to its proper index int the C matrix */
-
-	int coff = INDX( ibx + tx, iby + ty, m );
+  int coff = INDX( ibx + tx, iby + ty, m );
   
-	/* write results to the C matrix */
+/* write results to the C matrix */
 
 #pragma unroll
-	for ( int j = 0 ; j < NY ; j++ ) 
-	{
+  for ( int j = 0 ; j < NY ; j++ ) 
+  {
 #pragma unroll
-		for ( int i = 0 ; i < NX ; i++ )
-		{      
-			c[ coff + INDX( TX * i, TY * j, m )] = c_tmp[i][j];
-		}
-	}
+    for ( int i = 0 ; i < NX ; i++ )
+    {      
+      c[ coff + INDX( TX * i, TY * j, m )] = c_tmp[i][j];
+    }
+  }
  
 } /* end GPU_shmem1 */
 
