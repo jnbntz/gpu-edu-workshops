@@ -18,6 +18,8 @@
 #include "cublas_v2.h"
 #include "../debug.h"
 
+typedef float floatType_t;
+
 /* macro for index calculations */
 
 #define INDX( row, col, ld ) ( ( (col) * (ld) ) + (row) )
@@ -32,7 +34,8 @@
 #define THREADS_PER_BLOCK_Y 16 // Thread block size, y dimension
 #define BLOCK_K 16 // square block of K size
 
-__global__ void GPU_shmem2(const int m, double const * const a, double const * const b, double *c )
+__global__ void GPU_shmem2(const int m, floatType_t const * const a, 
+      floatType_t const * const b, floatType_t *c )
 {
 
 /* setup some constanst for later use */
@@ -44,12 +47,12 @@ __global__ void GPU_shmem2(const int m, double const * const a, double const * c
 
 /* shared memory arrays for A and B */
 
-  __shared__ double as[ THREADS_PER_BLOCK_X ][ BLOCK_K + 1 ];
-  __shared__ double bs[ BLOCK_K ][ THREADS_PER_BLOCK_Y + 1 ];
+  __shared__ floatType_t as[ THREADS_PER_BLOCK_X ][ BLOCK_K + 1 ];
+  __shared__ floatType_t bs[ BLOCK_K ][ THREADS_PER_BLOCK_Y + 1 ];
 	
 /* space for C to be held in registers */
 
-  double c_tmp = 0.0 ;
+  floatType_t c_tmp = 0.0 ;
 
 /* calculate my initial offset into A and B */
 
@@ -109,33 +112,33 @@ int main( int argc, char *argv[] )
 
   fprintf(stdout, "Matrix size is %d\n",size);
 
-  double *h_a, *h_b, *h_c, *h_c1;
-  double *d_a, *d_b, *d_c;
+  floatType_t *h_a, *h_b, *h_c, *h_c1;
+  floatType_t *d_a, *d_b, *d_c;
  
-  size_t numbytes = (size_t ) size * (size_t ) size * sizeof( double );
+  size_t numbytes = (size_t ) size * (size_t ) size * sizeof( floatType_t );
 
-  h_a = (double *) malloc( numbytes );
+  h_a = (floatType_t *) malloc( numbytes );
   if( h_a == NULL )
   {
     fprintf(stderr,"Error in host malloc\n");
     return 911;
   }
 
-  h_b = (double *) malloc( numbytes );
+  h_b = (floatType_t *) malloc( numbytes );
   if( h_b == NULL )
   {
     fprintf(stderr,"Error in host malloc\n");
     return 911;
   }
 
-  h_c = (double *) malloc( numbytes );
+  h_c = (floatType_t *) malloc( numbytes );
   if( h_c == NULL )
   {
     fprintf(stderr,"Error in host malloc\n");
     return 911;
   }
 
-  h_c1 = (double *) malloc( numbytes );
+  h_c1 = (floatType_t *) malloc( numbytes );
   if( h_c1 == NULL )
   {
     fprintf(stderr,"Error in host malloc\n");
@@ -172,8 +175,8 @@ int main( int argc, char *argv[] )
   cublasHandle_t handle;
   checkCUBLAS( cublasCreate( &handle ) );
 
-  double alpha = 1.0;
-  double beta  = 0.0;
+  floatType_t alpha = 1.0;
+  floatType_t beta  = 0.0;
 
 /* start timers */
 
@@ -184,15 +187,30 @@ int main( int argc, char *argv[] )
 
 /* call CUBLAS dgemm */
 
+  if( sizeof( floatType_t ) == 4 )
+  {
+  checkCUBLAS(
+  cublasSgemm( handle, CUBLAS_OP_N, CUBLAS_OP_N,
+               size, size, size,
+               (float *)&alpha, 
+               (float *)d_a, size,
+               (float *)d_b, size,
+               (float *)&beta,
+               (float *)d_c, size )
+             );
+  } /* end if */
+  else
+  {
   checkCUBLAS(
   cublasDgemm( handle, CUBLAS_OP_N, CUBLAS_OP_N,
                size, size, size,
-               &alpha, 
-               d_a, size,
-               d_b, size,
-               &beta,
-               d_c, size )
+               (double *)&alpha, 
+               (double *)d_a, size,
+               (double *)d_b, size,
+               (double *)&beta,
+               (double *)d_c, size )
              );
+  } /* end else */
 
 /* stop timers */
 
@@ -257,11 +275,11 @@ int main( int argc, char *argv[] )
 
   for( int i = 0; i < size * size; i++ )
   {
-    temp += ( h_c[i] - h_c1[i] ) * ( h_c[i] - h_c1[i] );
+     temp = max( temp, abs( (double)h_c[i] - (double)h_c1[i] )/
+                      abs((double)h_c[i]) );
   } /* end for */
-
-  printf("error is %f\n",temp);
-  if( temp > 10 ) printf("FAIL\n");
+  printf("Maximum error is %e percent \n",temp*100.0);
+  if( temp > 0.001 ) printf("FAIL\n");
   else printf("PASS\n");
 
 /* cleanup */
