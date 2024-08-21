@@ -14,43 +14,48 @@
  *  limitations under the License.
  */
 
-//#include <stdio.h>
 #include <iostream>
 #include "../debug.h"
+#include <cute/tensor.hpp>
+#include <thrust/host_vector.h>
+#include <thrust/device_vector.h>
 
 using namespace std;
 
 /* definitions of threadblock size in X and Y directions */
 
-#define THREADS_PER_BLOCK_X 32
-#define THREADS_PER_BLOCK_Y 32
+const int threads_per_block_x = 32;
+const int threads_per_block_y = 32;
 
 /* definition of matrix linear dimension */
 
-#define SIZE 4096
+const int matSize = 4096;
 
 /* macro to index a 1D memory array with 2D indices in column-major order */
-
-#define INDX( row, col, ld ) ( ( (col) * (ld) ) + (row) )
+inline __host__ __device__ long int indx( const long int row, const long int col, const long int ld ) 
+{
+  return (col * ld) + row;
+} /* end indx */
 
 /* CUDA kernel for naive matrix transpose */
 
 __global__ void naive_cuda_transpose( const int m, 
                                       const double * const a, 
-                                      double * const c )
+                                            double * const c )
 {
   const int myRow = blockDim.x * blockIdx.x + threadIdx.x;
   const int myCol = blockDim.y * blockIdx.y + threadIdx.y;
 
   if( myRow < m && myCol < m )
   {
-    c[INDX( myCol, myRow, m )] = a[INDX( myRow, myCol, m )];
+    c[indx( myCol, myRow, m )] = a[indx( myRow, myCol, m )];
   } /* end if */
   return;
 
 } /* end naive_cuda_transpose */
 
-void host_transpose( const int m, const double * const a, double *c )
+void host_transpose( const int m, const thrust::host_vector<double> &a, 
+								        thrust::host_vector<double> &c )
 {
 	
 /* 
@@ -61,11 +66,11 @@ void host_transpose( const int m, const double * const a, double *c )
   {
     for( int i = 0; i < m; i++ )
       {
-        c[INDX(i,j,m)] = a[INDX(j,i,m)];
+        c[indx(i,j,m)] = a[indx(j,i,m)];
       } /* end for i */
   } /* end for j */
 
-} /* end host_dgemm */
+} /* end host transpose */
 
 int main( int argc, char *argv[] )
 {
@@ -78,55 +83,28 @@ int main( int argc, char *argv[] )
   checkCUDA( cudaGetDeviceProperties( &deviceProp, dev ) );
   cout << "Using GPU " << dev << ": " << deviceProp.name << endl;
 
-  int size = SIZE;
+  int size = matSize;
 
   cout << "Matrix size is " << size << endl;
 
 /* declaring pointers for array */
 
-  double *h_a, *h_c;
-  double *d_a, *d_c;
- 
   size_t numbytes = (size_t) size * (size_t) size * sizeof( double );
 
-/* allocating host memory */
+/* allocating and set host memory */
 
-  h_a = (double *) malloc( numbytes );
-  if( h_a == NULL )
-  {
-	cerr << "Error in host Malloc h_a " << endl;
-    return 911;
-  }
+  thrust::host_vector<double> h_a( size * size );
+  thrust::generate( h_a.begin(), h_a.end(), rand );
 
-  h_c = (double *) malloc( numbytes );
-  if( h_c == NULL )
-  {
-	cerr << "Error in host Malloc h_c " << endl;
-    return 911;
-  }
+  thrust::host_vector<double> h_c( size * size, 0.0 );
 
-/* allocating device memory */
+/* allocating and set device memory and copy a from host to device */
 
-  checkCUDA( cudaMalloc( (void**) &d_a, numbytes ) );
-  checkCUDA( cudaMalloc( (void**) &d_c, numbytes ) );
+  thrust::device_vector<double> d_a = h_a;
+  thrust::device_vector<double> d_c( size * size, 0.0 );
 
-/* set result matrices to zero */
-
-  memset( h_c, 0, numbytes );
-  checkCUDA( cudaMemset( d_c, 0, numbytes ) );
-
+  cout << "size of vector is " << d_a.size() << endl;
   cout << "Total memory required per matrix is " << (double) numbytes / 1000000.0 << endl;
-
-/* initialize input matrix with random value */
-
-  for( int i = 0; i < size * size; i++ )
-  {
-    h_a[i] = double( rand() ) / ( double(RAND_MAX) + 1.0 );
-  }
-
-/* copy input matrix from host to device */
-
-  checkCUDA( cudaMemcpy( d_a, h_a, numbytes, cudaMemcpyHostToDevice ) );
 
 /* create and start timer */
 
@@ -152,22 +130,24 @@ int main( int argc, char *argv[] )
   cout << "Performance is " << 
     8.0 * 2.0 * (double) size * (double) size / 
     ( (double) elapsedTime / 1000.0 ) * 1.e-9 << endl ; 
-//  fprintf(stdout, "Performance is %f GB/s\n", 
- //   8.0 * 2.0 * (double) size * (double) size / 
-  //  ( (double) elapsedTime / 1000.0 ) * 1.e-9 );
 
 /* setup threadblock size and grid sizes */
 
-  dim3 threads( THREADS_PER_BLOCK_X, THREADS_PER_BLOCK_Y, 1 );
-  dim3 blocks( ( size / THREADS_PER_BLOCK_X ) + 1, 
-               ( size / THREADS_PER_BLOCK_Y ) + 1, 1 );
+  dim3 threads( threads_per_block_x, threads_per_block_y, 1 );
+  dim3 blocks( ( size / threads_per_block_x ) + 1, 
+               ( size / threads_per_block_y ) + 1, 1 );
+
+/* case the thrust device pointers to raw pointers so we can pass to kernel */
+
+  double *raw_d_a = thrust::raw_pointer_cast(d_a.data());
+  double *raw_d_c = thrust::raw_pointer_cast(d_c.data());
 
 /* start timers */
   checkCUDA( cudaEventRecord( start, 0 ) );
-
+  
 /* call naive GPU transpose kernel */
 
-  naive_cuda_transpose<<< blocks, threads >>>( size, d_a, d_c );
+  naive_cuda_transpose<<< blocks, threads >>>( size, raw_d_a, raw_d_c );
   checkKERNEL()
 
 /* stop the timers */
@@ -178,22 +158,25 @@ int main( int argc, char *argv[] )
 
 /* print GPU timing information */
 
-//  fprintf(stdout, "Total time GPU is %f sec\n", elapsedTime / 1000.0f );
- // fprintf(stdout, "Performance is %f GB/s\n", 
-  //  8.0 * 2.0 * (double) size * (double) size / 
-   // ( (double) elapsedTime / 1000.0 ) * 1.e-9 );
-
   cout << "Total time GPU is " << elapsedTime / 1000.0f << " sec" << endl;
   cout << "Performance is " << 
     8.0 * 2.0 * (double) size * (double) size / 
     ( (double) elapsedTime / 1000.0 ) * 1.e-9 << endl ; 
 
-/* copy data from device to host */
+/* set the host array back to zero */
 
-  checkCUDA( cudaMemset( d_a, 0, numbytes ) );
-  checkCUDA( cudaMemcpy( h_a, d_c, numbytes, cudaMemcpyDeviceToHost ) );
+  thrust::fill( h_a.begin(), h_a.end(), 0.0 );
+
+/* copy data back from device to host */
+
+  h_a = d_c;
 
 /* compare GPU to CPU for correctness */
+
+  if ( thrust::equal( h_a.begin(), h_a.end(), h_c.begin() ) )
+    printf("The arrays are equal\n");
+  else
+    printf("The arrays are different!\n");
 
   int success = 1;
 
@@ -201,10 +184,10 @@ int main( int argc, char *argv[] )
   {
     for( int i = 0; i < size; i++ )
     {
-      if( h_c[INDX(i,j,size)] != h_a[INDX(i,j,size)] ) 
+      if( h_c[indx(i,j,size)] != h_a[indx(i,j,size)] ) 
       {
 		cerr << "Error in element " << i << "," << j << endl;
-		cerr << "Host " << h_c[INDX(i,j,size)] << ", device " << h_a[INDX(i,j,size)] << endl;
+		cerr << "Host " << h_c[indx(i,j,size)] << ", device " << h_a[indx(i,j,size)] << endl;
         success = 0;
         break;
       } /* end fi */
@@ -214,12 +197,7 @@ int main( int argc, char *argv[] )
   if( success == 1 ) cout << "PASS" << endl;
   else               cout << "FAIL" << endl;
 
-/* free the memory */
-  free( h_a );
-  free( h_c );
-  checkCUDA( cudaFree( d_a ) );
-  checkCUDA( cudaFree( d_c ) );
-  checkCUDA( cudaDeviceReset() );
+//  checkCUDA( cudaDeviceReset() );
 
   return 0;
 } /* end main */

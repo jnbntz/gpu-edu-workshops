@@ -17,7 +17,8 @@
 include ../make.common
 BIN=x.naive_transpose
 NVCC=nvcc
-NVOPTS=-O3 $(ARCH) -lineinfo -DDEBUG
+NVOPTS=-O3 $(ARCH) -lineinfo -DDEBUG -I/home/jbentz/libs/cutlass/include
+#NVOPTS=-g $(ARCH) -lineinfo  -I/home/jbentz/libs/cutlass/include
 
 $(BIN): kernel.o
 	$(NVCC) $(NVOPTS) -o $(BIN) kernel.o
